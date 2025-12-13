@@ -9,15 +9,15 @@ export function cn(...inputs: ClassValue[]) {
 export function getTipoColor(tipo: string): string {
   switch (tipo) {
     case 'positivo':
-      return '!bg-green-600 !text-white hover:!bg-green-700';
+      return 'bg-green-600 text-white hover:bg-green-700';
     case 'ausencia':
-      return '!bg-orange-500 !text-white hover:!bg-orange-600';
+      return 'bg-orange-500 text-white hover:bg-orange-600';
     case 'conducta':
-      return '!bg-red-600 !text-white hover:!bg-red-700';
+      return 'bg-red-600 text-white hover:bg-red-700';
     case 'academica':
-      return '!bg-blue-600 !text-white hover:!bg-blue-700';
+      return 'bg-blue-600 text-white hover:bg-blue-700';
     default:
-      return '!bg-gray-500 !text-white hover:!bg-gray-600';
+      return 'bg-gray-500 text-white hover:bg-gray-600';
   }
 }
 
@@ -39,13 +39,13 @@ export function getTipoLabel(tipo: string): string {
 export function getGravedadColor(gravedad: Gravedad): string {
   switch (gravedad) {
     case 'grave':
-      return '!bg-red-600 !text-white hover:!bg-red-700';
+      return 'bg-red-600 text-white hover:bg-red-700';
     case 'moderada':
-      return '!bg-blue-500 !text-white hover:!bg-blue-600';
+      return 'bg-blue-500 text-white hover:bg-blue-600';
     case 'leve':
-      return '!bg-green-600 !text-white hover:!bg-green-700';
+      return 'bg-green-600 text-white hover:bg-green-700';
     default:
-      return '!bg-gray-500 !text-white hover:!bg-gray-600';
+      return 'bg-gray-500 text-white hover:bg-gray-600';
   }
 }
 
