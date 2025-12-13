@@ -236,7 +236,7 @@ export default function DirectorPage() {
 
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-6xl">
+    <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-6xl">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-2">Dashboard Director</h1>
@@ -244,20 +244,21 @@ export default function DirectorPage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex space-x-2 mb-6 border-b border-gray-200">
+      <div className="flex overflow-x-auto space-x-2 mb-6 border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0">
         <button
           onClick={() => setActiveTab('derivadas')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'derivadas'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-900 hover:text-gray-900'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Incidencias Derivadas
+          <div className="flex items-center gap-1 sm:gap-2">
+            <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Incidencias Derivadas</span>
+            <span className="sm:hidden">Derivadas</span>
             {incidenciasDerivadas.length > 0 && (
-              <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-primary text-white text-xs px-1.5 sm:px-2 py-0.5 rounded-full">
                 {incidenciasDerivadas.length}
               </span>
             )}
@@ -269,30 +270,30 @@ export default function DirectorPage() {
             setSelectedStudent(null);
             setReporte(null);
           }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'estudiantes'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-900 hover:text-gray-900'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4" />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <User className="h-3 w-3 sm:h-4 sm:w-4" />
             Estudiantes
           </div>
         </button>
         <button
           onClick={() => setActiveTab('incidencias')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'incidencias'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-900 hover:text-gray-900'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
             Incidencias
             {incidencias.length > 0 && (
-              <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-primary text-white text-xs px-1.5 sm:px-2 py-0.5 rounded-full">
                 {incidencias.length}
               </span>
             )}

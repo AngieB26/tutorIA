@@ -33,7 +33,7 @@ export default function HomePage() {
         </div>
 
         {/* Role Selector Cards */}
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-3 mt-8 sm:mt-12">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3 mt-8 sm:mt-12">
           <Card 
             className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 border-2 border-blue-400 hover:border-primary"
             onClick={() => router.push('/tutor')}
