@@ -756,7 +756,7 @@ export default function DirectorPage() {
                   variant={filtroGravedad === 'moderada' ? 'default' : 'outline'}
                   onClick={() => setFiltroGravedad('moderada')}
                   size="sm"
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   Moderada ({getIncidenciasByGravedad('moderada').length})
                 </Button>

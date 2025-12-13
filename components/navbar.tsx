@@ -25,7 +25,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
+    <nav className="sticky top-0 z-50 w-full border-b border-blue-200 bg-white shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center space-x-2">
           <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />

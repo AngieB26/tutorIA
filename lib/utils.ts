@@ -41,7 +41,7 @@ export function getGravedadColor(gravedad: Gravedad): string {
     case 'grave':
       return '!bg-red-600 !text-white hover:!bg-red-700';
     case 'moderada':
-      return '!bg-yellow-500 !text-white hover:!bg-yellow-600';
+      return '!bg-blue-500 !text-white hover:!bg-blue-600';
     case 'leve':
       return '!bg-green-600 !text-white hover:!bg-green-700';
     default:
