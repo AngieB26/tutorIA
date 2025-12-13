@@ -60,6 +60,16 @@ export function getIncidenciasByDateRange(fechaInicio: string, fechaFin: string)
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 }
 
+export function getIncidenciasByGravedad(gravedad?: 'grave' | 'moderada' | 'leve' | 'todas'): Incidencia[] {
+  const incidencias = getIncidencias();
+  if (!gravedad || gravedad === 'todas') {
+    return incidencias.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  }
+  return incidencias
+    .filter(inc => inc.gravedad === gravedad)
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+}
+
 export function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): Incidencia[] {
   const incidencias = getIncidencias();
   return incidencias
@@ -183,18 +193,52 @@ export function getEstudiantesByGrado(grado?: string): EstudianteInfo[] {
   return estudiantes.filter(e => e.grado === grado);
 }
 
+// Funciones para Tutores
+export function getTutores(): Tutor[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(TUTORES_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (error) {
+    console.error('Error reading tutores from localStorage:', error);
+    return [];
+  }
+}
+
+export function saveTutores(tutores: Tutor[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(TUTORES_STORAGE_KEY, JSON.stringify(tutores));
+  } catch (error) {
+    console.error('Error saving tutores to localStorage:', error);
+  }
+}
+
 export function seedInitialData(): void {
   if (typeof window === 'undefined') return;
   
-  const existing = getIncidencias();
-  if (existing.length > 0) return; // Ya hay datos
+  // Verificar si ya hay estudiantes
+  const existingEstudiantes = getEstudiantesInfo();
+  const existingIncidencias = getIncidencias();
+  const existingTutores = getTutores();
+  const existingNotas = getNotas();
   
-  const seedData: Incidencia[] = [
+  // Si ya hay todos los datos, no seedear
+  if (existingEstudiantes.length > 0 && existingIncidencias.length > 0 && existingTutores.length > 0 && existingNotas.length > 0) {
+    return;
+  }
+  
+  // Seedear incidencias solo si no existen
+  if (existingIncidencias.length === 0) {
+    const seedData: Incidencia[] = [
+    // Juan Pérez - 3ro A
     {
       id: '1',
       studentName: 'Juan Pérez',
       tipo: 'ausencia',
-      descripcion: 'No asistió a clase',
+      gravedad: 'moderada',
+      descripcion: 'No asistió a clase sin justificación',
       fecha: '2024-12-02',
       profesor: 'Prof. García',
       tutor: 'Prof. García',
@@ -207,7 +251,8 @@ export function seedInitialData(): void {
       id: '2',
       studentName: 'Juan Pérez',
       tipo: 'ausencia',
-      descripcion: 'Falta sin justificar',
+      gravedad: 'grave',
+      descripcion: 'Falta sin justificar por tercera vez este mes',
       fecha: '2024-12-09',
       profesor: 'Prof. García',
       tutor: 'Prof. García',
@@ -221,7 +266,8 @@ export function seedInitialData(): void {
       studentName: 'Juan Pérez',
       tipo: 'positivo',
       subtipo: 'ayuda_companero',
-      descripcion: 'Ayudó a compañero en matemáticas',
+      gravedad: 'leve',
+      descripcion: 'Ayudó a compañero en matemáticas durante la clase',
       fecha: '2024-12-05',
       profesor: 'Prof. López',
       tutor: 'Prof. López',
@@ -229,10 +275,12 @@ export function seedInitialData(): void {
       timestamp: new Date('2024-12-05').getTime(),
       derivacion: 'ninguna',
     },
+    // María López - 2do A
     {
       id: '4',
       studentName: 'María López',
       tipo: 'academica',
+      gravedad: 'moderada',
       descripcion: 'No entregó tarea de ciencias',
       fecha: '2024-12-03',
       profesor: 'Prof. Fernández',
@@ -246,6 +294,7 @@ export function seedInitialData(): void {
       id: '5',
       studentName: 'María López',
       tipo: 'academica',
+      gravedad: 'leve',
       descripcion: 'Tarea incompleta',
       fecha: '2024-12-10',
       profesor: 'Prof. Fernández',
@@ -254,12 +303,14 @@ export function seedInitialData(): void {
       timestamp: new Date('2024-12-10').getTime(),
       derivacion: 'ninguna',
     },
+    // Carlos Ruiz - 4to A
     {
       id: '6',
       studentName: 'Carlos Ruiz',
       tipo: 'positivo',
       subtipo: 'participacion',
-      descripcion: 'Excelente participación en clase',
+      gravedad: 'leve',
+      descripcion: 'Excelente participación en clase de historia',
       fecha: '2024-12-08',
       profesor: 'Prof. Torres',
       tutor: 'Prof. Torres',
@@ -272,6 +323,7 @@ export function seedInitialData(): void {
       studentName: 'Carlos Ruiz',
       tipo: 'conducta',
       subtipo: 'interrupcion',
+      gravedad: 'moderada',
       descripcion: 'Interrumpió clase repetidamente',
       fecha: '2024-12-11',
       profesor: 'Prof. Torres',
@@ -281,36 +333,166 @@ export function seedInitialData(): void {
       derivacion: 'psicologia',
       resuelta: false,
     },
+    // Ana García - 1ro A
+    {
+      id: '8',
+      studentName: 'Ana García',
+      tipo: 'ausencia',
+      gravedad: 'leve',
+      descripcion: 'Ausencia justificada por enfermedad',
+      fecha: '2024-12-01',
+      profesor: 'Prof. Martínez',
+      tutor: 'Prof. Martínez',
+      lugar: 'Aula 101',
+      timestamp: new Date('2024-12-01').getTime(),
+      derivacion: 'enfermeria',
+      resuelta: false,
+    },
+    {
+      id: '9',
+      studentName: 'Ana García',
+      tipo: 'positivo',
+      subtipo: 'liderazgo',
+      gravedad: 'leve',
+      descripcion: 'Lideró el proyecto grupal de manera excelente',
+      fecha: '2024-12-07',
+      profesor: 'Prof. Ramírez',
+      tutor: 'Prof. Ramírez',
+      lugar: 'Aula 103',
+      timestamp: new Date('2024-12-07').getTime(),
+      derivacion: 'ninguna',
+    },
+    // Diego Fernández - 2do A
+    {
+      id: '10',
+      studentName: 'Diego Fernández',
+      tipo: 'conducta',
+      subtipo: 'agresion',
+      gravedad: 'grave',
+      descripcion: 'Agresión física hacia un compañero',
+      fecha: '2024-12-04',
+      profesor: 'Prof. García',
+      tutor: 'Prof. García',
+      lugar: 'Patio',
+      timestamp: new Date('2024-12-04').getTime(),
+      derivacion: 'director',
+      resuelta: false,
+    },
+    // Isabella Sánchez - 3ro A
+    {
+      id: '11',
+      studentName: 'Isabella Sánchez',
+      tipo: 'academica',
+      gravedad: 'moderada',
+      descripcion: 'No presentó examen parcial',
+      fecha: '2024-12-06',
+      profesor: 'Prof. López',
+      tutor: 'Prof. López',
+      lugar: 'Aula 205',
+      timestamp: new Date('2024-12-06').getTime(),
+      derivacion: 'coordinacion',
+      resuelta: false,
+    },
+    {
+      id: '12',
+      studentName: 'Isabella Sánchez',
+      tipo: 'positivo',
+      subtipo: 'creatividad',
+      gravedad: 'leve',
+      descripcion: 'Proyecto creativo destacado en arte',
+      fecha: '2024-12-12',
+      profesor: 'Prof. Ramírez',
+      tutor: 'Prof. Ramírez',
+      lugar: 'Aula 103',
+      timestamp: new Date('2024-12-12').getTime(),
+      derivacion: 'ninguna',
+    },
+    // Camila Herrera - 4to A
+    {
+      id: '13',
+      studentName: 'Camila Herrera',
+      tipo: 'conducta',
+      subtipo: 'falta_respeto',
+      gravedad: 'moderada',
+      descripcion: 'Falta de respeto hacia el profesor',
+      fecha: '2024-12-13',
+      profesor: 'Prof. Torres',
+      tutor: 'Prof. Torres',
+      lugar: 'Aula 401',
+      timestamp: new Date('2024-12-13').getTime(),
+      derivacion: 'orientacion',
+      resuelta: false,
+    },
+    // Natalia Jiménez - 5to A
+    {
+      id: '14',
+      studentName: 'Natalia Jiménez',
+      tipo: 'positivo',
+      subtipo: 'participacion',
+      gravedad: 'leve',
+      descripcion: 'Participación destacada en debate escolar',
+      fecha: '2024-12-14',
+      profesor: 'Prof. Fernández',
+      tutor: 'Prof. Fernández',
+      lugar: 'Aula 102',
+      timestamp: new Date('2024-12-14').getTime(),
+      derivacion: 'ninguna',
+    },
+    // Andrés Castro - 5to A
+    {
+      id: '15',
+      studentName: 'Andrés Castro',
+      tipo: 'ausencia',
+      gravedad: 'moderada',
+      descripcion: 'Ausencia sin justificar',
+      fecha: '2024-12-15',
+      profesor: 'Prof. García',
+      tutor: 'Prof. García',
+      lugar: 'Aula 301',
+      timestamp: new Date('2024-12-15').getTime(),
+      derivacion: 'director',
+      resuelta: false,
+    },
   ];
   
-  saveIncidencias(seedData);
+    saveIncidencias(seedData);
+  }
   
   // Seed datos de estudiantes (más estudiantes por grado)
+  if (existingEstudiantes.length === 0) {
   const estudiantesInfo: EstudianteInfo[] = [
     // 1ro Grado
-    { nombre: 'Ana García', grado: '1ro', seccion: 'A', edad: 12, contacto: { tutor: 'Pedro García' } },
-    { nombre: 'Luis Martínez', grado: '1ro', seccion: 'A', edad: 12, contacto: { tutor: 'Carmen Martínez' } },
-    { nombre: 'Sofía Rodríguez', grado: '1ro', seccion: 'B', edad: 12, contacto: { tutor: 'Miguel Rodríguez' } },
+    { nombre: 'Ana García', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-05-15', contacto: { tutor: 'Pedro García', telefono: '555-1001', email: 'pedro.garcia@email.com' } },
+    { nombre: 'Luis Martínez', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-08-20', contacto: { tutor: 'Carmen Martínez', telefono: '555-1002', email: 'carmen.martinez@email.com' } },
+    { nombre: 'Sofía Rodríguez', grado: '1ro', seccion: 'B', edad: 12, fechaNacimiento: '2012-03-10', contacto: { tutor: 'Miguel Rodríguez', telefono: '555-1003', email: 'miguel.rodriguez@email.com' } },
+    { nombre: 'Daniel Vargas', grado: '1ro', seccion: 'B', edad: 12, fechaNacimiento: '2012-11-25', contacto: { tutor: 'Elena Vargas', telefono: '555-1004', email: 'elena.vargas@email.com' } },
     // 2do Grado
-    { nombre: 'María López', grado: '2do', seccion: 'A', edad: 13, contacto: { tutor: 'Carlos López' } },
-    { nombre: 'Diego Fernández', grado: '2do', seccion: 'A', edad: 13, contacto: { tutor: 'Laura Fernández' } },
-    { nombre: 'Valentina Torres', grado: '2do', seccion: 'B', edad: 13, contacto: { tutor: 'Roberto Torres' } },
+    { nombre: 'María López', grado: '2do', seccion: 'A', edad: 13, fechaNacimiento: '2011-07-18', contacto: { tutor: 'Carlos López', telefono: '555-2001', email: 'carlos.lopez@email.com' } },
+    { nombre: 'Diego Fernández', grado: '2do', seccion: 'A', edad: 13, fechaNacimiento: '2011-09-12', contacto: { tutor: 'Laura Fernández', telefono: '555-2002', email: 'laura.fernandez@email.com' } },
+    { nombre: 'Valentina Torres', grado: '2do', seccion: 'B', edad: 13, fechaNacimiento: '2011-04-30', contacto: { tutor: 'Roberto Torres', telefono: '555-2003', email: 'roberto.torres@email.com' } },
+    { nombre: 'Alejandro Silva', grado: '2do', seccion: 'B', edad: 13, fechaNacimiento: '2011-12-05', contacto: { tutor: 'Patricia Silva', telefono: '555-2004', email: 'patricia.silva@email.com' } },
     // 3ro Grado
-    { nombre: 'Juan Pérez', grado: '3ro', seccion: 'A', edad: 14, contacto: { tutor: 'María Pérez' } },
-    { nombre: 'Isabella Sánchez', grado: '3ro', seccion: 'A', edad: 14, contacto: { tutor: 'Jorge Sánchez' } },
-    { nombre: 'Mateo González', grado: '3ro', seccion: 'B', edad: 14, contacto: { tutor: 'Patricia González' } },
+    { nombre: 'Juan Pérez', grado: '3ro', seccion: 'A', edad: 14, fechaNacimiento: '2010-06-22', contacto: { tutor: 'María Pérez', telefono: '555-3001', email: 'maria.perez@email.com' } },
+    { nombre: 'Isabella Sánchez', grado: '3ro', seccion: 'A', edad: 14, fechaNacimiento: '2010-02-14', contacto: { tutor: 'Jorge Sánchez', telefono: '555-3002', email: 'jorge.sanchez@email.com' } },
+    { nombre: 'Mateo González', grado: '3ro', seccion: 'B', edad: 14, fechaNacimiento: '2010-10-08', contacto: { tutor: 'Patricia González', telefono: '555-3003', email: 'patricia.gonzalez@email.com' } },
+    { nombre: 'Lucía Ramírez', grado: '3ro', seccion: 'B', edad: 14, fechaNacimiento: '2010-01-19', contacto: { tutor: 'Fernando Ramírez', telefono: '555-3004', email: 'fernando.ramirez@email.com' } },
     // 4to Grado
-    { nombre: 'Carlos Ruiz', grado: '4to', seccion: 'A', edad: 15, contacto: { tutor: 'Ana Ruiz' } },
-    { nombre: 'Camila Herrera', grado: '4to', seccion: 'A', edad: 15, contacto: { tutor: 'Fernando Herrera' } },
-    { nombre: 'Sebastián Morales', grado: '4to', seccion: 'B', edad: 15, contacto: { tutor: 'Diana Morales' } },
+    { nombre: 'Carlos Ruiz', grado: '4to', seccion: 'A', edad: 15, fechaNacimiento: '2009-08-03', contacto: { tutor: 'Ana Ruiz', telefono: '555-4001', email: 'ana.ruiz@email.com' } },
+    { nombre: 'Camila Herrera', grado: '4to', seccion: 'A', edad: 15, fechaNacimiento: '2009-05-17', contacto: { tutor: 'Fernando Herrera', telefono: '555-4002', email: 'fernando.herrera@email.com' } },
+    { nombre: 'Sebastián Morales', grado: '4to', seccion: 'B', edad: 15, fechaNacimiento: '2009-11-28', contacto: { tutor: 'Diana Morales', telefono: '555-4003', email: 'diana.morales@email.com' } },
+    { nombre: 'Gabriela Castro', grado: '4to', seccion: 'B', edad: 15, fechaNacimiento: '2009-03-09', contacto: { tutor: 'Roberto Castro', telefono: '555-4004', email: 'roberto.castro@email.com' } },
     // 5to Grado
-    { nombre: 'Natalia Jiménez', grado: '5to', seccion: 'A', edad: 16, contacto: { tutor: 'Alberto Jiménez' } },
-    { nombre: 'Andrés Castro', grado: '5to', seccion: 'A', edad: 16, contacto: { tutor: 'Mónica Castro' } },
-  ];
-  
-  saveEstudiantesInfo(estudiantesInfo);
+    { nombre: 'Natalia Jiménez', grado: '5to', seccion: 'A', edad: 16, fechaNacimiento: '2008-07-21', contacto: { tutor: 'Alberto Jiménez', telefono: '555-5001', email: 'alberto.jimenez@email.com' } },
+    { nombre: 'Andrés Castro', grado: '5to', seccion: 'A', edad: 16, fechaNacimiento: '2008-09-14', contacto: { tutor: 'Mónica Castro', telefono: '555-5002', email: 'monica.castro@email.com' } },
+    { nombre: 'Fernanda Ortiz', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-12-01', contacto: { tutor: 'Carlos Ortiz', telefono: '555-5003', email: 'carlos.ortiz@email.com' } },
+    { nombre: 'Ricardo Méndez', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-04-16', contacto: { tutor: 'Sandra Méndez', telefono: '555-5004', email: 'sandra.mendez@email.com' } },
+    ];
+    
+    saveEstudiantesInfo(estudiantesInfo);
+  }
   
   // Seed datos de tutores
+  if (existingTutores.length === 0) {
   const tutoresData: Tutor[] = [
     { id: 't1', nombre: 'Prof. García', email: 'garcia@colegio.edu', telefono: '+1234567890' },
     { id: 't2', nombre: 'Prof. López', email: 'lopez@colegio.edu', telefono: '+1234567891' },
@@ -318,11 +500,13 @@ export function seedInitialData(): void {
     { id: 't4', nombre: 'Prof. Torres', email: 'torres@colegio.edu', telefono: '+1234567893' },
     { id: 't5', nombre: 'Prof. Martínez', email: 'martinez@colegio.edu', telefono: '+1234567894' },
     { id: 't6', nombre: 'Prof. Ramírez', email: 'ramirez@colegio.edu', telefono: '+1234567895' },
-  ];
-  
-  saveTutores(tutoresData);
+    ];
+    
+    saveTutores(tutoresData);
+  }
   
   // Seed notas dummy
+  if (existingNotas.length === 0) {
   const notasData: Nota[] = [
     // Juan Pérez
     { id: 'n1', studentName: 'Juan Pérez', materia: 'Matemáticas', periodo: 'Q1', nota: 85, fecha: '2024-10-15', profesor: 'Prof. López', comentario: 'Buen desempeño' },
@@ -345,8 +529,9 @@ export function seedInitialData(): void {
     { id: 'n16', studentName: 'Carlos Ruiz', materia: 'Ciencias', periodo: 'Q2', nota: 90, fecha: '2024-11-22', profesor: 'Prof. Fernández', comentario: 'Excelente progreso' },
     { id: 'n17', studentName: 'Carlos Ruiz', materia: 'Lengua', periodo: 'Q1', nota: 79, fecha: '2024-10-20', profesor: 'Prof. García' },
     { id: 'n18', studentName: 'Carlos Ruiz', materia: 'Lengua', periodo: 'Q2', nota: 81, fecha: '2024-11-25', profesor: 'Prof. García' },
-  ];
-  
-  saveNotas(notasData);
+    ];
+    
+    saveNotas(notasData);
+  }
 }
 

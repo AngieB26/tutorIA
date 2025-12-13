@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileText, Plus, Eye, AlertTriangle, ArrowRight, Users, Calendar, MapPin, User, X, ClipboardList } from 'lucide-react';
 import { addIncidencia, getIncidencias, seedInitialData, getEstudiantesByGrado, getEstudiantesInfo, getTutores } from '@/lib/storage';
-import { TipoIncidencia, Incidencia, TipoDerivacion, SubtipoConducta, SubtipoPositivo, EstudianteInfo } from '@/lib/types';
+import { TipoIncidencia, Incidencia, TipoDerivacion, SubtipoConducta, SubtipoPositivo, EstudianteInfo, Gravedad } from '@/lib/types';
 import { getTipoColor, getTipoLabel } from '@/lib/utils';
 
 type ViewMode = 'lista' | 'asistencia' | 'incidencia';
@@ -20,7 +20,7 @@ export default function ProfesorPage() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('lista');
   const [selectedStudent, setSelectedStudent] = useState<EstudianteInfo | null>(null);
-  const [filtroGrado, setFiltroGrado] = useState<string>('');
+  const [filtroGrado, setFiltroGrado] = useState<string>('todos');
   const [filtroNombre, setFiltroNombre] = useState<string>('');
   const [loading, setLoading] = useState(false);
   
@@ -29,6 +29,7 @@ export default function ProfesorPage() {
     estudiante: '',
     tipo: '' as TipoIncidencia | '',
     subtipo: '' as SubtipoConducta | SubtipoPositivo | '',
+    gravedad: 'moderada' as Gravedad,
     descripcion: '',
     fecha: new Date().toISOString().split('T')[0],
     tutor: '',
@@ -46,7 +47,7 @@ export default function ProfesorPage() {
 
   // Filtrar estudiantes
   const estudiantesFiltrados = estudiantes.filter(est => {
-    const matchGrado = !filtroGrado || est.grado === filtroGrado;
+    const matchGrado = !filtroGrado || filtroGrado === 'todos' || est.grado === filtroGrado;
     const matchNombre = !filtroNombre || est.nombre.toLowerCase().includes(filtroNombre.toLowerCase());
     return matchGrado && matchNombre;
   });
@@ -93,6 +94,7 @@ export default function ProfesorPage() {
         studentName: formData.estudiante,
         tipo: formData.tipo as TipoIncidencia,
         subtipo: formData.subtipo ? (formData.subtipo as SubtipoConducta | SubtipoPositivo) : undefined,
+        gravedad: formData.gravedad,
         descripcion: formData.descripcion,
         fecha: formData.fecha,
         profesor: formData.tutor,
@@ -107,6 +109,7 @@ export default function ProfesorPage() {
         estudiante: '',
         tipo: '' as TipoIncidencia | '',
         subtipo: '' as SubtipoConducta | SubtipoPositivo | '',
+        gravedad: 'moderada' as Gravedad,
         descripcion: '',
         fecha: new Date().toISOString().split('T')[0],
         tutor: '',
@@ -173,7 +176,7 @@ export default function ProfesorPage() {
                     <SelectValue placeholder="Todos los grados" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los grados</SelectItem>
+                    <SelectItem value="todos">Todos los grados</SelectItem>
                     {gradosUnicos.map(grado => (
                       <SelectItem key={grado} value={grado}>{grado}</SelectItem>
                     ))}
@@ -349,7 +352,7 @@ export default function ProfesorPage() {
                   disabled
                 >
                   <SelectTrigger>
-                    <SelectValue value="ausencia" />
+                    <SelectValue placeholder="Ausencia" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ausencia">Ausencia</SelectItem>
@@ -426,6 +429,46 @@ export default function ProfesorPage() {
                   </div>
                 )}
               </>
+            )}
+
+            {viewMode === 'incidencia' && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-900">Gravedad</label>
+                <Select
+                  value={formData.gravedad}
+                  onValueChange={(value) => setFormData({ ...formData, gravedad: value as Gravedad })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona la gravedad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="leve">Leve</SelectItem>
+                    <SelectItem value="moderada">Moderada</SelectItem>
+                    <SelectItem value="grave">Grave</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {viewMode === 'asistencia' && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-900">Gravedad</label>
+                <Select
+                  value={formData.gravedad}
+                  onValueChange={(value) => setFormData({ ...formData, gravedad: value as Gravedad })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona la gravedad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="leve">Leve</SelectItem>
+                    <SelectItem value="moderada">Moderada</SelectItem>
+                    <SelectItem value="grave">Grave</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             <div className="space-y-2">

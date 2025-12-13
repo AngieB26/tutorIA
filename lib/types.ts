@@ -2,12 +2,14 @@ export type TipoIncidencia = 'ausencia' | 'conducta' | 'academica' | 'positivo';
 export type TipoDerivacion = 'ninguna' | 'director' | 'psicologia' | 'enfermeria' | 'coordinacion' | 'orientacion';
 export type SubtipoConducta = 'agresion' | 'falta_respeto' | 'interrupcion' | 'desobediencia' | 'otra';
 export type SubtipoPositivo = 'ayuda_companero' | 'participacion' | 'liderazgo' | 'creatividad' | 'otro';
+export type Gravedad = 'grave' | 'moderada' | 'leve';
 
 export interface Incidencia {
   id: string;
   studentName: string;
   tipo: TipoIncidencia;
   subtipo?: SubtipoConducta | SubtipoPositivo; // Subtipo si es conducta o positivo
+  gravedad: Gravedad; // Gravedad de la incidencia
   descripcion: string;
   fecha: string;
   profesor: string;

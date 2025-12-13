@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Sparkles, User, AlertCircle, CheckCircle, Calendar, BarChart3, AlertTriangle, CheckCircle2, X, Eye, Trophy, BookOpen, Phone, Mail, GraduationCap, Brain, Heart, Users, FileText } from 'lucide-react';
-import { getIncidenciasByDateRange, getIncidenciasDerivadas, getListaEstudiantes, getIncidenciasCompletasByStudent, marcarIncidenciaResuelta, seedInitialData, getNotasByStudent, getEstudianteInfo } from '@/lib/storage';
-import { Incidencia, ReporteIA, TipoDerivacion } from '@/lib/types';
-import { getTipoColor, getTipoLabel } from '@/lib/utils';
+import { getIncidenciasByDateRange, getIncidenciasDerivadas, getListaEstudiantes, getIncidenciasCompletasByStudent, marcarIncidenciaResuelta, seedInitialData, getNotasByStudent, getEstudianteInfo, getIncidencias, getIncidenciasByGravedad } from '@/lib/storage';
+import { Incidencia, ReporteIA, TipoDerivacion, Gravedad } from '@/lib/types';
+import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
 
 // Función para formatear el texto del reporte
 function formatReportText(text: string): string {
@@ -45,7 +45,11 @@ export default function DirectorPage() {
   // Estados para incidencias derivadas
   const [incidenciasDerivadas, setIncidenciasDerivadas] = useState<Incidencia[]>([]);
   const [filtroDerivacion, setFiltroDerivacion] = useState<TipoDerivacion | 'todas'>('todas');
-  const [activeTab, setActiveTab] = useState<'derivadas' | 'estudiantes' | 'general'>('derivadas');
+  const [activeTab, setActiveTab] = useState<'derivadas' | 'estudiantes' | 'general' | 'incidencias'>('derivadas');
+  
+  // Estados para listado de incidencias
+  const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
+  const [filtroGravedad, setFiltroGravedad] = useState<Gravedad | 'todas'>('todas');
   
   // Estados para lista de estudiantes
   const [listaEstudiantes, setListaEstudiantes] = useState<Array<{ nombre: string; totalIncidencias: number; ultimaIncidencia: string }>>([]);
@@ -67,7 +71,17 @@ export default function DirectorPage() {
     seedInitialData();
     loadIncidenciasDerivadas();
     loadListaEstudiantes();
+    loadIncidencias();
   }, []);
+
+  const loadIncidencias = () => {
+    const todas = getIncidenciasByGravedad(filtroGravedad);
+    setIncidencias(todas);
+  };
+
+  useEffect(() => {
+    loadIncidencias();
+  }, [filtroGravedad]);
 
   const loadIncidenciasDerivadas = () => {
     const tipoFiltro = filtroDerivacion === 'todas' ? undefined : filtroDerivacion;
@@ -263,6 +277,24 @@ export default function DirectorPage() {
           <div className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Estudiantes
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('incidencias')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'incidencias'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-900 hover:text-gray-900'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Incidencias
+            {incidencias.length > 0 && (
+              <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+                {incidencias.length}
+              </span>
+            )}
           </div>
         </button>
         <button
@@ -688,6 +720,133 @@ export default function DirectorPage() {
         </div>
         );
       })()}
+
+      {/* Incidencias Tab */}
+      {activeTab === 'incidencias' && (
+        <div className="space-y-6">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl !text-gray-900">
+                <FileText className="h-5 w-5 text-primary" />
+                Filtrar por Gravedad
+              </CardTitle>
+              <CardDescription className="text-gray-900">
+                Selecciona la gravedad para filtrar las incidencias.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={filtroGravedad === 'todas' ? 'default' : 'outline'}
+                  onClick={() => setFiltroGravedad('todas')}
+                  size="sm"
+                >
+                  Todas ({getIncidencias().length})
+                </Button>
+                <Button
+                  variant={filtroGravedad === 'grave' ? 'default' : 'outline'}
+                  onClick={() => setFiltroGravedad('grave')}
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Grave ({getIncidenciasByGravedad('grave').length})
+                </Button>
+                <Button
+                  variant={filtroGravedad === 'moderada' ? 'default' : 'outline'}
+                  onClick={() => setFiltroGravedad('moderada')}
+                  size="sm"
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                >
+                  Moderada ({getIncidenciasByGravedad('moderada').length})
+                </Button>
+                <Button
+                  variant={filtroGravedad === 'leve' ? 'default' : 'outline'}
+                  onClick={() => setFiltroGravedad('leve')}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Leve ({getIncidenciasByGravedad('leve').length})
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {incidencias.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl !text-gray-900">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Listado de Incidencias
+                </CardTitle>
+                <CardDescription className="text-gray-900">
+                  {incidencias.length} {incidencias.length === 1 ? 'incidencia encontrada' : 'incidencias encontradas'}
+                  {filtroGravedad !== 'todas' && ` - Filtro: ${getGravedadLabel(filtroGravedad as Gravedad)}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold">Fecha</TableHead>
+                        <TableHead className="text-sm font-semibold">Estudiante</TableHead>
+                        <TableHead className="text-sm font-semibold">Tipo</TableHead>
+                        <TableHead className="text-sm font-semibold">Gravedad</TableHead>
+                        <TableHead className="text-sm font-semibold">Descripción</TableHead>
+                        <TableHead className="text-sm font-semibold hidden sm:table-cell">Profesor</TableHead>
+                        <TableHead className="text-sm font-semibold hidden sm:table-cell">Lugar</TableHead>
+                        <TableHead className="text-sm font-semibold hidden sm:table-cell">Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {incidencias.map((inc) => (
+                        <TableRow key={inc.id} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">{inc.fecha}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium text-gray-900">{inc.studentName}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge className={`${getTipoColor(inc.tipo)} text-xs`}>
+                              {getTipoLabel(inc.tipo)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge className={`${getGravedadColor(inc.gravedad)} text-xs`}>
+                              {getGravedadLabel(inc.gravedad)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm max-w-xs sm:max-w-none text-gray-900">{inc.descripcion}</TableCell>
+                          <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.profesor}</TableCell>
+                          <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.lugar || '-'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
+                            {inc.resuelta ? (
+                              <Badge className="bg-primary text-white">Resuelta</Badge>
+                            ) : inc.derivacion && inc.derivacion !== 'ninguna' ? (
+                              <Badge className="bg-destructive text-white">Pendiente</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-gray-100 text-gray-900">Normal</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-900 font-medium">No hay incidencias registradas</p>
+                <p className="text-sm text-gray-900 mt-2">
+                  {filtroGravedad !== 'todas' 
+                    ? `No hay incidencias con gravedad "${getGravedadLabel(filtroGravedad as Gravedad)}"` 
+                    : 'Las incidencias aparecerán aquí cuando se registren.'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Reporte General Tab */}
       {activeTab === 'general' && (
