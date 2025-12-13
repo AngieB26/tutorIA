@@ -86,6 +86,7 @@ export default function DirectorPage() {
   const loadIncidenciasDerivadas = () => {
     const tipoFiltro = filtroDerivacion === 'todas' ? undefined : filtroDerivacion;
     const derivadas = getIncidenciasDerivadas(tipoFiltro);
+    console.log('Incidencias derivadas cargadas:', derivadas.length, derivadas);
     setIncidenciasDerivadas(derivadas);
   };
 

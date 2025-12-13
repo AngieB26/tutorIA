@@ -72,14 +72,28 @@ export function getIncidenciasByGravedad(gravedad?: 'grave' | 'moderada' | 'leve
 
 export function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): Incidencia[] {
   const incidencias = getIncidencias();
-  return incidencias
+  const derivadas = incidencias
     .filter(inc => {
       const tieneDerivacion = inc.derivacion && inc.derivacion !== 'ninguna';
       const noResuelta = !inc.resuelta;
       const coincideTipo = !tipoDerivacion || inc.derivacion === tipoDerivacion;
-      return tieneDerivacion && noResuelta && coincideTipo;
+      const cumple = tieneDerivacion && noResuelta && coincideTipo;
+      if (tieneDerivacion && !cumple) {
+        console.log('Incidencia con derivación filtrada:', {
+          id: inc.id,
+          derivacion: inc.derivacion,
+          resuelta: inc.resuelta,
+          tipoFiltro: tipoDerivacion,
+          tieneDerivacion,
+          noResuelta,
+          coincideTipo
+        });
+      }
+      return cumple;
     })
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  console.log('Total incidencias:', incidencias.length, 'Derivadas encontradas:', derivadas.length);
+  return derivadas;
 }
 
 export function marcarIncidenciaResuelta(id: string, resueltaPor: string = 'Director'): void {
@@ -224,13 +238,17 @@ export function seedInitialData(): void {
   const existingTutores = getTutores();
   const existingNotas = getNotas();
   
-  // Si ya hay todos los datos, no seedear
-  if (existingEstudiantes.length > 0 && existingIncidencias.length > 0 && existingTutores.length > 0 && existingNotas.length > 0) {
-    return;
-  }
+  // Verificar si hay incidencias derivadas pendientes
+  const incidenciasDerivadasPendientes = existingIncidencias.filter(inc => 
+    inc.derivacion && inc.derivacion !== 'ninguna' && !inc.resuelta
+  );
   
   // Seedear incidencias solo si no existen
   if (existingIncidencias.length === 0) {
+    console.log('Ejecutando seed data de incidencias...', {
+      totalIncidencias: existingIncidencias.length,
+      derivadasPendientes: incidenciasDerivadasPendientes.length
+    });
     const seedData: Incidencia[] = [
     // Juan Pérez - 3ro A
     {

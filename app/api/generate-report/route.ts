@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       console.error('GOOGLE_AI_API_KEY no está configurada');
       return NextResponse.json(
-        { error: 'Configuración de API no disponible. Agrega GOOGLE_AI_API_KEY en .env.local' },
+        { 
+          error: 'Configuración de API no disponible. La variable de entorno GOOGLE_AI_API_KEY no está configurada en Vercel. Por favor, agrega esta variable en la configuración de Vercel (Settings > Environment Variables).' 
+        },
         { status: 500 }
       );
     }
@@ -125,8 +127,10 @@ IMPORTANTE:
     }
 
     // Llamar a Google Gemini API
+    // Usar gemini-1.5-flash que es más estable y ampliamente disponible
+    const model = 'gemini-1.5-flash';
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -154,9 +158,33 @@ IMPORTANTE:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Error de Google Gemini API:', response.status, errorText);
+      let errorMessage = `Error al generar el reporte con IA (${response.status})`;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.error) {
+          errorMessage = errorData.error.message || errorData.error;
+        }
+      } catch (e) {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      console.error('Error de Google Gemini API:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        model,
+        apiKeyPresent: !!apiKey
+      });
+      
       return NextResponse.json(
-        { error: `Error al generar el reporte con IA: ${errorText}` },
+        { 
+          error: errorMessage,
+          details: response.status === 401 ? 'API key inválida o expirada. Verifica tu GOOGLE_AI_API_KEY en Vercel.' :
+                 response.status === 403 ? 'Acceso denegado. Verifica que tu API key tenga permisos para usar Gemini.' :
+                 response.status === 404 ? `Modelo ${model} no encontrado. Verifica que el modelo esté disponible.` :
+                 'Error desconocido al comunicarse con la API de Google Gemini.'
+        },
         { status: response.status }
       );
     }

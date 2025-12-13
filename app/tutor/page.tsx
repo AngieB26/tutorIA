@@ -229,7 +229,7 @@ export default function TutorPage() {
                           <div className="flex justify-end gap-2">
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="secondary"
                               onClick={() => handleRegistrarAsistencia(estudiante)}
                               className="gap-1"
                             >

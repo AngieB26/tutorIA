@@ -1,9 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { GraduationCap } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 export function Navbar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isDirector, setIsDirector] = useState(pathname === '/director');
+
+  useEffect(() => {
+    setIsDirector(pathname === '/director');
+  }, [pathname]);
+
+  const handleSwitchChange = (checked: boolean) => {
+    setIsDirector(checked);
+    if (checked) {
+      router.push('/director');
+    } else {
+      router.push('/profesor');
+    }
+  };
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
@@ -12,19 +32,14 @@ export function Navbar() {
           <span className="text-lg sm:text-xl font-semibold text-gray-900">TutorIA</span>
         </Link>
         
-        <div className="flex items-center space-x-4 sm:space-x-6">
-          <Link
-            href="/profesor"
-            className="text-xs sm:text-sm font-medium text-gray-700 hover:text-primary transition-colors"
-          >
-            Profesor
-          </Link>
-          <Link
-            href="/director"
-            className="text-xs sm:text-sm font-medium text-gray-700 hover:text-primary transition-colors"
-          >
-            Director
-          </Link>
+        <div className="flex items-center space-x-3 sm:space-x-4">
+          <span className="text-xs sm:text-sm font-medium text-gray-700">Profesor</span>
+          <Switch
+            checked={isDirector}
+            onCheckedChange={handleSwitchChange}
+            aria-label="Cambiar entre Profesor y Director"
+          />
+          <span className="text-xs sm:text-sm font-medium text-gray-700">Director</span>
         </div>
       </div>
     </nav>
