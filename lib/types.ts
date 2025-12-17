@@ -59,5 +59,6 @@ export interface ReporteIA {
   demo?: boolean;
   note?: string;
   originalError?: string;
+  truncated?: boolean; // Indica si el reporte fue cortado por límite de tokens
 }
 

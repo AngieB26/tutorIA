@@ -82,7 +82,7 @@ Distribución por tipo:
 Incidencias detalladas:
 ${incidenciasFormateadas}
 
-Genera un reporte ejecutivo general profesional (máximo 250 palabras) que incluya:
+Genera un reporte ejecutivo general profesional conciso (aproximadamente 200-250 palabras) que incluya:
 
 1. Resumen General: Visión general del período analizado
 2. Tendencias Principales: Patrones y tendencias detectadas en el período
@@ -110,7 +110,7 @@ IMPORTANTE:
 Incidencias registradas:
 ${incidenciasFormateadas}
 
-Genera un reporte ejecutivo profesional (máximo 200 palabras) que incluya estas secciones:
+Genera un reporte ejecutivo profesional completo y detallado (aproximadamente 300-400 palabras) que incluya estas secciones:
 
 1. Resumen General: Visión general del desempeño del estudiante
 2. Patrones Detectados: Identifica tendencias en fechas, tipos de incidencias
@@ -127,8 +127,8 @@ IMPORTANTE:
     }
 
     // Llamar a Google Gemini API
-    // Usar gemini-1.5-flash que es más estable y ampliamente disponible
-    const model = 'gemini-1.5-flash';
+    // Usar gemini-2.5-flash que está disponible y es más reciente
+    const model = 'gemini-2.5-flash';
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
@@ -150,7 +150,7 @@ IMPORTANTE:
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 1000,
+            maxOutputTokens: 3000, // Aumentado para reportes más completos
           },
         }),
       }
@@ -193,9 +193,22 @@ IMPORTANTE:
     
     // Extraer texto de la respuesta de Gemini
     let reportText = '';
+    let finishReason = '';
+    
     if (data.candidates && data.candidates.length > 0) {
-      if (data.candidates[0].content && data.candidates[0].content.parts) {
-        reportText = data.candidates[0].content.parts[0].text || '';
+      const candidate = data.candidates[0];
+      finishReason = candidate.finishReason || 'unknown';
+      
+      // Verificar si la respuesta fue cortada
+      if (finishReason === 'MAX_TOKENS') {
+        console.warn('Advertencia: La respuesta fue cortada por límite de tokens');
+      }
+      
+      if (candidate.content && candidate.content.parts) {
+        // Concatenar todas las partes del texto
+        reportText = candidate.content.parts
+          .map((part: any) => part.text || '')
+          .join('');
       }
     }
 
@@ -205,10 +218,18 @@ IMPORTANTE:
         { status: 500 }
       );
     }
+    
+    // Log para debugging
+    console.log('Reporte generado:', {
+      length: reportText.length,
+      finishReason,
+      truncated: finishReason === 'MAX_TOKENS'
+    });
 
     return NextResponse.json({
       report: reportText,
       timestamp: new Date().toISOString(),
+      truncated: finishReason === 'MAX_TOKENS', // Indicar si fue truncado
     });
   } catch (error) {
     console.error('Error en generate-report:', error);

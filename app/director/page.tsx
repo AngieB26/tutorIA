@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Sparkles, User, AlertCircle, CheckCircle, Calendar, BarChart3, AlertTriangle, CheckCircle2, X, Eye, Trophy, BookOpen, Phone, Mail, GraduationCap, Brain, Heart, Users, FileText } from 'lucide-react';
-import { getIncidenciasByDateRange, getIncidenciasDerivadas, getListaEstudiantes, getIncidenciasCompletasByStudent, marcarIncidenciaResuelta, seedInitialData, getNotasByStudent, getEstudianteInfo, getIncidencias, getIncidenciasByGravedad } from '@/lib/storage';
-import { Incidencia, ReporteIA, TipoDerivacion, Gravedad } from '@/lib/types';
+import { getIncidenciasByDateRange, getIncidenciasDerivadas, getListaEstudiantes, getIncidenciasCompletasByStudent, marcarIncidenciaResuelta, seedInitialData, getNotasByStudent, getEstudianteInfo, getIncidencias, getIncidenciasByGravedad, getIncidenciasByFiltros } from '@/lib/storage';
+import { Incidencia, ReporteIA, TipoDerivacion, Gravedad, TipoIncidencia } from '@/lib/types';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
 
 // Función para formatear el texto del reporte
@@ -50,6 +50,7 @@ export default function DirectorPage() {
   // Estados para listado de incidencias
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
   const [filtroGravedad, setFiltroGravedad] = useState<Gravedad | 'todas'>('todas');
+  const [filtroTipo, setFiltroTipo] = useState<TipoIncidencia | 'todas'>('todas');
   
   // Estados para lista de estudiantes
   const [listaEstudiantes, setListaEstudiantes] = useState<Array<{ nombre: string; totalIncidencias: number; ultimaIncidencia: string }>>([]);
@@ -75,13 +76,13 @@ export default function DirectorPage() {
   }, []);
 
   const loadIncidencias = () => {
-    const todas = getIncidenciasByGravedad(filtroGravedad);
+    const todas = getIncidenciasByFiltros(filtroGravedad, filtroTipo);
     setIncidencias(todas);
   };
 
   useEffect(() => {
     loadIncidencias();
-  }, [filtroGravedad]);
+  }, [filtroGravedad, filtroTipo]);
 
   const loadIncidenciasDerivadas = () => {
     const tipoFiltro = filtroDerivacion === 'todas' ? undefined : filtroDerivacion;
@@ -150,20 +151,23 @@ export default function DirectorPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al generar el reporte');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.details || 'Error al generar el reporte';
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setReporte(data);
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al generar el reporte. Verifica que la API key esté configurada.');
+      const errorMessage = error instanceof Error ? error.message : 'Error al generar el reporte. Verifica que la API key esté configurada.';
+      alert(errorMessage);
     } finally {
       setGeneratingReport(false);
     }
   };
 
-  // Función para filtrar por fechas y generar reporte general
+  // Función para filtrar por fechas
   const handleFilterByDate = () => {
     if (!fechaInicio || !fechaFin) {
       alert('Por favor selecciona ambas fechas');
@@ -173,10 +177,7 @@ export default function DirectorPage() {
     const filtered = getIncidenciasByDateRange(fechaInicio, fechaFin);
     setIncidenciasGenerales(filtered);
     setShowGeneralReport(true);
-    
-    if (filtered.length > 0) {
-      generateGeneralReport(filtered);
-    }
+    setReporteGeneral(null); // Limpiar reporte anterior cuando se filtran nuevas fechas
   };
 
   const generateGeneralReport = async (incidenciasData: Incidencia[]) => {
@@ -198,23 +199,26 @@ export default function DirectorPage() {
             descripcion: inc.descripcion,
             fecha: inc.fecha,
             profesor: inc.profesor,
-            derivada: inc.derivacion && inc.derivacion !== 'ninguna',
-            resuelta: inc.resuelta,
+            studentName: inc.studentName, // Agregar studentName para reportes generales
           })),
-          reportType: 'general',
+          isGeneral: true,
           fechaInicio: fechaInicio,
           fechaFin: fechaFin,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Error al generar el reporte');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.details || 'Error al generar el reporte';
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setReporteGeneral(data);
     } catch (error) {
       console.error('Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error al generar el reporte. Verifica que la API key esté configurada.';
+      alert(errorMessage);
     } finally {
       setGeneratingGeneralReport(false);
     }
@@ -625,6 +629,11 @@ export default function DirectorPage() {
                 </CardTitle>
                 <CardDescription className="text-gray-900">
                   Generado el {new Date(reporte.timestamp).toLocaleString('es-ES')}
+                  {reporte.truncated && (
+                    <span className="ml-2 text-amber-600 font-medium">
+                      ⚠️ El reporte fue truncado por límite de longitud
+                    </span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -726,52 +735,109 @@ export default function DirectorPage() {
       {/* Incidencias Tab */}
       {activeTab === 'incidencias' && (
         <div className="space-y-6">
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl !text-gray-900">
-                <FileText className="h-5 w-5 text-primary" />
-                Filtrar por Gravedad
-              </CardTitle>
-              <CardDescription className="text-gray-900">
-                Selecciona la gravedad para filtrar las incidencias.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={filtroGravedad === 'todas' ? 'default' : 'outline'}
-                  onClick={() => setFiltroGravedad('todas')}
-                  size="sm"
-                >
-                  Todas ({getIncidencias().length})
-                </Button>
-                <Button
-                  variant={filtroGravedad === 'grave' ? 'default' : 'outline'}
-                  onClick={() => setFiltroGravedad('grave')}
-                  size="sm"
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Grave ({getIncidenciasByGravedad('grave').length})
-                </Button>
-                <Button
-                  variant={filtroGravedad === 'moderada' ? 'default' : 'outline'}
-                  onClick={() => setFiltroGravedad('moderada')}
-                  size="sm"
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
-                >
-                  Moderada ({getIncidenciasByGravedad('moderada').length})
-                </Button>
-                <Button
-                  variant={filtroGravedad === 'leve' ? 'default' : 'outline'}
-                  onClick={() => setFiltroGravedad('leve')}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Leve ({getIncidenciasByGravedad('leve').length})
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl !text-gray-900">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Filtrar por Gravedad
+                </CardTitle>
+                <CardDescription className="text-gray-900">
+                  Selecciona la gravedad para filtrar las incidencias.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={filtroGravedad === 'todas' ? 'default' : 'outline'}
+                    onClick={() => setFiltroGravedad('todas')}
+                    size="sm"
+                  >
+                    Todas ({getIncidencias().length})
+                  </Button>
+                  <Button
+                    variant={filtroGravedad === 'grave' ? 'default' : 'outline'}
+                    onClick={() => setFiltroGravedad('grave')}
+                    size="sm"
+                    className={filtroGravedad === 'grave' ? `${getGravedadColor('grave')} text-white` : ''}
+                  >
+                    {getGravedadLabel('grave')} ({getIncidenciasByGravedad('grave').length})
+                  </Button>
+                  <Button
+                    variant={filtroGravedad === 'moderada' ? 'default' : 'outline'}
+                    onClick={() => setFiltroGravedad('moderada')}
+                    size="sm"
+                    className={filtroGravedad === 'moderada' ? `${getGravedadColor('moderada')} text-white` : ''}
+                  >
+                    {getGravedadLabel('moderada')} ({getIncidenciasByGravedad('moderada').length})
+                  </Button>
+                  <Button
+                    variant={filtroGravedad === 'leve' ? 'default' : 'outline'}
+                    onClick={() => setFiltroGravedad('leve')}
+                    size="sm"
+                    className={filtroGravedad === 'leve' ? `${getGravedadColor('leve')} text-white` : ''}
+                  >
+                    {getGravedadLabel('leve')} ({getIncidenciasByGravedad('leve').length})
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl !text-gray-900">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Filtrar por Tipo
+                </CardTitle>
+                <CardDescription className="text-gray-900">
+                  Selecciona el tipo de incidencia para filtrar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={filtroTipo === 'todas' ? 'default' : 'outline'}
+                    onClick={() => setFiltroTipo('todas')}
+                    size="sm"
+                  >
+                    Todas ({getIncidencias().length})
+                  </Button>
+                  <Button
+                    variant={filtroTipo === 'ausencia' ? 'default' : 'outline'}
+                    onClick={() => setFiltroTipo('ausencia')}
+                    size="sm"
+                    className={filtroTipo === 'ausencia' ? `${getTipoColor('ausencia')} text-white` : ''}
+                  >
+                    {getTipoLabel('ausencia')} ({getIncidenciasByFiltros('todas', 'ausencia').length})
+                  </Button>
+                  <Button
+                    variant={filtroTipo === 'conducta' ? 'default' : 'outline'}
+                    onClick={() => setFiltroTipo('conducta')}
+                    size="sm"
+                    className={filtroTipo === 'conducta' ? `${getTipoColor('conducta')} text-white` : ''}
+                  >
+                    {getTipoLabel('conducta')} ({getIncidenciasByFiltros('todas', 'conducta').length})
+                  </Button>
+                  <Button
+                    variant={filtroTipo === 'academica' ? 'default' : 'outline'}
+                    onClick={() => setFiltroTipo('academica')}
+                    size="sm"
+                    className={filtroTipo === 'academica' ? `${getTipoColor('academica')} text-white` : ''}
+                  >
+                    {getTipoLabel('academica')} ({getIncidenciasByFiltros('todas', 'academica').length})
+                  </Button>
+                  <Button
+                    variant={filtroTipo === 'positivo' ? 'default' : 'outline'}
+                    onClick={() => setFiltroTipo('positivo')}
+                    size="sm"
+                    className={filtroTipo === 'positivo' ? `${getTipoColor('positivo')} text-white` : ''}
+                  >
+                    {getTipoLabel('positivo')} ({getIncidenciasByFiltros('todas', 'positivo').length})
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {incidencias.length > 0 ? (
             <Card>
@@ -782,7 +848,12 @@ export default function DirectorPage() {
                 </CardTitle>
                 <CardDescription className="text-gray-900">
                   {incidencias.length} {incidencias.length === 1 ? 'incidencia encontrada' : 'incidencias encontradas'}
-                  {filtroGravedad !== 'todas' && ` - Filtro: ${getGravedadLabel(filtroGravedad as Gravedad)}`}
+                  {(filtroGravedad !== 'todas' || filtroTipo !== 'todas') && (
+                    <>
+                      {filtroGravedad !== 'todas' && ` - Gravedad: ${getGravedadLabel(filtroGravedad as Gravedad)}`}
+                      {filtroTipo !== 'todas' && ` - Tipo: ${getTipoLabel(filtroTipo as TipoIncidencia)}`}
+                    </>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -840,8 +911,8 @@ export default function DirectorPage() {
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-900 font-medium">No hay incidencias registradas</p>
                 <p className="text-sm text-gray-900 mt-2">
-                  {filtroGravedad !== 'todas' 
-                    ? `No hay incidencias con gravedad "${getGravedadLabel(filtroGravedad as Gravedad)}"` 
+                  {(filtroGravedad !== 'todas' || filtroTipo !== 'todas')
+                    ? `No hay incidencias que coincidan con los filtros seleccionados${filtroGravedad !== 'todas' ? ` (Gravedad: ${getGravedadLabel(filtroGravedad as Gravedad)})` : ''}${filtroTipo !== 'todas' ? ` (Tipo: ${getTipoLabel(filtroTipo as TipoIncidencia)})` : ''}`
                     : 'Las incidencias aparecerán aquí cuando se registren.'}
                 </p>
               </CardContent>
@@ -884,6 +955,9 @@ export default function DirectorPage() {
                   />
                 </div>
               </div>
+              <p className="text-xs text-gray-600 mt-2">
+                💡 Sugerencia: Para ver datos de ejemplo, usa fechas entre 2024-12-01 y 2024-12-31
+              </p>
               <Button
                 onClick={handleFilterByDate}
                 className="w-full"
@@ -963,9 +1037,105 @@ export default function DirectorPage() {
                     );
                   })()}
 
-                  <p className="text-sm text-gray-900 mb-4">
+                  <p className="text-sm text-gray-900 mb-6">
                     <strong>{getGeneralStats(incidenciasGenerales).estudiantesUnicos}</strong> estudiantes únicos en este período
                   </p>
+
+                  {/* Gráficos */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Gráfico de Barras - Por Tipo */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base text-gray-900">Distribución por Tipo</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(() => {
+                          const stats = getGeneralStats(incidenciasGenerales);
+                          const maxValue = Math.max(...Object.values(stats.porTipo), 1);
+                          const tipos = [
+                            { key: 'ausencia', label: 'Ausencias', color: 'bg-orange-500' },
+                            { key: 'conducta', label: 'Conducta', color: 'bg-red-600' },
+                            { key: 'academica', label: 'Académicas', color: 'bg-blue-600' },
+                            { key: 'positivo', label: 'Positivos', color: 'bg-green-600' },
+                          ];
+                          return (
+                            <div className="space-y-3">
+                              {tipos.map((tipo) => {
+                                const value = stats.porTipo[tipo.key as keyof typeof stats.porTipo];
+                                const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                                return (
+                                  <div key={tipo.key}>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-sm text-gray-900 font-medium">{tipo.label}</span>
+                                      <span className="text-sm text-gray-900 font-bold">{value}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                                      <div
+                                        className={`${tipo.color} h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-2`}
+                                        style={{ width: `${percentage}%` }}
+                                      >
+                                        {percentage > 10 && (
+                                          <span className="text-xs text-white font-medium">{Math.round(percentage)}%</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* Gráfico de Barras - Por Gravedad */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base text-gray-900">Distribución por Gravedad</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(() => {
+                          const porGravedad = {
+                            grave: incidenciasGenerales.filter(i => i.gravedad === 'grave').length,
+                            moderada: incidenciasGenerales.filter(i => i.gravedad === 'moderada').length,
+                            leve: incidenciasGenerales.filter(i => i.gravedad === 'leve').length,
+                          };
+                          const maxValue = Math.max(...Object.values(porGravedad), 1);
+                          const gravedades = [
+                            { key: 'grave', label: 'Grave', color: 'bg-red-600' },
+                            { key: 'moderada', label: 'Moderada', color: 'bg-blue-500' },
+                            { key: 'leve', label: 'Leve', color: 'bg-green-600' },
+                          ];
+                          return (
+                            <div className="space-y-3">
+                              {gravedades.map((g) => {
+                                const value = porGravedad[g.key as keyof typeof porGravedad];
+                                const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                                return (
+                                  <div key={g.key}>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-sm text-gray-900 font-medium">{g.label}</span>
+                                      <span className="text-sm text-gray-900 font-bold">{value}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                                      <div
+                                        className={`${g.color} h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-2`}
+                                        style={{ width: `${percentage}%` }}
+                                      >
+                                        {percentage > 10 && (
+                                          <span className="text-xs text-white font-medium">{Math.round(percentage)}%</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+                  </div>
 
                   {/* Tabla de incidencias */}
                   <div className="overflow-x-auto -mx-6 sm:mx-0">
@@ -1004,6 +1174,20 @@ export default function DirectorPage() {
                   No hay incidencias en el rango de fechas seleccionado
                 </p>
               )}
+              
+              {/* Botón para Generar Análisis con IA */}
+              {incidenciasGenerales.length > 0 && !generatingGeneralReport && !reporteGeneral && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <Button
+                    onClick={() => generateGeneralReport(incidenciasGenerales)}
+                    size="lg"
+                    className="w-full gap-2"
+                  >
+                    <Sparkles className="h-5 w-5" />
+                    Generar Análisis con IA
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1037,6 +1221,11 @@ export default function DirectorPage() {
                 </CardTitle>
                 <CardDescription>
                   Generado el {new Date(reporteGeneral.timestamp).toLocaleString('es-ES')}
+                  {reporteGeneral.truncated && (
+                    <span className="ml-2 text-amber-600 font-medium">
+                      ⚠️ El reporte fue truncado por límite de longitud
+                    </span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent>

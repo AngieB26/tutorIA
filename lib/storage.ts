@@ -49,12 +49,13 @@ export function getIncidenciasByStudent(studentName: string): Incidencia[] {
 
 export function getIncidenciasByDateRange(fechaInicio: string, fechaFin: string): Incidencia[] {
   const incidencias = getIncidencias();
-  const inicio = new Date(fechaInicio).getTime();
-  const fin = new Date(fechaFin).getTime();
+  // Normalizar fechas para comparar solo la parte de fecha (sin hora)
+  const inicio = new Date(fechaInicio + 'T00:00:00').getTime();
+  const fin = new Date(fechaFin + 'T23:59:59').getTime();
   
   return incidencias
     .filter(inc => {
-      const fechaInc = new Date(inc.fecha).getTime();
+      const fechaInc = new Date(inc.fecha + 'T00:00:00').getTime();
       return fechaInc >= inicio && fechaInc <= fin;
     })
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
@@ -68,6 +69,25 @@ export function getIncidenciasByGravedad(gravedad?: 'grave' | 'moderada' | 'leve
   return incidencias
     .filter(inc => inc.gravedad === gravedad)
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+}
+
+export function getIncidenciasByFiltros(
+  gravedad?: 'grave' | 'moderada' | 'leve' | 'todas',
+  tipo?: 'ausencia' | 'conducta' | 'academica' | 'positivo' | 'todas'
+): Incidencia[] {
+  let incidencias = getIncidencias();
+  
+  // Filtrar por gravedad
+  if (gravedad && gravedad !== 'todas') {
+    incidencias = incidencias.filter(inc => inc.gravedad === gravedad);
+  }
+  
+  // Filtrar por tipo
+  if (tipo && tipo !== 'todas') {
+    incidencias = incidencias.filter(inc => inc.tipo === tipo);
+  }
+  
+  return incidencias.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 }
 
 export function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): Incidencia[] {
