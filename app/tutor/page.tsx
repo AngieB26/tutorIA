@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileText, Plus, Eye, AlertTriangle, ArrowRight, Users, Calendar, MapPin, User, X, ClipboardList } from 'lucide-react';
-import { addIncidencia, getIncidencias, seedInitialData, getEstudiantesByGrado, getEstudiantesInfo, getTutores, getTutoresGradoSeccion, marcarEstudianteAtendido } from '@/lib/storage';
+import { addIncidencia, getIncidencias, getIncidenciasByStudent, seedInitialData, getEstudiantesByGrado, getEstudiantesInfo, getTutores, getTutoresGradoSeccion, getTutorGradoSeccion, marcarEstudianteAtendido, getAsistenciaClasesByFilters } from '@/lib/storage';
 import { TipoIncidencia, Incidencia, TipoDerivacion, SubtipoConducta, SubtipoPositivo, EstudianteInfo, Gravedad } from '@/lib/types';
 import { getTipoColor, getTipoLabel } from '@/lib/utils';
 
@@ -354,6 +354,111 @@ export default function TutorPage() {
 
   // Vista de Estudiantes de una Sección
   if (viewMode === 'lista' && seccionSeleccionada) {
+    // Determinar si hay un tutor asignado a esta sección
+    const tutorAsignado = getTutorGradoSeccion(seccionSeleccionada.grado, seccionSeleccionada.seccion);
+    const esTutorDeLaSeccion = !!tutorAsignado;
+
+    // Calcular estadísticas para el bloque REPORTE (solo si es tutor)
+    let resumenData = null;
+    if (esTutorDeLaSeccion) {
+      const totalEstudiantes = estudiantesFiltrados.length;
+      
+      // Calcular asistencia promedio
+      const registrosAsistencia = getAsistenciaClasesByFilters({
+        grado: seccionSeleccionada.grado,
+        seccion: seccionSeleccionada.seccion
+      });
+      
+      let totalAsistencias = 0;
+      let totalRegistros = 0;
+      registrosAsistencia.forEach(reg => {
+        Object.values(reg.entries).forEach(estado => {
+          totalRegistros++;
+          if (estado === 'presente') totalAsistencias++;
+        });
+      });
+      const asistenciaPromedio = totalRegistros > 0 ? Math.round((totalAsistencias / totalRegistros) * 100) : 0;
+
+      // Calcular incidencias activas (pendientes o en revisión)
+      const incidencias = getIncidencias();
+      const incidenciasActivas = incidencias.filter(inc => {
+        const estudiante = estudiantesFiltrados.find(e => e.nombre === inc.studentName);
+        return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
+      }).length;
+
+      resumenData = {
+        totalEstudiantes,
+        asistenciaPromedio,
+        incidenciasActivas
+      };
+    }
+
+    // Calcular estado y resumen IA para cada estudiante (solo si es tutor)
+    const estudiantesConEstado = estudiantesFiltrados.map(est => {
+      if (!esTutorDeLaSeccion) {
+        return { ...est, estado: null, iaResumen: null };
+      }
+
+      const incidenciasEst = getIncidenciasByStudent(est.nombre);
+      const incidenciasRecientes = incidenciasEst.filter(inc => {
+        const fechaInc = new Date(inc.fecha);
+        const hace30Dias = new Date();
+        hace30Dias.setDate(hace30Dias.getDate() - 30);
+        return fechaInc >= hace30Dias;
+      });
+
+      // Separar incidencias positivas y negativas
+      const incidenciasNegativas = incidenciasRecientes.filter(inc => 
+        inc.tipo === 'ausencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
+      );
+      const incidenciasPositivas = incidenciasRecientes.filter(inc => inc.tipo === 'positivo');
+      
+      const incidenciasGraves = incidenciasNegativas.filter(inc => inc.gravedad === 'grave');
+      const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'ausencia').length;
+      const totalIncidenciasNegativas = incidenciasNegativas.length;
+      const totalIncidenciasPositivas = incidenciasPositivas.length;
+
+      // Determinar estado: Normal, Atención o Riesgo (solo basado en incidencias negativas)
+      // Las incidencias positivas mejoran el estado
+      let estado: 'normal' | 'atencion' | 'riesgo' = 'normal';
+      
+      // Si hay muchas incidencias positivas, favorece estado normal
+      const balance = totalIncidenciasPositivas - totalIncidenciasNegativas;
+      
+      if (incidenciasGraves.length > 0 || ausencias >= 5 || (totalIncidenciasNegativas >= 8 && balance < -3)) {
+        estado = 'riesgo';
+      } else if ((totalIncidenciasNegativas >= 3 && balance < 0) || (ausencias >= 2 && balance < 0)) {
+        estado = 'atencion';
+      } else if (totalIncidenciasNegativas >= 5 && balance <= 0) {
+        estado = 'atencion';
+      }
+      // Si balance >= 0 (más positivas que negativas), mantener normal
+
+      // Resumen IA simple (una línea) - incluir tanto positivas como negativas
+      let iaResumen = '';
+      if (totalIncidenciasNegativas === 0 && totalIncidenciasPositivas === 0) {
+        iaResumen = 'Sin incidencias recientes. Rendimiento normal.';
+      } else if (totalIncidenciasPositivas > 0 && totalIncidenciasNegativas === 0) {
+        iaResumen = `${totalIncidenciasPositivas} comportamiento(s) positivo(s) registrado(s). Buen desempeño.`;
+      } else if (incidenciasGraves.length > 0) {
+        const contextoPositivo = totalIncidenciasPositivas > 0 ? ` (${totalIncidenciasPositivas} positivo(s))` : '';
+        iaResumen = `${incidenciasGraves.length} incidencia(s) grave(s)${contextoPositivo} en el último mes. Requiere atención inmediata.`;
+      } else if (ausencias >= 3) {
+        const contextoPositivo = totalIncidenciasPositivas > 0 ? `, ${totalIncidenciasPositivas} positivo(s)` : '';
+        iaResumen = `${ausencias} ausencia(s)${contextoPositivo} en el último mes. Se recomienda seguimiento de asistencia.`;
+      } else if (totalIncidenciasNegativas >= 5) {
+        const contextoPositivo = totalIncidenciasPositivas > 0 ? ` (${totalIncidenciasPositivas} positivo(s))` : '';
+        iaResumen = `${totalIncidenciasNegativas} incidencia(s) negativa(s)${contextoPositivo} en el último mes. Monitorear comportamiento.`;
+      } else if (totalIncidenciasNegativas > 0) {
+        const contextoPositivo = totalIncidenciasPositivas > 0 ? `, ${totalIncidenciasPositivas} positivo(s)` : '';
+        iaResumen = `${totalIncidenciasNegativas} incidencia(s) negativa(s)${contextoPositivo} reciente(s). Seguimiento regular.`;
+      } else {
+        iaResumen = `${totalIncidenciasPositivas} comportamiento(s) positivo(s). Buen desempeño.`;
+      }
+
+      return { ...est, estado, iaResumen };
+    });
+
     return (
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-6xl">
         <div className="mb-6 sm:mb-8">
@@ -363,7 +468,7 @@ export default function TutorPage() {
                 <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 Estudiantes - {seccionSeleccionada.grado} {seccionSeleccionada.seccion}
               </h1>
-              <p className="text-sm sm:text-base text-gray-900 mt-1">Selecciona un estudiante para registrar Asistencia o incidencias</p>
+              <p className="text-sm sm:text-base text-gray-900 mt-1">Lista de estudiantes de la sección</p>
             </div>
             <Button variant="outline" onClick={() => {
               setSeccionSeleccionada(null);
@@ -374,6 +479,34 @@ export default function TutorPage() {
             </Button>
           </div>
         </div>
+
+        {/* Bloque REPORTE - Solo para tutor asignado */}
+        {esTutorDeLaSeccion && resumenData && (
+          <Card className="mb-6 bg-blue-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl !text-gray-900 flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                Resumen de la Sección
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-white rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{resumenData.totalEstudiantes}</div>
+                  <div className="text-sm text-gray-600 mt-1">Total Estudiantes</div>
+                </div>
+                <div className="text-center p-4 bg-white rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{resumenData.asistenciaPromedio}%</div>
+                  <div className="text-sm text-gray-600 mt-1">Asistencia Promedio</div>
+                </div>
+                <div className="text-center p-4 bg-white rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{resumenData.incidenciasActivas}</div>
+                  <div className="text-sm text-gray-600 mt-1">Incidencias Activas</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Búsqueda de Estudiantes */}
         <Card className="mb-6">
@@ -394,39 +527,71 @@ export default function TutorPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg sm:text-xl !text-gray-900">
-              Estudiantes ({estudiantesFiltrados.length})
+              Lista de Estudiantes ({estudiantesConEstado.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {estudiantesFiltrados.length === 0 ? (
+            {estudiantesConEstado.length === 0 ? (
               <div className="py-12 text-center">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-900">No hay estudiantes registrados en esta sección.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-sm font-semibold">Estudiante</TableHead>
-                      <TableHead className="text-sm font-semibold">Grado</TableHead>
-                      <TableHead className="text-sm font-semibold">Sección</TableHead>
-                      <TableHead className="text-sm font-semibold text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {estudiantesFiltrados.map((estudiante) => (
-                      <TableRow key={estudiante.nombre} className="hover:bg-gray-50">
-                        <TableCell className="font-medium text-gray-900">{estudiante.nombre}</TableCell>
-                        <TableCell className="text-gray-900">{estudiante.grado}</TableCell>
-                        <TableCell className="text-gray-900">{estudiante.seccion}</TableCell>
-                        <TableCell className="text-right">
-                          {/* Acciones removidas */}
-                        </TableCell>
+              <div className="space-y-6">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold">Estudiante</TableHead>
+                        <TableHead className="text-sm font-semibold">Grado</TableHead>
+                        <TableHead className="text-sm font-semibold">Sección</TableHead>
+                        {esTutorDeLaSeccion && (
+                          <TableHead className="text-sm font-semibold">Estado</TableHead>
+                        )}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {estudiantesConEstado.map((estudiante) => (
+                        <TableRow key={estudiante.nombre} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-gray-900">{estudiante.nombre}</TableCell>
+                          <TableCell className="text-gray-900">{estudiante.grado}</TableCell>
+                          <TableCell className="text-gray-900">{estudiante.seccion}</TableCell>
+                          {esTutorDeLaSeccion && (
+                            <TableCell>
+                              {estudiante.estado === 'normal' && (
+                                <Badge className="bg-green-100 text-green-800 border-green-300">Normal</Badge>
+                              )}
+                              {estudiante.estado === 'atencion' && (
+                                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Atención</Badge>
+                              )}
+                              {estudiante.estado === 'riesgo' && (
+                                <Badge className="bg-red-100 text-red-800 border-red-300">Riesgo</Badge>
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Resumen IA - Solo para tutor asignado */}
+                {esTutorDeLaSeccion && (
+                  <Card className="bg-gray-50 border-gray-200">
+                    <CardHeader>
+                      <CardTitle className="text-base !text-gray-900">IA – Resumen</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {estudiantesConEstado.map(est => (
+                          <div key={est.nombre} className="text-sm text-gray-700">
+                            <span className="font-semibold">{est.nombre}:</span> {est.iaResumen || 'Sin análisis disponible'}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
           </CardContent>

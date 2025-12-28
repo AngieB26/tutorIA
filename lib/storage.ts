@@ -1106,16 +1106,31 @@ export function getTutorGradoSeccion(grado: string, seccion: string): TutorGrado
   return tutores.find(t => t.grado === grado && t.seccion === seccion);
 }
 
+export function getSeccionByTutorId(tutorId: string): TutorGradoSeccion | undefined {
+  const tutores = getTutoresGradoSeccion();
+  return tutores.find(t => t.tutorId === tutorId);
+}
+
 export function setTutorGradoSeccion(grado: string, seccion: string, tutorId: string, tutorNombre: string): void {
   const tutores = getTutoresGradoSeccion();
-  const idx = tutores.findIndex(t => t.grado === grado && t.seccion === seccion);
+  
+  // Remover cualquier asignación previa de este tutor (un tutor solo puede estar asignado a una sección)
+  const tutoresSinEsteTutor = tutores.filter(t => t.tutorId !== tutorId);
+  
+  // Verificar si ya existe una asignación para esta sección (grado, seccion)
+  const idx = tutoresSinEsteTutor.findIndex(t => t.grado === grado && t.seccion === seccion);
+  
   const nuevo: TutorGradoSeccion = { grado, seccion, tutorId, tutorNombre };
+  
   if (idx >= 0) {
-    tutores[idx] = nuevo;
+    // Ya existe una asignación para esta sección, reemplazar
+    tutoresSinEsteTutor[idx] = nuevo;
   } else {
-    tutores.push(nuevo);
+    // Nueva asignación para esta sección
+    tutoresSinEsteTutor.push(nuevo);
   }
-  saveTutoresGradoSeccion(tutores);
+  
+  saveTutoresGradoSeccion(tutoresSinEsteTutor);
 }
 
 export function removeTutorGradoSeccion(grado: string, seccion: string): void {
