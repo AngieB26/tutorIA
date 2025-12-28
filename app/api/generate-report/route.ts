@@ -134,14 +134,26 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
         const errorJson = JSON.parse(errorText);
         if (errorJson.error) {
           if (errorJson.error.message) {
-            mensajeError = `Error del servicio de IA: ${errorJson.error.message}`;
+            const errorMessage = errorJson.error.message.toLowerCase();
+            // Detectar si la API key expiró
+            if (errorMessage.includes('expired') || errorMessage.includes('expirada')) {
+              mensajeError = 'La API key ha expirado';
+              recomendaciones = 'Por favor, genera una nueva API key en Google AI Studio y actualízala en la configuración de Vercel.';
+            } else if (errorMessage.includes('invalid') || errorMessage.includes('invalid api key')) {
+              mensajeError = 'API key inválida';
+              recomendaciones = 'Por favor, verifica que la API key sea correcta en la configuración de Vercel.';
+            } else {
+              mensajeError = `Error del servicio de IA: ${errorJson.error.message}`;
+            }
           }
           // Errores comunes de Gemini API
           if (geminiRes.status === 400) {
             recomendaciones = 'Por favor, verifica que los datos enviados sean correctos.';
           } else if (geminiRes.status === 401 || geminiRes.status === 403) {
-            mensajeError = 'Error de autenticación con el servicio de IA';
-            recomendaciones = 'Por favor, verifica la configuración de la API key.';
+            if (!mensajeError.includes('expirado') && !mensajeError.includes('inválida')) {
+              mensajeError = 'Error de autenticación con el servicio de IA';
+              recomendaciones = 'Por favor, verifica la configuración de la API key en Vercel.';
+            }
           } else if (geminiRes.status === 429) {
             mensajeError = 'Límite de solicitudes excedido';
             recomendaciones = 'Por favor, espera unos minutos antes de intentar nuevamente.';
