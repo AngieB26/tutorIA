@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,9 @@ export default function TutorPage() {
   const [filtroSeccionSeccion, setFiltroSeccionSeccion] = useState<string>('');
   const [busquedaEstudiante, setBusquedaEstudiante] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [iaResumenes, setIaResumenes] = useState<Record<string, string>>({});
+  const [iaCargando, setIaCargando] = useState<Record<string, boolean>>({});
+  const resumenesCargados = useRef<Set<string>>(new Set());
   
   const [formData, setFormData] = useState({
     grado: '',
@@ -393,10 +396,77 @@ export default function TutorPage() {
       };
     }
 
+    // Cargar resúmenes de IA para estudiantes (solo si es tutor de la sección)
+    useEffect(() => {
+      if (!esTutorDeLaSeccion || estudiantesFiltrados.length === 0) return;
+
+      estudiantesFiltrados.forEach(est => {
+        // Solo cargar si no existe el resumen (evitar llamadas duplicadas)
+        if (iaResumenes[est.nombre]) return;
+
+        const incidenciasEst = getIncidenciasByStudent(est.nombre);
+        const incidenciasRecientes = incidenciasEst.filter(inc => {
+          const fechaInc = new Date(inc.fecha);
+          const hace30Dias = new Date();
+          hace30Dias.setDate(hace30Dias.getDate() - 30);
+          return fechaInc >= hace30Dias;
+        });
+
+        // Marcar como que ya se está procesando
+        resumenesCargados.current.add(est.nombre);
+
+        // Si no hay incidencias recientes, usar mensaje simple sin llamar a la API
+        if (incidenciasRecientes.length === 0) {
+          setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Sin incidencias recientes. Rendimiento normal.' }));
+          return;
+        }
+
+        // Marcar como cargando
+        setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
+
+        // Llamar a la API para generar resumen de IA (una línea)
+        fetch('/api/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            estudiante: est.nombre,
+            incidencias: incidenciasRecientes
+          })
+        })
+          .then(async res => {
+            if (!res.ok) throw new Error('Error al obtener resumen de IA');
+            const data = await res.json();
+            // Extraer solo el resumen (primera línea o parte del resumen)
+            let resumen = '';
+            if (data.resumen) {
+              // Tomar solo la primera línea o las primeras palabras del resumen
+              const primeraLinea = typeof data.resumen === 'string' 
+                ? data.resumen.split('\n')[0].trim() 
+                : '';
+              resumen = primeraLinea || 'Análisis generado por IA.';
+            } else {
+              resumen = 'Sin análisis disponible.';
+            }
+            setIaResumenes(prev => ({ ...prev, [est.nombre]: resumen }));
+          })
+          .catch(error => {
+            console.error('Error generando resumen IA para', est.nombre, error);
+            setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error al generar resumen de IA.' }));
+          })
+          .finally(() => {
+            setIaCargando(prev => {
+              const nuevo = { ...prev };
+              delete nuevo[est.nombre];
+              return nuevo;
+            });
+          });
+      });
+    }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion]);
+
     // Calcular estado y resumen IA para cada estudiante (solo si es tutor)
     const estudiantesConEstado = estudiantesFiltrados.map(est => {
       if (!esTutorDeLaSeccion) {
-        return { ...est, estado: null, iaResumen: null };
+        return { ...est, estado: null, iaResumen: null, estaCargandoIA: false };
       }
 
       const incidenciasEst = getIncidenciasByStudent(est.nombre);
@@ -434,29 +504,11 @@ export default function TutorPage() {
       }
       // Si balance >= 0 (más positivas que negativas), mantener normal
 
-      // Resumen IA simple (una línea) - incluir tanto positivas como negativas
-      let iaResumen = '';
-      if (totalIncidenciasNegativas === 0 && totalIncidenciasPositivas === 0) {
-        iaResumen = 'Sin incidencias recientes. Rendimiento normal.';
-      } else if (totalIncidenciasPositivas > 0 && totalIncidenciasNegativas === 0) {
-        iaResumen = `${totalIncidenciasPositivas} comportamiento(s) positivo(s) registrado(s). Buen desempeño.`;
-      } else if (incidenciasGraves.length > 0) {
-        const contextoPositivo = totalIncidenciasPositivas > 0 ? ` (${totalIncidenciasPositivas} positivo(s))` : '';
-        iaResumen = `${incidenciasGraves.length} incidencia(s) grave(s)${contextoPositivo} en el último mes. Requiere atención inmediata.`;
-      } else if (ausencias >= 3) {
-        const contextoPositivo = totalIncidenciasPositivas > 0 ? `, ${totalIncidenciasPositivas} positivo(s)` : '';
-        iaResumen = `${ausencias} ausencia(s)${contextoPositivo} en el último mes. Se recomienda seguimiento de asistencia.`;
-      } else if (totalIncidenciasNegativas >= 5) {
-        const contextoPositivo = totalIncidenciasPositivas > 0 ? ` (${totalIncidenciasPositivas} positivo(s))` : '';
-        iaResumen = `${totalIncidenciasNegativas} incidencia(s) negativa(s)${contextoPositivo} en el último mes. Monitorear comportamiento.`;
-      } else if (totalIncidenciasNegativas > 0) {
-        const contextoPositivo = totalIncidenciasPositivas > 0 ? `, ${totalIncidenciasPositivas} positivo(s)` : '';
-        iaResumen = `${totalIncidenciasNegativas} incidencia(s) negativa(s)${contextoPositivo} reciente(s). Seguimiento regular.`;
-      } else {
-        iaResumen = `${totalIncidenciasPositivas} comportamiento(s) positivo(s). Buen desempeño.`;
-      }
+      // Resumen IA será cargado de forma asíncrona desde la API
+      const iaResumen = iaResumenes[est.nombre] || null;
+      const estaCargandoIA = iaCargando[est.nombre] || false;
 
-      return { ...est, estado, iaResumen };
+      return { ...est, estado, iaResumen, estaCargandoIA };
     });
 
     return (
@@ -585,7 +637,12 @@ export default function TutorPage() {
                       <div className="space-y-2">
                         {estudiantesConEstado.map(est => (
                           <div key={est.nombre} className="text-sm text-gray-700">
-                            <span className="font-semibold">{est.nombre}:</span> {est.iaResumen || 'Sin análisis disponible'}
+                            <span className="font-semibold">{est.nombre}:</span>{' '}
+                            {est.estaCargandoIA ? (
+                              <span className="text-gray-500 italic">Generando resumen...</span>
+                            ) : (
+                              est.iaResumen || 'Sin análisis disponible'
+                            )}
                           </div>
                         ))}
                       </div>
