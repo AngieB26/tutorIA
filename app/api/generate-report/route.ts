@@ -125,11 +125,41 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
     if (!geminiRes.ok) {
       const errorText = await geminiRes.text();
       console.error('Error de Gemini API:', errorText);
+      
+      let mensajeError = 'Error al conectar con el servicio de IA';
+      let recomendaciones = 'Por favor, intenta nuevamente más tarde.';
+      
+      // Intentar parsear el error para dar un mensaje más específico
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error) {
+          if (errorJson.error.message) {
+            mensajeError = `Error del servicio de IA: ${errorJson.error.message}`;
+          }
+          // Errores comunes de Gemini API
+          if (geminiRes.status === 400) {
+            recomendaciones = 'Por favor, verifica que los datos enviados sean correctos.';
+          } else if (geminiRes.status === 401 || geminiRes.status === 403) {
+            mensajeError = 'Error de autenticación con el servicio de IA';
+            recomendaciones = 'Por favor, verifica la configuración de la API key.';
+          } else if (geminiRes.status === 429) {
+            mensajeError = 'Límite de solicitudes excedido';
+            recomendaciones = 'Por favor, espera unos minutos antes de intentar nuevamente.';
+          } else if (geminiRes.status === 500 || geminiRes.status === 503) {
+            mensajeError = 'El servicio de IA no está disponible temporalmente';
+            recomendaciones = 'Por favor, intenta nuevamente en unos momentos.';
+          }
+        }
+      } catch (e) {
+        // Si no se puede parsear el JSON, usar el error genérico
+        console.error('No se pudo parsear el error de Gemini:', e);
+      }
+      
       return NextResponse.json({ 
-        resumen: 'Error al conectar con el servicio de IA', 
-        recomendaciones: 'Por favor, intenta nuevamente más tarde.',
-        raw: errorText,
-        error: 'API Error'
+        resumen: mensajeError, 
+        recomendaciones: recomendaciones,
+        error: 'API Error',
+        status: geminiRes.status
       }, { status: 200 });
     }
 

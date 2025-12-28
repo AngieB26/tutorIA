@@ -391,7 +391,7 @@ export default function ProfesorPage() {
           {/* Header Section */}
           <div className="text-center mb-12">
             <h1 className="text-4xl sm:text-5xl font-bold mb-3 text-gray-900">
-              Panel del Profesor
+              Dashboard del Profesor
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Selecciona el tipo de registro que deseas realizar

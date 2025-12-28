@@ -529,7 +529,7 @@ export function Navbar() {
                         {nuevasIncidencias.map((incidencia: any) => (
                           <div
                             key={incidencia.id}
-                            className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                            className="p-4 hover:bg-gray-50 cursor-pointer transition-colors relative group"
                             onClick={() => {
                               marcarComoVista(incidencia.id);
                               setMostrarNotificacionesDirector(false);
@@ -559,6 +559,18 @@ export function Navbar() {
                                   {incidencia.fecha || 'Sin fecha'}
                                 </p>
                               </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-gray-900 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  marcarComoVista(incidencia.id);
+                                }}
+                                title="Marcar como vista"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         ))}

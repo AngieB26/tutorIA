@@ -2,6 +2,7 @@
 
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,18 @@ import * as XLSX from 'xlsx';
 
 
 export default function DirectorPage() {
+  const router = useRouter();
+  
+  // Verificar autenticación al montar (solo en cliente)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const auth = localStorage.getItem('director_authenticated') === 'true';
+      if (!auth) {
+        router.push('/director/login');
+      }
+    }
+  }, [router]);
+
   // --- Función para formatear fechas a dd/mm/yyyy ---
   function formatFecha(fecha: string | undefined): string {
     if (!fecha) return '-';
@@ -1129,7 +1142,6 @@ export default function DirectorPage() {
       toast.error('Error al generar el PDF', { id: 'export-pdf' });
     }
   };
-
 
   return (
     <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-6xl">
@@ -3712,39 +3724,47 @@ export default function DirectorPage() {
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex flex-col">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Grado</label>
-                  <select
+                  <Select
                     key={`select-filtro-admin-grado-${refreshKey}`}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none shadow-sm min-w-[110px] text-gray-900"
-                    value={filtroAdminGrado}
-                    onChange={e => setFiltroAdminGrado(e.target.value)}
+                    value={filtroAdminGrado || 'todas'}
+                    onValueChange={(value) => setFiltroAdminGrado(value === 'todas' ? '' : value)}
                   >
-                    <option value="">Todos</option>
-                    {(() => {
-                      const todosLosGrados = getGrados();
-                      const ordenGrados = ['1ro', '2do', '3ro', '4to', '5to'];
-                      const gradosOrdenados = [
-                        ...ordenGrados.filter(g => todosLosGrados.includes(g)),
-                        ...todosLosGrados.filter(g => !ordenGrados.includes(g))
-                      ];
-                      return gradosOrdenados.map(grado => (
-                        <option key={grado} value={grado}>{grado}</option>
-                      ));
-                })()}
-                  </select>
-        </div>
+                    <SelectTrigger className="w-[140px] h-9 text-sm">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todos</SelectItem>
+                      {(() => {
+                        const todosLosGrados = getGrados();
+                        const ordenGrados = ['1ro', '2do', '3ro', '4to', '5to'];
+                        const gradosOrdenados = [
+                          ...ordenGrados.filter(g => todosLosGrados.includes(g)),
+                          ...todosLosGrados.filter(g => !ordenGrados.includes(g))
+                        ];
+                        return gradosOrdenados.map(grado => (
+                          <SelectItem key={grado} value={grado}>{grado}</SelectItem>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex flex-col">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Sección</label>
-                  <select
+                  <Select
                     key={`select-filtro-admin-seccion-${refreshKey}`}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none shadow-sm min-w-[110px] text-gray-900"
-                    value={filtroAdminSeccion}
-                    onChange={e => setFiltroAdminSeccion(e.target.value)}
+                    value={filtroAdminSeccion || 'todas'}
+                    onValueChange={(value) => setFiltroAdminSeccion(value === 'todas' ? '' : value)}
                   >
-                    <option value="">Todas</option>
-                    {getSecciones().map(seccion => (
-                      <option key={seccion} value={seccion}>{seccion}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-[140px] h-9 text-sm">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas</SelectItem>
+                      {getSecciones().map(seccion => (
+                        <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-col flex-1 min-w-[180px]">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Buscar</label>

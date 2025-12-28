@@ -80,7 +80,7 @@ export default function HomePage() {
 
           <Card 
             className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 border-2 border-blue-400 hover:border-primary"
-            onClick={() => router.push('/director')}
+            onClick={() => router.push('/director/login')}
           >
             <CardHeader>
               <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
