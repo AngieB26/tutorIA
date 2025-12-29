@@ -26,6 +26,7 @@ import {
   saveEstudiante as saveEstudianteInfo,
   fetchTutores,
   saveTutores,
+  updateTutor,
   deleteTutor,
   deleteEstudiante,
   getGrados,
@@ -4116,17 +4117,10 @@ export default function DirectorPage() {
                                             const estudianteActualizado = {...estudiantes[idx], ...estudianteEditForm} as EstudianteInfo;
                                             estudiantes[idx] = estudianteActualizado;
                                             
-                                            // Si cambió el nombre, actualizar el registro existente con el nombre original
-                                            if (estudianteActualizado.nombre !== nombreOriginal) {
-                                              // Primero actualizar el estudiante existente con el nuevo nombre
-                                              await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
-                                              // Luego eliminar el registro con el nombre original si es diferente
-                                              if (estudianteActualizado.nombre !== nombreOriginal) {
-                                                // El saveEstudianteInfo ya actualiza el registro, no necesitamos eliminar
-                                              }
-                                            } else {
-                                              await saveEstudiantesInfo(estudiantes);
-                                            }
+                                            // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
+                                            // Esto actualiza todos los campos (nombre, grado, sección, edad, contacto, etc.)
+                                            await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+                                            
                                             setEstudiantesInfo(estudiantes);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
@@ -4366,21 +4360,29 @@ export default function DirectorPage() {
                                       size="sm"
                                       variant="default"
                                       onClick={async () => {
-                                        const profesores = await fetchTutores();
+                                        if (!profesorEditForm.nombre || !profesorEditForm.nombre.trim()) {
+                                          toast.error('El nombre es obligatorio');
+                                          return;
+                                        }
+                                        
+                                        // Actualizar el profesor con todos los campos del formulario
+                                        const profesorActualizado = {...profesor, ...profesorEditForm} as Tutor;
+                                        
+                                        // Actualizar directamente en la base de datos
+                                        await updateTutor(profesorActualizado);
+                                        
+                                        // Actualizar el estado local
+                                        const profesores = [...tutores];
                                         const idx = profesores.findIndex(p => p.id === profesor.id);
                                         if (idx >= 0) {
-                                          if (!profesorEditForm.nombre || !profesorEditForm.nombre.trim()) {
-                                            toast.error('El nombre es obligatorio');
-                                            return;
-                                          }
-                                          profesores[idx] = {...profesores[idx], ...profesorEditForm} as Tutor;
-                                          await saveTutores(profesores);
+                                          profesores[idx] = profesorActualizado;
                                           setTutores(profesores);
-                                          setRefreshKey(prev => prev + 1);
-                                          setProfesorEditandoAdmin(null);
-                                          setProfesorEditForm({});
-                                          toast.success('Profesor actualizado exitosamente');
                                         }
+                                        
+                                        setRefreshKey(prev => prev + 1);
+                                        setProfesorEditandoAdmin(null);
+                                        setProfesorEditForm({});
+                                        toast.success('Profesor actualizado exitosamente');
                                       }}
                                     >
                                       Guardar

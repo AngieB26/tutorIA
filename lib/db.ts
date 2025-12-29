@@ -423,33 +423,44 @@ export async function deleteTutor(id: string): Promise<void> {
   }
 }
 
+export async function updateTutor(tutor: Tutor): Promise<void> {
+  try {
+    const existente = await prisma.tutor.findUnique({
+      where: { id: tutor.id }
+    });
+
+    const data = {
+      nombre: tutor.nombre,
+      email: tutor.email ?? null,
+      telefono: tutor.telefono ?? null,
+    };
+
+    if (existente) {
+      await prisma.tutor.update({
+        where: { id: tutor.id },
+        data,
+      });
+      console.log(`✅ Profesor ${tutor.id} actualizado en la base de datos`);
+    } else {
+      await prisma.tutor.create({
+        data: {
+          id: tutor.id,
+          ...data,
+        },
+      });
+      console.log(`✅ Profesor ${tutor.id} creado en la base de datos`);
+    }
+  } catch (error) {
+    console.error('Error actualizando tutor:', error);
+    throw error;
+  }
+}
+
 export async function saveTutores(tutores: Tutor[]): Promise<void> {
   try {
     // Actualizar individualmente cada tutor por su ID
     for (const tutor of tutores) {
-      const existente = await prisma.tutor.findUnique({
-        where: { id: tutor.id }
-      });
-
-      const data = {
-        nombre: tutor.nombre,
-        email: tutor.email ?? null,
-        telefono: tutor.telefono ?? null,
-      };
-
-      if (existente) {
-        await prisma.tutor.update({
-          where: { id: tutor.id },
-          data,
-        });
-      } else {
-        await prisma.tutor.create({
-          data: {
-            id: tutor.id,
-            ...data,
-          },
-        });
-      }
+      await updateTutor(tutor);
     }
   } catch (error) {
     console.error('Error guardando tutores:', error);

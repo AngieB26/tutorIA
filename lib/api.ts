@@ -146,6 +146,15 @@ export async function saveTutores(tutores: any[]): Promise<void> {
   if (!res.ok) throw new Error('Error al guardar tutores');
 }
 
+export async function updateTutor(tutor: any): Promise<void> {
+  const res = await fetch('/api/tutores', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(tutor),
+  });
+  if (!res.ok) throw new Error('Error al actualizar profesor');
+}
+
 export async function deleteTutor(id: string): Promise<void> {
   const res = await fetch(`/api/tutores?id=${encodeURIComponent(id)}`, {
     method: 'DELETE',

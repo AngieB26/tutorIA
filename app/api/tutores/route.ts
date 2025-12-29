@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getTutores,
   saveTutores,
+  updateTutor,
   deleteTutor,
 } from '@/lib/db';
 
@@ -37,6 +38,29 @@ export async function POST(req: NextRequest) {
     console.error('Error guardando tutores:', error);
     return NextResponse.json(
       { error: 'Error al guardar tutores' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/tutores - Actualizar un solo tutor
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    if (!body.id) {
+      return NextResponse.json(
+        { error: 'ID del tutor es requerido' },
+        { status: 400 }
+      );
+    }
+
+    await updateTutor(body);
+    return NextResponse.json({ success: true, message: `Tutor ${body.id} actualizado exitosamente` });
+  } catch (error) {
+    console.error('Error actualizando tutor:', error);
+    return NextResponse.json(
+      { error: 'Error al actualizar tutor' },
       { status: 500 }
     );
   }
