@@ -120,7 +120,7 @@ export async function POST() {
         tutor: 'Prof. López',
         lugar: 'Aula 205',
         timestamp: new Date('2024-12-05').getTime(),
-        derivacion: null,
+        derivacion: undefined,
         estado: 'Pendiente',
         historialEstado: [
           { estado: 'Pendiente', fecha: new Date('2024-12-05').toISOString(), usuario: 'system' }
@@ -156,7 +156,7 @@ export async function POST() {
         tutor: 'Prof. Fernández',
         lugar: 'Aula 102',
         timestamp: new Date('2024-12-10').getTime(),
-        derivacion: null,
+        derivacion: undefined,
         estado: 'Pendiente',
         historialEstado: [
           { estado: 'Pendiente', fecha: new Date('2024-12-10').toISOString(), usuario: 'system' }
@@ -175,7 +175,7 @@ export async function POST() {
         tutor: 'Prof. Torres',
         lugar: 'Aula 401',
         timestamp: new Date('2024-12-08').getTime(),
-        derivacion: null,
+        derivacion: undefined,
         estado: 'Pendiente',
         historialEstado: [
           { estado: 'Pendiente', fecha: new Date('2024-12-08').toISOString(), usuario: 'system' }
