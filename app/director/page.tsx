@@ -674,6 +674,8 @@ export default function DirectorPage() {
     const loadIncidenciasDerivadas = async () => {
       try {
         const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
+        console.log('📊 Director: Incidencias derivadas cargadas:', derivadas.length);
+        console.log('📊 Director: IDs de incidencias derivadas:', derivadas.map((inc: Incidencia) => ({ id: inc.id, estudiante: inc.studentName, derivacion: inc.derivacion, resuelta: inc.resuelta })));
         setIncidenciasDerivadas(derivadas);
       } catch (error) {
         console.error('Error cargando incidencias derivadas:', error);
@@ -2074,6 +2076,7 @@ export default function DirectorPage() {
               </CardTitle>
               <CardDescription className="text-sm text-gray-900">
                 {(() => {
+                  console.log('🔍 Tab Incidencias: Estado actual de incidencias:', incidencias.length, 'incidencias');
                   const incidenciasFiltradas = incidencias.filter(inc =>
                     (filtroGravedad === 'todas' || inc.gravedad === filtroGravedad) &&
                     (filtroTipo === 'todas' || inc.tipo === filtroTipo) &&
@@ -2084,6 +2087,7 @@ export default function DirectorPage() {
                     const fechaB = b.timestamp || new Date(b.fecha).getTime();
                     return ordenFecha === 'reciente' ? fechaB - fechaA : fechaA - fechaB;
                   });
+                  console.log('🔍 Tab Incidencias: Después de filtros:', incidenciasOrdenadas.length, 'incidencias');
                   return `${incidenciasOrdenadas.length} ${incidenciasOrdenadas.length === 1 ? 'incidencia registrada' : 'incidencias registradas'}`;
                 })()}
               </CardDescription>
