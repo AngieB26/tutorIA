@@ -331,12 +331,35 @@ export async function saveIncidencias(incidencias: Incidencia[]): Promise<void> 
     todosEstudiantes.forEach(est => mapEstudianteId.set(est.nombre, est.id));
     todosTutores.forEach(tutor => mapTutorId.set(tutor.nombre, tutor.id));
     
+    // Pre-cargar asignaciones de tutores por grado/sección
+    const todasAsignaciones = await prisma.tutorGradoSeccion.findMany({
+      include: { tutor: true }
+    });
+    const mapTutorSeccion = new Map<string, string>(); // key: "grado-seccion", value: tutorNombre
+    
+    todasAsignaciones.forEach(a => {
+      const key = `${a.grado}-${a.seccion}`;
+      mapTutorSeccion.set(key, a.tutor.nombre);
+    });
+
+    // Pre-cargar estudiantes con sus grados y secciones
+    const mapEstudianteGradoSeccion = new Map<string, {grado: string, seccion: string}>();
+    todosEstudiantes.forEach(est => {
+      if (est.grado && est.seccion) {
+        mapEstudianteGradoSeccion.set(est.nombre, { grado: est.grado, seccion: est.seccion });
+      }
+    });
+
     for (const inc of incidencias) {
       const estudianteId = mapEstudianteId.get(inc.studentName) ?? null;
-      const profesorId = mapTutorId.get(inc.profesor) ?? null;
-      let tutorNombre = inc.tutor ?? null;
-      if (!tutorNombre && inc.profesor) {
-        tutorNombre = inc.profesor;
+      const profesorId = mapTutorId.get(inc.profesor) ?? null; // Profesor que registra
+      
+      // Buscar tutor de la sección del estudiante
+      let tutorNombre: string | null = null;
+      const estudianteInfo = mapEstudianteGradoSeccion.get(inc.studentName);
+      if (estudianteInfo) {
+        const key = `${estudianteInfo.grado}-${estudianteInfo.seccion}`;
+        tutorNombre = mapTutorSeccion.get(key) ?? null;
       }
 
       await prisma.incidencia.create({
@@ -350,8 +373,8 @@ export async function saveIncidencias(incidencias: Incidencia[]): Promise<void> 
           descripcion: inc.descripcion,
           fecha: inc.fecha,
           profesor: inc.profesor,
-          profesorId: profesorId, // Asignar el ID del profesor/tutor
-          tutorNombre: tutorNombre, // Asignar el nombre del tutor
+          profesorId: profesorId, // Asignar el ID del profesor que registra
+          tutorNombre: tutorNombre, // Asignar el nombre del tutor de la sección
           lugar: inc.lugar ?? null,
           timestamp: BigInt(inc.timestamp),
           derivacion: inc.derivacion ?? null,
