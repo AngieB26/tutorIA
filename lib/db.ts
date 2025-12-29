@@ -146,10 +146,62 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
     };
 
     if (existente) {
+      const nombreCambio = nombreOriginal && estudiante.nombre !== nombreOriginal;
+      
+      // Actualizar el estudiante
       await prisma.estudiante.update({
         where: { id: existente.id },
         data,
       });
+
+      // Si el nombre cambió, actualizar todas las incidencias, notas y registros relacionados
+      if (nombreCambio && nombreOriginal) {
+        console.log(`🔄 Actualizando registros relacionados: ${nombreOriginal} → ${estudiante.nombre}`);
+        
+        // Actualizar incidencias que tienen el nombre anterior
+        await prisma.incidencia.updateMany({
+          where: {
+            OR: [
+              { studentName: nombreOriginal },
+              { estudianteId: existente.id }
+            ]
+          },
+          data: {
+            studentName: estudiante.nombre,
+            estudianteId: existente.id, // Asegurar que la relación se mantenga
+          },
+        });
+
+        // Actualizar notas que tienen el nombre anterior
+        await prisma.nota.updateMany({
+          where: {
+            OR: [
+              { studentName: nombreOriginal },
+              { estudianteId: existente.id }
+            ]
+          },
+          data: {
+            studentName: estudiante.nombre,
+            estudianteId: existente.id, // Asegurar que la relación se mantenga
+          },
+        });
+
+        // Actualizar registros de asistencia que tienen el nombre anterior
+        await prisma.registroAsistenciaEntry.updateMany({
+          where: {
+            OR: [
+              { studentName: nombreOriginal },
+              { estudianteId: existente.id }
+            ]
+          },
+          data: {
+            studentName: estudiante.nombre,
+            estudianteId: existente.id, // Asegurar que la relación se mantenga
+          },
+        });
+
+        console.log(`✅ Registros relacionados actualizados para ${estudiante.nombre}`);
+      }
     } else {
       await prisma.estudiante.create({
         data,
