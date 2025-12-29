@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
-import { fetchIncidencias } from '@/lib/api';
+import { fetchIncidencias, fetchEstudiantes, fetchTutores, fetchAsistenciaClases } from '@/lib/api';
 
 export function Navbar() {
   const router = useRouter();
@@ -58,93 +58,100 @@ export function Navbar() {
     console.log('🔍 useEffect notificaciones - isProfesor:', isProfesor, 'pathname:', pathname);
     if (isProfesor && typeof window !== 'undefined') {
       console.log('✅ Cargando datos de notificaciones...');
-      try {
-        const { getAsistenciaClases, getEstudiantesInfo, getTutores, getEstudiantesAtendidos } = require('@/lib/storage');
-        const registrosAsistencia = getAsistenciaClases();
-        const estudiantes = getEstudiantesInfo();
-        const tutores = getTutores();
+      const loadData = async () => {
+        try {
+          const [registrosAsistencia, estudiantes, tutores] = await Promise.all([
+            fetchAsistenciaClases(),
+            fetchEstudiantes(),
+            fetchTutores()
+          ]);
         
-        console.log('📦 Datos cargados:', {
-          registrosAsistencia: registrosAsistencia.length,
-          estudiantes: estudiantes.length,
-          tutores: tutores.length
-        });
-        
-        // Obtener el profesor actual desde localStorage o el primer profesor disponible
-        const profesorGuardado = localStorage.getItem('profesor_actual') || tutores[0]?.nombre || '';
-        setProfesorActual(profesorGuardado);
-        
-        // Contar ausencias y tardanzas por estudiante (de TODOS los profesores)
-        const conteoPorEstudiante: Record<string, { ausencias: number; tardanzas: number; estudiante: any }> = {};
-        
-        registrosAsistencia.forEach((registro: any) => {
-          Object.entries(registro.entries || {}).forEach(([nombreEstudiante, estado]: [string, any]) => {
-            if (!conteoPorEstudiante[nombreEstudiante]) {
-              const estudianteInfo = estudiantes.find((e: any) => e.nombre === nombreEstudiante);
-              conteoPorEstudiante[nombreEstudiante] = {
-                ausencias: 0,
-                tardanzas: 0,
-                estudiante: estudianteInfo
-              };
-            }
-            
-            if (estado === 'ausente') {
-              conteoPorEstudiante[nombreEstudiante].ausencias++;
-            } else if (estado === 'tardanza') {
-              conteoPorEstudiante[nombreEstudiante].tardanzas++;
-            }
+          console.log('📦 Datos cargados:', {
+            registrosAsistencia: registrosAsistencia.length,
+            estudiantes: estudiantes.length,
+            tutores: tutores.length
           });
-        });
-        
-        // Debug: mostrar conteo de todos los estudiantes
-        console.log('📋 Conteo de estudiantes:', Object.entries(conteoPorEstudiante).map(([nombre, conteo]) => ({
-          nombre,
-          ausencias: conteo.ausencias,
-          tardanzas: conteo.tardanzas
-        })));
-        
-        // Obtener estudiantes atendidos hoy (por cualquier profesor)
-        const hoy = new Date().toISOString().split('T')[0];
-        const estudiantesAtendidos = getEstudiantesAtendidos();
-        const estudiantesAtendidosHoy = new Set(
-          estudiantesAtendidos
-            .filter((e: any) => e.fecha === hoy)
-            .map((e: any) => e.nombre)
-        );
-        
-        console.log('👥 Estudiantes atendidos hoy:', Array.from(estudiantesAtendidosHoy));
-        
-        // Filtrar estudiantes con más de 3 ausencias o tardanzas
-        // Y excluir estudiantes que fueron atendidos hoy (por cualquier profesor)
-        const problemas = Object.entries(conteoPorEstudiante)
-          .filter(([nombre, conteo]) => {
-            // Excluir si fue atendido hoy por cualquier profesor
-            if (estudiantesAtendidosHoy.has(nombre)) {
-              console.log('🔕 Estudiante excluido de notificaciones (atendido hoy):', nombre);
-              return false;
-            }
-            // Incluir si tiene más de 3 ausencias o más de 3 tardanzas
-            const tieneProblemas = conteo.ausencias > 3 || conteo.tardanzas > 3;
-            if (tieneProblemas) {
-              console.log('🔔 Estudiante con problemas:', nombre, { ausencias: conteo.ausencias, tardanzas: conteo.tardanzas });
-            }
-            return tieneProblemas;
-          })
-          .map(([nombre, conteo]) => ({
+          
+          // Obtener el profesor actual desde localStorage o el primer profesor disponible
+          const profesorGuardado = localStorage.getItem('profesor_actual') || tutores[0]?.nombre || '';
+          setProfesorActual(profesorGuardado);
+          
+          // Contar ausencias y tardanzas por estudiante (de TODOS los profesores)
+          const conteoPorEstudiante: Record<string, { ausencias: number; tardanzas: number; estudiante: any }> = {};
+          
+          registrosAsistencia.forEach((registro: any) => {
+            Object.entries(registro.entries || {}).forEach(([nombreEstudiante, estado]: [string, any]) => {
+              if (!conteoPorEstudiante[nombreEstudiante]) {
+                const estudianteInfo = estudiantes.find((e: any) => e.nombre === nombreEstudiante);
+                conteoPorEstudiante[nombreEstudiante] = {
+                  ausencias: 0,
+                  tardanzas: 0,
+                  estudiante: estudianteInfo
+                };
+              }
+              
+              if (estado === 'ausente') {
+                conteoPorEstudiante[nombreEstudiante].ausencias++;
+              } else if (estado === 'tardanza') {
+                conteoPorEstudiante[nombreEstudiante].tardanzas++;
+              }
+            });
+          });
+          
+          // Debug: mostrar conteo de todos los estudiantes
+          console.log('📋 Conteo de estudiantes:', Object.entries(conteoPorEstudiante).map(([nombre, conteo]) => ({
             nombre,
             ausencias: conteo.ausencias,
-            tardanzas: conteo.tardanzas,
-            total: conteo.ausencias + conteo.tardanzas,
-            estudiante: conteo.estudiante
-          }))
-          .sort((a, b) => b.total - a.total);
-        
-        console.log('📊 Total estudiantes con problemas (después de filtrar atendidos):', problemas.length);
-        console.log('📋 Lista de estudiantes con problemas:', problemas.map(p => p.nombre));
-        setEstudiantesConProblemas(problemas);
-      } catch (error) {
-        console.error('❌ Error cargando notificaciones:', error);
-      }
+            tardanzas: conteo.tardanzas
+          })));
+          
+          // Obtener estudiantes atendidos hoy desde localStorage (esto sigue siendo local)
+          const hoy = new Date().toISOString().split('T')[0];
+          const estudiantesAtendidosStr = localStorage.getItem('tutoria_estudiantes_atendidos');
+          const estudiantesAtendidos = estudiantesAtendidosStr ? JSON.parse(estudiantesAtendidosStr) : [];
+          const estudiantesAtendidosHoy = new Set(
+            estudiantesAtendidos
+              .filter((e: any) => e.fecha === hoy)
+              .map((e: any) => e.nombre)
+          );
+          
+          console.log('👥 Estudiantes atendidos hoy:', Array.from(estudiantesAtendidosHoy));
+          
+          // Filtrar estudiantes con más de 3 ausencias o tardanzas
+          // Y excluir estudiantes que fueron atendidos hoy (por cualquier profesor)
+          const problemas = Object.entries(conteoPorEstudiante)
+            .filter(([nombre, conteo]) => {
+              // Excluir si fue atendido hoy por cualquier profesor
+              if (estudiantesAtendidosHoy.has(nombre)) {
+                console.log('🔕 Estudiante excluido de notificaciones (atendido hoy):', nombre);
+                return false;
+              }
+              // Incluir si tiene más de 3 ausencias o más de 3 tardanzas
+              const tieneProblemas = conteo.ausencias > 3 || conteo.tardanzas > 3;
+              if (tieneProblemas) {
+                console.log('🔔 Estudiante con problemas:', nombre, { ausencias: conteo.ausencias, tardanzas: conteo.tardanzas });
+              }
+              return tieneProblemas;
+            })
+            .map(([nombre, conteo]) => ({
+              nombre,
+              ausencias: conteo.ausencias,
+              tardanzas: conteo.tardanzas,
+              total: conteo.ausencias + conteo.tardanzas,
+              estudiante: conteo.estudiante
+            }))
+            .sort((a, b) => b.total - a.total);
+          
+          console.log('📊 Total estudiantes con problemas (después de filtrar atendidos):', problemas.length);
+          console.log('📋 Lista de estudiantes con problemas:', problemas.map(p => p.nombre));
+          setEstudiantesConProblemas(problemas);
+        } catch (error) {
+          console.error('❌ Error cargando notificaciones:', error);
+          setEstudiantesConProblemas([]);
+        }
+      };
+      
+      loadData();
     } else {
       console.log('⚠️ No se cargan notificaciones - isProfesor:', isProfesor, 'window:', typeof window);
     }
@@ -154,12 +161,13 @@ export function Navbar() {
   useEffect(() => {
     if (!isProfesor) return;
     
-    const actualizarDatos = () => {
+    const actualizarDatos = async () => {
       try {
-        const { getAsistenciaClases, getEstudiantesInfo, getTutores, getEstudiantesAtendidos } = require('@/lib/storage');
-        const registrosAsistencia = getAsistenciaClases();
-        const estudiantes = getEstudiantesInfo();
-        const tutores = getTutores();
+        const [registrosAsistencia, estudiantes, tutores] = await Promise.all([
+          fetchAsistenciaClases(),
+          fetchEstudiantes(),
+          fetchTutores()
+        ]);
         
         const profesorGuardado = localStorage.getItem('profesor_actual') || tutores[0]?.nombre || '';
         if (profesorGuardado !== profesorActual) {
@@ -188,9 +196,10 @@ export function Navbar() {
           });
         });
         
-        // Obtener estudiantes atendidos hoy (por cualquier profesor)
+        // Obtener estudiantes atendidos hoy desde localStorage (esto sigue siendo local)
         const hoy = new Date().toISOString().split('T')[0];
-        const estudiantesAtendidos = getEstudiantesAtendidos();
+        const estudiantesAtendidosStr = localStorage.getItem('tutoria_estudiantes_atendidos');
+        const estudiantesAtendidos = estudiantesAtendidosStr ? JSON.parse(estudiantesAtendidosStr) : [];
         const estudiantesAtendidosHoy = new Set(
           estudiantesAtendidos
             .filter((e: any) => e.fecha === hoy)

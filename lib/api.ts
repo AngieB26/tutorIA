@@ -281,6 +281,12 @@ export async function getTutoresGradoSeccion(): Promise<any[]> {
 // ASISTENCIA
 // ============================================
 
+export async function fetchAsistenciaClases(): Promise<any[]> {
+  const res = await fetch('/api/asistencia');
+  if (!res.ok) throw new Error('Error al obtener asistencia');
+  return res.json();
+}
+
 export async function getAsistenciaClasesByFilters(params: {
   fecha?: string;
   claseId?: string;
