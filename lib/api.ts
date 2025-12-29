@@ -273,6 +273,38 @@ export async function saveTutoresGradoSeccion(tutores: any[]): Promise<void> {
   if (!res.ok) throw new Error('Error al guardar tutores grado sección');
 }
 
+export async function getTutoresGradoSeccion(): Promise<any[]> {
+  return fetchTutoresGradoSeccion();
+}
+
+// ============================================
+// ASISTENCIA
+// ============================================
+
+export async function getAsistenciaClasesByFilters(params: {
+  fecha?: string;
+  claseId?: string;
+  profesor?: string;
+  grado?: string;
+  seccion?: string;
+  dia?: string;
+  periodo?: number;
+}): Promise<any[]> {
+  const searchParams = new URLSearchParams();
+  if (params.fecha) searchParams.set('fecha', params.fecha);
+  if (params.claseId) searchParams.set('claseId', params.claseId);
+  if (params.profesor) searchParams.set('profesor', params.profesor);
+  if (params.grado) searchParams.set('grado', params.grado);
+  if (params.seccion) searchParams.set('seccion', params.seccion);
+  if (params.dia) searchParams.set('dia', params.dia);
+  if (typeof params.periodo === 'number') searchParams.set('periodo', params.periodo.toString());
+
+  const url = `/api/asistencia${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Error al obtener asistencia por filtros');
+  return res.json();
+}
+
 // ============================================
 // HELPERS DE INCIDENCIAS
 // ============================================
