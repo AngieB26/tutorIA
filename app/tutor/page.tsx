@@ -124,6 +124,7 @@ export default function TutorPage() {
 
   // Estado para tutor asignado
   const [tutorAsignado, setTutorAsignado] = useState<any>(null);
+  const [estudiantesConEstado, setEstudiantesConEstado] = useState<any[]>([]);
   const esTutorDeLaSeccion = !!tutorAsignado;
 
   // Cargar tutor asignado cuando cambia la sección seleccionada
@@ -150,62 +151,68 @@ export default function TutorPage() {
       return;
     }
 
-    estudiantesFiltrados.forEach(async (est) => {
-      // Solo cargar si no existe el resumen (evitar llamadas duplicadas)
-      if (iaResumenes[est.nombre] || resumenesCargados.current.has(est.nombre)) return;
+    const loadResumenes = async () => {
+      for (const est of estudiantesFiltrados) {
+        // Solo cargar si no existe el resumen (evitar llamadas duplicadas)
+        if (iaResumenes[est.nombre] || resumenesCargados.current.has(est.nombre)) continue;
 
-      try {
-        const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
-        const incidenciasRecientes = incidenciasEst.filter(inc => {
-          const fechaInc = new Date(inc.fecha);
-          const hace30Dias = new Date();
-          hace30Dias.setDate(hace30Dias.getDate() - 30);
-          return fechaInc >= hace30Dias;
-        });
-
-        // Marcar como que ya se está procesando
-        resumenesCargados.current.add(est.nombre);
-
-        // Marcar como cargando
-        setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
-
-        // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
-        fetch('/api/generate-report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            estudiante: est.nombre,
-            incidencias: incidenciasRecientes.length > 0 ? incidenciasRecientes : []
-          })
-        })
-        .then(async res => {
-          if (!res.ok) throw new Error('Error al obtener resumen de IA');
-          const data = await res.json();
-          // Extraer solo el resumen (primera línea o parte del resumen)
-          let resumen = '';
-          if (data.resumen) {
-            // Tomar solo la primera línea o las primeras palabras del resumen
-            const primeraLinea = typeof data.resumen === 'string' 
-              ? data.resumen.split('\n')[0].trim() 
-              : '';
-            resumen = primeraLinea || 'Análisis generado por IA.';
-          } else {
-            resumen = 'Sin análisis disponible.';
-          }
-          setIaResumenes(prev => ({ ...prev, [est.nombre]: resumen }));
-        })
-        .catch(error => {
-          console.error('Error generando resumen IA para', est.nombre, error);
-          setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error al generar resumen de IA.' }));
-        })
-        .finally(() => {
-          setIaCargando(prev => {
-            const nuevo = { ...prev };
-            delete nuevo[est.nombre];
-            return nuevo;
+        try {
+          const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+          const incidenciasRecientes = incidenciasEst.filter(inc => {
+            const fechaInc = new Date(inc.fecha);
+            const hace30Dias = new Date();
+            hace30Dias.setDate(hace30Dias.getDate() - 30);
+            return fechaInc >= hace30Dias;
           });
-        });
-    });
+
+          // Marcar como que ya se está procesando
+          resumenesCargados.current.add(est.nombre);
+
+          // Marcar como cargando
+          setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
+
+          // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
+          try {
+            const res = await fetch('/api/generate-report', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                estudiante: est.nombre,
+                incidencias: incidenciasRecientes.length > 0 ? incidenciasRecientes : []
+              })
+            });
+
+            if (!res.ok) throw new Error('Error al obtener resumen de IA');
+            const data = await res.json();
+            // Extraer solo el resumen (primera línea o parte del resumen)
+            let resumen = '';
+            if (data.resumen) {
+              // Tomar solo la primera línea o las primeras palabras del resumen
+              const primeraLinea = typeof data.resumen === 'string' 
+                ? data.resumen.split('\n')[0].trim() 
+                : '';
+              resumen = primeraLinea || 'Análisis generado por IA.';
+            } else {
+              resumen = 'Sin análisis disponible.';
+            }
+            setIaResumenes(prev => ({ ...prev, [est.nombre]: resumen }));
+          } catch (error) {
+            console.error('Error generando resumen IA para', est.nombre, error);
+            setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error al generar resumen de IA.' }));
+          } finally {
+            setIaCargando(prev => {
+              const nuevo = { ...prev };
+              delete nuevo[est.nombre];
+              return nuevo;
+            });
+          }
+        } catch (error) {
+          console.error('Error cargando incidencias para', est.nombre, error);
+        }
+      }
+    };
+
+    loadResumenes();
   }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion]);
 
   const handleRegistrarAsistencia = (estudiante: EstudianteInfo) => {
@@ -493,14 +500,80 @@ export default function TutorPage() {
     );
   }
 
-  // Vista de Estudiantes de una Sección
-  if (viewMode === 'lista' && seccionSeleccionada) {
-    // Determinar si hay un tutor asignado a esta sección (usar estado)
-    const esTutorDeLaSeccion = !!tutorAsignado;
+  // Cargar estudiantes con estado cuando cambia la sección seleccionada
+  useEffect(() => {
+    const loadEstudiantesConEstado = async () => {
+      if (!seccionSeleccionada || estudiantesFiltrados.length === 0) {
+        setEstudiantesConEstado([]);
+        return;
+      }
 
-    // Calcular estadísticas para el bloque REPORTE (solo si es tutor)
-    let resumenData = null;
-    if (esTutorDeLaSeccion) {
+      if (!esTutorDeLaSeccion) {
+        setEstudiantesConEstado(estudiantesFiltrados.map(est => ({ ...est, estado: null, iaResumen: null, estaCargandoIA: false })));
+        return;
+      }
+
+      const estudiantesPromises = estudiantesFiltrados.map(async (est) => {
+        const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+        const incidenciasRecientes = incidenciasEst.filter(inc => {
+          const fechaInc = new Date(inc.fecha);
+          const hace30Dias = new Date();
+          hace30Dias.setDate(hace30Dias.getDate() - 30);
+          return fechaInc >= hace30Dias;
+        });
+
+        // Separar incidencias positivas y negativas
+        const incidenciasNegativas = incidenciasRecientes.filter(inc => 
+          inc.tipo === 'ausencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
+        );
+        const incidenciasPositivas = incidenciasRecientes.filter(inc => inc.tipo === 'positivo');
+        
+        const incidenciasGraves = incidenciasNegativas.filter(inc => inc.gravedad === 'grave');
+        const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'ausencia').length;
+        const totalIncidenciasNegativas = incidenciasNegativas.length;
+        const totalIncidenciasPositivas = incidenciasPositivas.length;
+
+        // Determinar estado: Normal, Atención o Riesgo (solo basado en incidencias negativas)
+        // Las incidencias positivas mejoran el estado
+        let estado: 'normal' | 'atencion' | 'riesgo' = 'normal';
+        
+        // Si hay muchas incidencias positivas, favorece estado normal
+        const balance = totalIncidenciasPositivas - totalIncidenciasNegativas;
+        
+        if (incidenciasGraves.length > 0 || ausencias >= 5 || (totalIncidenciasNegativas >= 8 && balance < -3)) {
+          estado = 'riesgo';
+        } else if ((totalIncidenciasNegativas >= 3 && balance < 0) || (ausencias >= 2 && balance < 0)) {
+          estado = 'atencion';
+        } else if (totalIncidenciasNegativas >= 5 && balance <= 0) {
+          estado = 'atencion';
+        }
+        // Si balance >= 0 (más positivas que negativas), mantener normal
+
+        // Resumen IA será cargado de forma asíncrona desde la API
+        const iaResumen = iaResumenes[est.nombre] || null;
+        const estaCargandoIA = iaCargando[est.nombre] || false;
+
+        return { ...est, estado, iaResumen, estaCargandoIA };
+      });
+
+      const estudiantes = await Promise.all(estudiantesPromises);
+      setEstudiantesConEstado(estudiantes);
+    };
+
+    loadEstudiantesConEstado();
+  }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion, iaResumenes, iaCargando]);
+
+  // Estados para resumen de datos
+  const [resumenData, setResumenData] = useState<any>(null);
+
+  // Cargar resumen de datos cuando cambia la sección
+  useEffect(() => {
+    const loadResumenData = async () => {
+      if (!seccionSeleccionada || !esTutorDeLaSeccion) {
+        setResumenData(null);
+        return;
+      }
+
       const totalEstudiantes = estudiantesFiltrados.length;
       
       // Calcular asistencia promedio
@@ -526,74 +599,18 @@ export default function TutorPage() {
         return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
       }).length;
 
-      resumenData = {
+      setResumenData({
         totalEstudiantes,
         asistenciaPromedio,
         incidenciasActivas
-      };
-    }
+      });
+    };
 
-    // Calcular estado y resumen IA para cada estudiante (solo si es tutor)
-    // Nota: Esto necesita ser async, pero por ahora usamos Promise.all
-    // Por simplicidad, usamos un estado para cargar los datos de forma asíncrona
-    const [estudiantesConEstado, setEstudiantesConEstado] = useState<any[]>([]);
-    
-    useEffect(() => {
-      const loadEstudiantesConEstado = async () => {
-        if (!esTutorDeLaSeccion || estudiantesFiltrados.length === 0) {
-          setEstudiantesConEstado(estudiantesFiltrados.map(est => ({ ...est, estado: null, iaResumen: null, estaCargandoIA: false })));
-          return;
-        }
+    loadResumenData();
+  }, [seccionSeleccionada, esTutorDeLaSeccion, estudiantesFiltrados.length]);
 
-        const estudiantesPromises = estudiantesFiltrados.map(async (est) => {
-          const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
-          const incidenciasRecientes = incidenciasEst.filter(inc => {
-            const fechaInc = new Date(inc.fecha);
-            const hace30Dias = new Date();
-            hace30Dias.setDate(hace30Dias.getDate() - 30);
-            return fechaInc >= hace30Dias;
-          });
-
-          // Separar incidencias positivas y negativas
-          const incidenciasNegativas = incidenciasRecientes.filter(inc => 
-            inc.tipo === 'ausencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
-          );
-          const incidenciasPositivas = incidenciasRecientes.filter(inc => inc.tipo === 'positivo');
-          
-          const incidenciasGraves = incidenciasNegativas.filter(inc => inc.gravedad === 'grave');
-          const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'ausencia').length;
-          const totalIncidenciasNegativas = incidenciasNegativas.length;
-          const totalIncidenciasPositivas = incidenciasPositivas.length;
-
-          // Determinar estado: Normal, Atención o Riesgo (solo basado en incidencias negativas)
-          // Las incidencias positivas mejoran el estado
-          let estado: 'normal' | 'atencion' | 'riesgo' = 'normal';
-          
-          // Si hay muchas incidencias positivas, favorece estado normal
-          const balance = totalIncidenciasPositivas - totalIncidenciasNegativas;
-          
-          if (incidenciasGraves.length > 0 || ausencias >= 5 || (totalIncidenciasNegativas >= 8 && balance < -3)) {
-            estado = 'riesgo';
-          } else if ((totalIncidenciasNegativas >= 3 && balance < 0) || (ausencias >= 2 && balance < 0)) {
-            estado = 'atencion';
-          } else if (totalIncidenciasNegativas >= 5 && balance <= 0) {
-            estado = 'atencion';
-          }
-          // Si balance >= 0 (más positivas que negativas), mantener normal
-
-          // Resumen IA será cargado de forma asíncrona desde la API
-          const iaResumen = iaResumenes[est.nombre] || null;
-          const estaCargandoIA = iaCargando[est.nombre] || false;
-
-          return { ...est, estado, iaResumen, estaCargandoIA };
-        });
-
-        const estudiantes = await Promise.all(estudiantesPromises);
-        setEstudiantesConEstado(estudiantes);
-      };
-
-      loadEstudiantesConEstado();
-    }, [estudiantesFiltrados, esTutorDeLaSeccion, iaResumenes, iaCargando]);
+  // Vista de Estudiantes de una Sección
+  if (viewMode === 'lista' && seccionSeleccionada) {
 
     return (
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-6xl">
