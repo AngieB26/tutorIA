@@ -344,11 +344,36 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       ? newIncidencia.derivacion 
       : null;
 
+    // Determinar el estado inicial según el tipo de incidencia
+    // Las incidencias positivas tienen estado 'normal', las demás 'Pendiente'
+    let estadoInicial: EstadoIncidencia;
+    if (newIncidencia.estado) {
+      estadoInicial = newIncidencia.estado;
+    } else if (newIncidencia.tipo === 'positivo') {
+      estadoInicial = 'normal';
+    } else {
+      estadoInicial = 'Pendiente';
+    }
+    
+    // Inicializar historialEstado con el estado inicial si no existe
+    let historialEstado: EstadoIncidenciaHistorial[] = [];
+    if (newIncidencia.historialEstado && Array.isArray(newIncidencia.historialEstado)) {
+      historialEstado = newIncidencia.historialEstado;
+    } else {
+      // Si no hay historial, crear uno inicial con el estado correspondiente
+      historialEstado = [{
+        estado: estadoInicial,
+        fecha: new Date().toISOString(),
+        usuario: newIncidencia.profesor || 'Sistema',
+      }];
+    }
+
     console.log('📝 Guardando nueva incidencia:', {
       id: newIncidencia.id,
       estudiante: newIncidencia.studentName,
       derivacionOriginal: newIncidencia.derivacion,
       derivacionGuardada: derivacionValue,
+      estado: estadoInicial,
       timestamp: newIncidencia.timestamp
     });
 
@@ -366,11 +391,11 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
         lugar: newIncidencia.lugar ?? null,
         timestamp: BigInt(newIncidencia.timestamp),
         derivacion: derivacionValue,
-        resuelta: newIncidencia.resuelta ?? false,
-        fechaResolucion: newIncidencia.fechaResolucion ?? null,
-        resueltaPor: newIncidencia.resueltaPor ?? null,
-        estado: newIncidencia.estado ?? 'Pendiente',
-        historialEstado: newIncidencia.historialEstado ? JSON.stringify(newIncidencia.historialEstado) : null,
+        resuelta: false, // Siempre false al crear
+        fechaResolucion: null, // Siempre null al crear
+        resueltaPor: null, // Siempre null al crear
+        estado: estadoInicial, // 'normal' para positivas, 'Pendiente' para las demás
+        historialEstado: JSON.stringify(historialEstado), // Siempre inicializar historial
       },
     });
 
@@ -830,7 +855,7 @@ export async function getIncidenciasByGravedad(
 
 export async function getIncidenciasByFiltros(
   gravedad?: 'grave' | 'moderada' | 'leve' | 'todas',
-  tipo?: 'ausencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo' | 'todas'
+  tipo?: 'asistencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo' | 'todas'
 ): Promise<Incidencia[]> {
   let incidencias = await getIncidencias();
   // Filtrar por gravedad
@@ -847,8 +872,18 @@ export async function getIncidenciasByFiltros(
 export async function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): Promise<Incidencia[]> {
   const incidencias = await getIncidencias();
   
+  // Tipos de incidencias negativas (excluir positivas)
+  // Nota: 'ausencia' se cambió por 'asistencia'
+  const tiposNegativos: string[] = ['asistencia', 'tardanza', 'conducta', 'academica'];
+  
   const derivadas = incidencias
     .filter(inc => {
+      // Excluir incidencias positivas - solo mostrar negativas
+      const esNegativa = tiposNegativos.includes(inc.tipo);
+      if (!esNegativa) {
+        return false;
+      }
+      
       // Verificar que tenga derivación válida (no 'ninguna', null, undefined, o cadena vacía)
       const derivacionValida = inc.derivacion && 
                                 inc.derivacion !== 'ninguna' &&
@@ -863,6 +898,7 @@ export async function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): 
           console.log('✅ Incidencia derivada encontrada:', {
             id: inc.id,
             estudiante: inc.studentName,
+            tipo: inc.tipo,
             derivacion: inc.derivacion,
             tipoFiltro: tipoDerivacion,
             resuelta: inc.resuelta,
@@ -877,6 +913,7 @@ export async function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): 
           console.log('✅ Incidencia derivada encontrada (sin filtro):', {
             id: inc.id,
             estudiante: inc.studentName,
+            tipo: inc.tipo,
             derivacion: inc.derivacion,
             resuelta: inc.resuelta,
             timestamp: inc.timestamp

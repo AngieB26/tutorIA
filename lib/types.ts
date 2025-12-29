@@ -4,7 +4,7 @@ export type SubtipoConducta = 'agresion' | 'falta_respeto' | 'interrupcion' | 'd
 export type SubtipoPositivo = 'ayuda_companero' | 'participacion' | 'liderazgo' | 'creatividad' | 'otro';
 export type Gravedad = 'grave' | 'moderada' | 'leve';
 
-export type EstadoIncidencia = 'Pendiente' | 'En revisión' | 'Resuelta' | 'Cerrada';
+export type EstadoIncidencia = 'Pendiente' | 'En revisión' | 'Resuelta' | 'Cerrada' | 'normal';
 
 export interface EstadoIncidenciaHistorial {
   estado: EstadoIncidencia;
