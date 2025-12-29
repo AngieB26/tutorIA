@@ -100,6 +100,81 @@ export default function TutorPage() {
       })
     : [];
 
+  // Determinar si hay un tutor asignado a la sección seleccionada
+  const tutorAsignado = seccionSeleccionada 
+    ? getTutorGradoSeccion(seccionSeleccionada.grado, seccionSeleccionada.seccion)
+    : null;
+  const esTutorDeLaSeccion = !!tutorAsignado;
+
+  // Cargar resúmenes de IA para estudiantes (solo si es tutor de la sección)
+  useEffect(() => {
+    if (!esTutorDeLaSeccion || !seccionSeleccionada || estudiantesFiltrados.length === 0) {
+      return;
+    }
+
+    estudiantesFiltrados.forEach(est => {
+      // Solo cargar si no existe el resumen (evitar llamadas duplicadas)
+      if (iaResumenes[est.nombre] || resumenesCargados.current.has(est.nombre)) return;
+
+      const incidenciasEst = getIncidenciasByStudent(est.nombre);
+      const incidenciasRecientes = incidenciasEst.filter(inc => {
+        const fechaInc = new Date(inc.fecha);
+        const hace30Dias = new Date();
+        hace30Dias.setDate(hace30Dias.getDate() - 30);
+        return fechaInc >= hace30Dias;
+      });
+
+      // Marcar como que ya se está procesando
+      resumenesCargados.current.add(est.nombre);
+
+      // Si no hay incidencias recientes, usar mensaje simple sin llamar a la API
+      if (incidenciasRecientes.length === 0) {
+        setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Sin incidencias recientes. Rendimiento normal.' }));
+        return;
+      }
+
+      // Marcar como cargando
+      setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
+
+      // Llamar a la API para generar resumen de IA (una línea)
+      fetch('/api/generate-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estudiante: est.nombre,
+          incidencias: incidenciasRecientes
+        })
+      })
+        .then(async res => {
+          if (!res.ok) throw new Error('Error al obtener resumen de IA');
+          const data = await res.json();
+          // Extraer solo el resumen (primera línea o parte del resumen)
+          let resumen = '';
+          if (data.resumen) {
+            // Tomar solo la primera línea o las primeras palabras del resumen
+            const primeraLinea = typeof data.resumen === 'string' 
+              ? data.resumen.split('\n')[0].trim() 
+              : '';
+            resumen = primeraLinea || 'Análisis generado por IA.';
+          } else {
+            resumen = 'Sin análisis disponible.';
+          }
+          setIaResumenes(prev => ({ ...prev, [est.nombre]: resumen }));
+        })
+        .catch(error => {
+          console.error('Error generando resumen IA para', est.nombre, error);
+          setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error al generar resumen de IA.' }));
+        })
+        .finally(() => {
+          setIaCargando(prev => {
+            const nuevo = { ...prev };
+            delete nuevo[est.nombre];
+            return nuevo;
+          });
+        });
+    });
+  }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion]);
+
   const handleRegistrarAsistencia = (estudiante: EstudianteInfo) => {
     setSelectedStudent(estudiante);
     setViewMode('asistencia');
@@ -395,73 +470,6 @@ export default function TutorPage() {
         incidenciasActivas
       };
     }
-
-    // Cargar resúmenes de IA para estudiantes (solo si es tutor de la sección)
-    useEffect(() => {
-      if (!esTutorDeLaSeccion || estudiantesFiltrados.length === 0) return;
-
-      estudiantesFiltrados.forEach(est => {
-        // Solo cargar si no existe el resumen (evitar llamadas duplicadas)
-        if (iaResumenes[est.nombre]) return;
-
-        const incidenciasEst = getIncidenciasByStudent(est.nombre);
-        const incidenciasRecientes = incidenciasEst.filter(inc => {
-          const fechaInc = new Date(inc.fecha);
-          const hace30Dias = new Date();
-          hace30Dias.setDate(hace30Dias.getDate() - 30);
-          return fechaInc >= hace30Dias;
-        });
-
-        // Marcar como que ya se está procesando
-        resumenesCargados.current.add(est.nombre);
-
-        // Si no hay incidencias recientes, usar mensaje simple sin llamar a la API
-        if (incidenciasRecientes.length === 0) {
-          setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Sin incidencias recientes. Rendimiento normal.' }));
-          return;
-        }
-
-        // Marcar como cargando
-        setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
-
-        // Llamar a la API para generar resumen de IA (una línea)
-        fetch('/api/generate-report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            estudiante: est.nombre,
-            incidencias: incidenciasRecientes
-          })
-        })
-          .then(async res => {
-            if (!res.ok) throw new Error('Error al obtener resumen de IA');
-            const data = await res.json();
-            // Extraer solo el resumen (primera línea o parte del resumen)
-            let resumen = '';
-            if (data.resumen) {
-              // Tomar solo la primera línea o las primeras palabras del resumen
-              const primeraLinea = typeof data.resumen === 'string' 
-                ? data.resumen.split('\n')[0].trim() 
-                : '';
-              resumen = primeraLinea || 'Análisis generado por IA.';
-            } else {
-              resumen = 'Sin análisis disponible.';
-            }
-            setIaResumenes(prev => ({ ...prev, [est.nombre]: resumen }));
-          })
-          .catch(error => {
-            console.error('Error generando resumen IA para', est.nombre, error);
-            setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error al generar resumen de IA.' }));
-          })
-          .finally(() => {
-            setIaCargando(prev => {
-              const nuevo = { ...prev };
-              delete nuevo[est.nombre];
-              return nuevo;
-            });
-          });
-      });
-    }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion]);
 
     // Calcular estado y resumen IA para cada estudiante (solo si es tutor)
     const estudiantesConEstado = estudiantesFiltrados.map(est => {
