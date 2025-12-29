@@ -66,7 +66,9 @@ export async function POST() {
       { nombre: 'Fernanda Ortiz', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-12-01', contacto: { tutor: 'Carlos Ortiz', telefono: '555-5003', email: 'carlos.ortiz@email.com' } },
       { nombre: 'Ricardo Méndez', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-04-16', contacto: { tutor: 'Sandra Méndez', telefono: '555-5004', email: 'sandra.mendez@email.com' } },
     ];
+    console.log('💾 Guardando estudiantes...');
     await saveEstudiantesInfo(estudiantesInfo);
+    console.log(`✅ ${estudiantesInfo.length} estudiantes guardados`);
 
     // 2. Seed Tutores
     const tutoresData: Tutor[] = [
@@ -77,7 +79,9 @@ export async function POST() {
       { id: 't5', nombre: 'Prof. Martínez', email: 'martinez@colegio.edu', telefono: '+1234567894' },
       { id: 't6', nombre: 'Prof. Ramírez', email: 'ramirez@colegio.edu', telefono: '+1234567895' },
     ];
+    console.log('💾 Guardando tutores...');
     await saveTutores(tutoresData);
+    console.log(`✅ ${tutoresData.length} tutores guardados`);
 
     // 3. Seed Incidencias
     const seedData: Incidencia[] = [
@@ -211,7 +215,9 @@ export async function POST() {
         ]
       },
     ];
+    console.log('💾 Guardando incidencias...');
     await saveIncidencias(seedData);
+    console.log(`✅ ${seedData.length} incidencias guardadas`);
 
     // 4. Seed Notas
     const notasData: Nota[] = [
@@ -234,7 +240,9 @@ export async function POST() {
       { id: 'n17', studentName: 'Carlos Ruiz', materia: 'Lengua', nota: 79, fecha: '2024-10-20', profesor: 'Prof. García' },
       { id: 'n18', studentName: 'Carlos Ruiz', materia: 'Lengua', nota: 81, fecha: '2024-11-25', profesor: 'Prof. García' },
     ];
+    console.log('💾 Guardando notas...');
     await saveNotas(notasData);
+    console.log(`✅ ${notasData.length} notas guardadas`);
 
     // 5. Seed Clases
     const posiblesDias: DiaSemana[] = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
@@ -245,10 +253,13 @@ export async function POST() {
       { nombre: 'Historia', grado: '4to', seccion: 'A', profesor: 'Prof. Torres', dias: posiblesDias, periodos: [2, 6] },
       { nombre: 'Arte', grado: '5to', seccion: 'A', profesor: 'Prof. Ramírez', dias: posiblesDias, periodos: [3, 7] },
     ];
+    console.log('💾 Guardando clases...');
     for (const clase of clasesSeed) {
       await addClase(clase);
     }
+    console.log(`✅ ${clasesSeed.length} clases guardadas`);
 
+    console.log('✅ Seed completado exitosamente!');
     return NextResponse.json({ 
       success: true, 
       message: 'Seed ejecutado exitosamente',
@@ -259,9 +270,12 @@ export async function POST() {
       clases: clasesSeed.length
     });
   } catch (error) {
-    console.error('Error ejecutando seed:', error);
+    console.error('❌ Error ejecutando seed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Error details:', { errorMessage, errorStack });
     return NextResponse.json(
-      { error: 'Error ejecutando seed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Error ejecutando seed', details: errorMessage, stack: errorStack },
       { status: 500 }
     );
   }
