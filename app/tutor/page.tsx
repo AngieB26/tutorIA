@@ -380,44 +380,73 @@ export default function TutorPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-sm font-semibold">Tutor</TableHead>
-                      <TableHead className="text-sm font-semibold">Grado</TableHead>
-                      <TableHead className="text-sm font-semibold">Sección</TableHead>
-                      <TableHead className="text-sm font-semibold">Cantidad de Estudiantes</TableHead>
-                      <TableHead className="text-sm font-semibold text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {seccionesAsignadas.map((seccion, index) => (
-                      <TableRow key={`${seccion.grado}-${seccion.seccion}-${seccion.tutorId}`} className="hover:bg-gray-50">
-                        <TableCell className="font-medium text-gray-900">{seccion.tutorNombre}</TableCell>
-                        <TableCell className="text-gray-900">{seccion.grado}</TableCell>
-                        <TableCell className="text-gray-900">{seccion.seccion}</TableCell>
-                        <TableCell className="text-gray-900">
+              <>
+                {/* Vista de Cards para móvil */}
+                <div className="grid grid-cols-1 gap-4 sm:hidden">
+                  {seccionesAsignadas.map((seccion) => (
+                    <Card key={`${seccion.grado}-${seccion.seccion}-${seccion.tutorId}`} className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{seccion.grado} {seccion.seccion}</h3>
+                            <p className="text-sm text-gray-600">Tutor: {seccion.tutorNombre}</p>
+                          </div>
                           <Badge variant="outline" className="font-semibold">
-                            {seccion.cantidadEstudiantes}
+                            {seccion.cantidadEstudiantes} estudiantes
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            onClick={() => setSeccionSeleccionada({ grado: seccion.grado, seccion: seccion.seccion })}
-                            className="gap-1 w-full sm:w-auto"
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span className="hidden sm:inline">Ver Estudiantes</span>
-                            <span className="sm:hidden">Ver</span>
-                          </Button>
-                        </TableCell>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => setSeccionSeleccionada({ grado: seccion.grado, seccion: seccion.seccion })}
+                          className="w-full gap-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Ver Estudiantes
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Vista de Tabla para desktop */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold">Tutor</TableHead>
+                        <TableHead className="text-sm font-semibold">Grado</TableHead>
+                        <TableHead className="text-sm font-semibold">Sección</TableHead>
+                        <TableHead className="text-sm font-semibold">Cantidad de Estudiantes</TableHead>
+                        <TableHead className="text-sm font-semibold text-right">Acciones</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {seccionesAsignadas.map((seccion, index) => (
+                        <TableRow key={`${seccion.grado}-${seccion.seccion}-${seccion.tutorId}`} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-gray-900">{seccion.tutorNombre}</TableCell>
+                          <TableCell className="text-gray-900">{seccion.grado}</TableCell>
+                          <TableCell className="text-gray-900">{seccion.seccion}</TableCell>
+                          <TableCell className="text-gray-900">
+                            <Badge variant="outline" className="font-semibold">
+                              {seccion.cantidadEstudiantes}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              onClick={() => setSeccionSeleccionada({ grado: seccion.grado, seccion: seccion.seccion })}
+                              className="gap-1"
+                            >
+                              <Eye className="h-4 w-4" />
+                              Ver Estudiantes
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -975,8 +1004,8 @@ export default function TutorPage() {
               </div>
             )}
 
-            <div className="flex gap-4">
-              <Button type="submit" className="flex-1" disabled={loading}>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button type="submit" className="flex-1 w-full sm:w-auto" disabled={loading}>
                 {loading ? 'Registrando...' : viewMode === 'asistencia' ? 'Registrar Asistencia' : 'Registrar Incidencia'}
               </Button>
               <Button type="button" variant="outline" onClick={() => {
@@ -995,7 +1024,7 @@ export default function TutorPage() {
                 });
                 setViewMode('lista');
                 setSelectedStudent(null);
-              }}>
+              }} className="w-full sm:w-auto">
                 Cancelar
               </Button>
             </div>
