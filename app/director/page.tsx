@@ -496,6 +496,7 @@ export default function DirectorPage() {
     const loadData = async () => {
       try {
         const info = await fetchEstudiantes();
+        console.log('Estudiantes cargados:', info.length, info);
         const incidencias = await getListaEstudiantes();
         // Unir ambos: si el estudiante no tiene incidencias, poner 0 y N/A
         const listaCompleta = info.map((est: { nombre: string; grado?: string; seccion?: string }) => {
@@ -508,6 +509,7 @@ export default function DirectorPage() {
             ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
           };
         });
+        console.log('Lista completa de estudiantes:', listaCompleta.length, listaCompleta);
         setListaEstudiantes(listaCompleta);
       } catch (error) {
         console.error('Error cargando lista de estudiantes:', error);
@@ -528,6 +530,7 @@ export default function DirectorPage() {
     const loadEstudiantes = async () => {
       try {
         const estudiantes = await fetchEstudiantes();
+        console.log('EstudiantesInfo cargados:', estudiantes.length, estudiantes);
         setEstudiantesInfo(estudiantes);
       } catch (error) {
         console.error('Error cargando estudiantes:', error);

@@ -12,10 +12,14 @@ export default function HomePage() {
     // Ejecutar seed automáticamente al cargar la página
     const runSeed = async () => {
       try {
+        console.log('Ejecutando seed...');
         const response = await fetch('/api/seed', { method: 'POST' });
         const data = await response.json();
+        console.log('Respuesta del seed:', data);
         if (data.success) {
-          console.log('Seed ejecutado:', data.message);
+          console.log('Seed ejecutado:', data.message, data);
+        } else {
+          console.log('Seed no ejecutado (ya hay datos):', data);
         }
       } catch (error) {
         console.error('Error ejecutando seed:', error);
