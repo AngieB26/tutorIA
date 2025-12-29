@@ -4180,11 +4180,11 @@ export default function DirectorPage() {
                                         onClick={async () => {
                                           if (confirm(`¿Estás seguro de eliminar a ${estudiante.nombre}?`)) {
                                             try {
-                                              await deleteEstudiante(estudiante.nombre);
-                                              const estudiantesFiltrados = estudiantesInfo.filter(e => e.nombre !== estudiante.nombre);
-                                              setEstudiantesInfo(estudiantesFiltrados);
-                                              setRefreshKey(prev => prev + 1);
-                                              toast.success('Estudiante eliminado exitosamente');
+                                            await deleteEstudiante(estudiante.nombre);
+                                            const estudiantesFiltrados = estudiantesInfo.filter(e => e.nombre !== estudiante.nombre);
+                                            setEstudiantesInfo(estudiantesFiltrados);
+                                            setRefreshKey(prev => prev + 1);
+                                            toast.success('Estudiante eliminado exitosamente de la base de datos');
                                             } catch (error) {
                                               console.error('Error eliminando estudiante:', error);
                                               toast.error('Error al eliminar estudiante');
