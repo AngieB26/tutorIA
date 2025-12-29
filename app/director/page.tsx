@@ -810,6 +810,8 @@ export default function DirectorPage() {
     const loadIncidencias = async () => {
       try {
         const todasIncidencias = await fetchIncidencias();
+        console.log('📊 Director: Incidencias cargadas desde API:', todasIncidencias.length);
+        console.log('📊 Director: IDs de incidencias:', todasIncidencias.map((inc: Incidencia) => ({ id: inc.id, estudiante: inc.studentName, derivacion: inc.derivacion, resuelta: inc.resuelta })));
         setIncidencias(todasIncidencias);
         
         // Sincronizar incidencias vistas con localStorage después de cargar incidencias
