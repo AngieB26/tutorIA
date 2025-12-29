@@ -13,12 +13,20 @@ import { EstudianteInfo, Incidencia, Tutor, Nota, Clase, DiaSemana } from '@/lib
 
 export async function POST() {
   try {
+    console.log('🌱 Iniciando seed...');
     // Verificar si ya hay datos
     const existingEstudiantes = await getEstudiantesInfo();
     const existingIncidencias = await getIncidencias();
     const existingTutores = await getTutores();
 
+    console.log('Datos existentes:', {
+      estudiantes: existingEstudiantes.length,
+      incidencias: existingIncidencias.length,
+      tutores: existingTutores.length
+    });
+
     if (existingEstudiantes.length > 0 || existingIncidencias.length > 0) {
+      console.log('✅ Ya hay datos, no se ejecuta seed');
       return NextResponse.json({ 
         success: true, 
         message: 'La base de datos ya tiene datos. No se ejecutó el seed.',
@@ -27,6 +35,8 @@ export async function POST() {
         tutores: existingTutores.length
       });
     }
+
+    console.log('📝 No hay datos, ejecutando seed...');
 
     // 1. Seed Estudiantes
     const estudiantesInfo: EstudianteInfo[] = [
