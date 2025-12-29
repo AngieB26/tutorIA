@@ -322,18 +322,36 @@ export async function saveIncidencias(incidencias: Incidencia[]): Promise<void> 
     // Eliminar todas las incidencias existentes y crear las nuevas
     await prisma.incidencia.deleteMany({});
     
+    // Pre-cargar todos los estudiantes y tutores para mejorar rendimiento
+    const todosEstudiantes = await prisma.estudiante.findMany();
+    const todosTutores = await prisma.tutor.findMany();
+    const mapEstudianteId = new Map<string, string>();
+    const mapTutorId = new Map<string, string>();
+    
+    todosEstudiantes.forEach(est => mapEstudianteId.set(est.nombre, est.id));
+    todosTutores.forEach(tutor => mapTutorId.set(tutor.nombre, tutor.id));
+    
     for (const inc of incidencias) {
+      const estudianteId = mapEstudianteId.get(inc.studentName) ?? null;
+      const profesorId = mapTutorId.get(inc.profesor) ?? null;
+      let tutorNombre = inc.tutor ?? null;
+      if (!tutorNombre && inc.profesor) {
+        tutorNombre = inc.profesor;
+      }
+
       await prisma.incidencia.create({
         data: {
           id: inc.id,
           studentName: inc.studentName,
+          estudianteId: estudianteId, // Asignar el ID del estudiante
           tipo: inc.tipo,
           subtipo: inc.subtipo ?? null,
           gravedad: inc.gravedad,
           descripcion: inc.descripcion,
           fecha: inc.fecha,
           profesor: inc.profesor,
-          tutorNombre: inc.tutor ?? null,
+          profesorId: profesorId, // Asignar el ID del profesor/tutor
+          tutorNombre: tutorNombre, // Asignar el nombre del tutor
           lugar: inc.lugar ?? null,
           timestamp: BigInt(inc.timestamp),
           derivacion: inc.derivacion ?? null,
@@ -389,9 +407,32 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       }];
     }
 
+    // Buscar estudianteId por nombre y obtener grado/sección
+    const estudiante = await prisma.estudiante.findFirst({
+      where: { nombre: newIncidencia.studentName }
+    });
+    const estudianteId = estudiante?.id ?? null;
+
+    // Buscar profesorId por nombre (el campo profesor contiene el nombre del profesor que registra)
+    const profesorQueRegistra = await prisma.tutor.findFirst({
+      where: { nombre: newIncidencia.profesor }
+    });
+    const profesorId = profesorQueRegistra?.id ?? null;
+
+    // Buscar el tutor de la sección del estudiante (diferente del profesor que registra)
+    let tutorNombre: string | null = null;
+    if (estudiante?.grado && estudiante?.seccion) {
+      const tutorSeccion = await getTutorGradoSeccion(estudiante.grado, estudiante.seccion);
+      tutorNombre = tutorSeccion?.tutorNombre ?? null;
+    }
+
     console.log('📝 Guardando nueva incidencia:', {
       id: newIncidencia.id,
       estudiante: newIncidencia.studentName,
+      estudianteId,
+      profesor: newIncidencia.profesor,
+      profesorId,
+      tutorNombre,
       derivacionOriginal: newIncidencia.derivacion,
       derivacionGuardada: derivacionValue,
       estado: estadoInicial,
@@ -402,13 +443,15 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       data: {
         id: newIncidencia.id,
         studentName: newIncidencia.studentName,
+        estudianteId: estudianteId, // Asignar el ID del estudiante
         tipo: newIncidencia.tipo,
         subtipo: newIncidencia.subtipo ?? null,
         gravedad: newIncidencia.gravedad,
         descripcion: newIncidencia.descripcion,
         fecha: newIncidencia.fecha,
         profesor: newIncidencia.profesor,
-        tutorNombre: newIncidencia.tutor ?? null,
+        profesorId: profesorId, // Asignar el ID del profesor/tutor
+        tutorNombre: tutorNombre, // Asignar el nombre del tutor
         lugar: newIncidencia.lugar ?? null,
         timestamp: BigInt(newIncidencia.timestamp),
         derivacion: derivacionValue,
