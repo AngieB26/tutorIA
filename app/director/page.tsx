@@ -708,17 +708,6 @@ export default function DirectorPage() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [activeTab, filtroDerivacion]);
 
-  // Función para actualizar manualmente las incidencias derivadas
-  const handleActualizarDerivadas = async () => {
-    try {
-      const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
-      setIncidenciasDerivadas(derivadas);
-      toast.success('Incidencias derivadas actualizadas');
-    } catch (error) {
-      console.error('Error actualizando incidencias derivadas:', error);
-      toast.error('Error al actualizar incidencias derivadas');
-    }
-  };
 
   const [mostrarFormularioCurso, setMostrarFormularioCurso] = useState(false);
   const [formularioCurso, setFormularioCurso] = useState({
@@ -1179,9 +1168,10 @@ export default function DirectorPage() {
     const storage = require('@/lib/storage');
     let filtered = [];
     if (fechaInicio && fechaFin) {
-      filtered = storage.getIncidenciasByDateRange(fechaInicio, fechaFin);
+      // Usar fetchIncidencias con filtros de fecha
+      filtered = await fetchIncidencias({ fechaInicio, fechaFin });
     } else {
-      filtered = storage.getIncidencias ? storage.getIncidencias() : [];
+      filtered = await fetchIncidencias();
     }
     setIncidenciasGenerales(filtered);
     setReporteGeneral(null);
@@ -1942,15 +1932,6 @@ export default function DirectorPage() {
           </div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900">Incidencias Derivadas</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleActualizarDerivadas}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Actualizar
-            </Button>
           </div>
           {incidenciasDerivadas.length > 0 ? (
             <Card>
@@ -2918,12 +2899,17 @@ export default function DirectorPage() {
                   />
                 </div>
                 <Button 
-                  onClick={() => {
+                  onClick={async () => {
                     setFechaInicio('');
                     setFechaFin('');
-                    const storage = require('@/lib/storage');
-                    setIncidenciasGenerales(storage.getIncidencias ? storage.getIncidencias() : []);
-                    setReporteGeneral(null);
+                    try {
+                      const todasIncidencias = await fetchIncidencias();
+                      setIncidenciasGenerales(todasIncidencias);
+                      setReporteGeneral(null);
+                    } catch (error) {
+                      console.error('Error cargando incidencias:', error);
+                      setIncidenciasGenerales([]);
+                    }
                   }}
                   variant="outline"
                   className="h-10 px-6 mt-2 sm:mt-0"
