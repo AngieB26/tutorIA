@@ -497,6 +497,37 @@ export default function DirectorPage() {
       try {
         const info = await fetchEstudiantes();
         console.log('Estudiantes cargados:', info.length, info);
+        
+        // Si no hay estudiantes, ejecutar seed
+        if (info.length === 0) {
+          console.log('No hay estudiantes, ejecutando seed...');
+          try {
+            const seedResponse = await fetch('/api/seed', { method: 'POST' });
+            const seedData = await seedResponse.json();
+            console.log('Respuesta del seed:', seedData);
+            if (seedData.success) {
+              // Recargar estudiantes después del seed
+              const infoAfterSeed = await fetchEstudiantes();
+              console.log('Estudiantes después del seed:', infoAfterSeed.length);
+              const incidencias = await getListaEstudiantes();
+              const listaCompleta = infoAfterSeed.map((est: { nombre: string; grado?: string; seccion?: string }) => {
+                const inc = incidencias.find(i => i.nombre === est.nombre);
+                return {
+                  nombre: est.nombre,
+                  grado: est.grado || '',
+                  seccion: est.seccion || '',
+                  totalIncidencias: inc ? inc.totalIncidencias : 0,
+                  ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
+                };
+              });
+              setListaEstudiantes(listaCompleta);
+              return;
+            }
+          } catch (seedError) {
+            console.error('Error ejecutando seed:', seedError);
+          }
+        }
+        
         const incidencias = await getListaEstudiantes();
         // Unir ambos: si el estudiante no tiene incidencias, poner 0 y N/A
         const listaCompleta = info.map((est: { nombre: string; grado?: string; seccion?: string }) => {
