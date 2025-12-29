@@ -443,6 +443,18 @@ export async function getTutores(): Promise<Tutor[]> {
   }
 }
 
+export async function deleteTutor(id: string): Promise<void> {
+  try {
+    await prisma.tutor.delete({
+      where: { id }
+    });
+    console.log(`✅ Profesor ${id} eliminado de la base de datos`);
+  } catch (error) {
+    console.error('Error eliminando profesor:', error);
+    throw error;
+  }
+}
+
 export async function saveTutores(tutores: Tutor[]): Promise<void> {
   try {
     // Eliminar todos y crear los nuevos
