@@ -4442,12 +4442,16 @@ export default function DirectorPage() {
                               if (nuevoGradoInput.trim()) {
                                 if (!grados.includes(nuevoGradoInput.trim())) {
                                   const nuevosGrados = [...grados, nuevoGradoInput.trim()];
-                                  await saveGrados(nuevosGrados);
-                                  setGrados(nuevosGrados);
-                                  setMostrarAgregarGrado(false);
-                                  setNuevoGradoInput('');
-                                  setRefreshKey(prev => prev + 1);
-                                  toast.success('Grado agregado exitosamente');
+                                  saveGrados(nuevosGrados).then(() => {
+                                    setGrados(nuevosGrados);
+                                    setMostrarAgregarGrado(false);
+                                    setNuevoGradoInput('');
+                                    setRefreshKey(prev => prev + 1);
+                                    toast.success('Grado agregado exitosamente');
+                                  }).catch(error => {
+                                    console.error('Error guardando grados:', error);
+                                    toast.error('Error al guardar grado');
+                                  });
                                 } else {
                                   toast.error('Este grado ya existe');
                                 }
@@ -4558,18 +4562,22 @@ export default function DirectorPage() {
                           onChange={(e) => setNuevaSeccionInput(e.target.value)}
                           placeholder="Nombre de la sección"
                           className="flex-1"
-                          onKeyDown={async (e) => {
+                          onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               if (nuevaSeccionInput.trim()) {
                                 const nuevaSeccion = nuevaSeccionInput.trim().toUpperCase();
                                 if (!secciones.includes(nuevaSeccion)) {
                                   const nuevasSecciones = [...secciones, nuevaSeccion];
-                                  await saveSecciones(nuevasSecciones);
-                                  setSecciones(nuevasSecciones);
-                                  setMostrarAgregarSeccion(false);
-                                  setNuevaSeccionInput('');
-                                  setRefreshKey(prev => prev + 1);
-                                  toast.success('Sección agregada exitosamente');
+                                  saveSecciones(nuevasSecciones).then(() => {
+                                    setSecciones(nuevasSecciones);
+                                    setMostrarAgregarSeccion(false);
+                                    setNuevaSeccionInput('');
+                                    setRefreshKey(prev => prev + 1);
+                                    toast.success('Sección agregada exitosamente');
+                                  }).catch(error => {
+                                    console.error('Error guardando secciones:', error);
+                                    toast.error('Error al guardar sección');
+                                  });
                                 } else {
                                   toast.error('Esta sección ya existe');
                                 }

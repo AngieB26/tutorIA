@@ -237,7 +237,7 @@ export default function TutorPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.estudiante || !formData.tipo || !formData.descripcion || !formData.tutor || !formData.lugar) {
