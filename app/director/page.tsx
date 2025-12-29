@@ -4648,24 +4648,34 @@ export default function DirectorPage() {
                           type="button"
                           onClick={async () => {
                             console.log('🔄 Click en eliminar grado:', grado);
+                            console.log('📊 Grados actuales:', grados);
                             if (!window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
+                              console.log('❌ Usuario canceló');
                               return;
                             }
                             try {
+                              console.log('✅ Usuario confirmó eliminación');
                               const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
+                              console.log('📊 Tiene estudiantes?', tieneEstudiantes);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a este grado`);
                                 return;
                               }
                               const nuevosGrados = grados.filter(g => g !== grado);
-                              console.log('💾 Eliminando grado, nuevos grados:', nuevosGrados);
+                              console.log('💾 Nuevos grados después de filtrar:', nuevosGrados);
+                              console.log('💾 Guardando en BD...');
                               await saveGrados(nuevosGrados);
+                              console.log('✅ Guardado en BD exitoso');
                               setGrados(nuevosGrados);
-                              setRefreshKey(prev => prev + 1);
+                              console.log('✅ Estado local actualizado');
+                              // Esperar un poco antes de recargar para evitar race conditions
+                              setTimeout(() => {
+                                setRefreshKey(prev => prev + 1);
+                              }, 500);
                               toast.success('Grado eliminado exitosamente');
                             } catch (error) {
                               console.error('❌ Error eliminando grado:', error);
-                              toast.error('Error al eliminar el grado');
+                              toast.error(`Error al eliminar el grado: ${error instanceof Error ? error.message : 'Error desconocido'}`);
                             }
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
@@ -4782,24 +4792,34 @@ export default function DirectorPage() {
                           type="button"
                           onClick={async () => {
                             console.log('🔄 Click en eliminar sección:', seccion);
+                            console.log('📊 Secciones actuales:', secciones);
                             if (!window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
+                              console.log('❌ Usuario canceló');
                               return;
                             }
                             try {
+                              console.log('✅ Usuario confirmó eliminación');
                               const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
+                              console.log('📊 Tiene estudiantes?', tieneEstudiantes);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a esta sección`);
                                 return;
                               }
                               const nuevasSecciones = secciones.filter(s => s !== seccion);
-                              console.log('💾 Eliminando sección, nuevas secciones:', nuevasSecciones);
+                              console.log('💾 Nuevas secciones después de filtrar:', nuevasSecciones);
+                              console.log('💾 Guardando en BD...');
                               await saveSecciones(nuevasSecciones);
+                              console.log('✅ Guardado en BD exitoso');
                               setSecciones(nuevasSecciones);
-                              setRefreshKey(prev => prev + 1);
+                              console.log('✅ Estado local actualizado');
+                              // Esperar un poco antes de recargar para evitar race conditions
+                              setTimeout(() => {
+                                setRefreshKey(prev => prev + 1);
+                              }, 500);
                               toast.success('Sección eliminada exitosamente');
                             } catch (error) {
                               console.error('❌ Error eliminando sección:', error);
-                              toast.error('Error al eliminar la sección');
+                              toast.error(`Error al eliminar la sección: ${error instanceof Error ? error.message : 'Error desconocido'}`);
                             }
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
