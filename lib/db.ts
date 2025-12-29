@@ -911,14 +911,40 @@ export async function marcarIncidenciaResuelta(
   resueltaPor: string = 'Director'
 ): Promise<void> {
   try {
+    // Obtener la incidencia actual para preservar el historial
+    const incidencia = await prisma.incidencia.findUnique({
+      where: { id },
+    });
+
+    if (!incidencia) {
+      throw new Error(`Incidencia con id ${id} no encontrada`);
+    }
+
+    // Obtener el historial actual o crear uno nuevo
+    let historial: EstadoIncidenciaHistorial[] = incidencia.historialEstado
+      ? JSON.parse(incidencia.historialEstado)
+      : [];
+
+    // Agregar el nuevo estado al historial
+    historial.push({
+      estado: 'Resuelta',
+      fecha: new Date().toISOString(),
+      usuario: resueltaPor,
+    });
+
+    // Actualizar la incidencia con el estado y el historial
     await prisma.incidencia.update({
       where: { id },
       data: {
         resuelta: true,
         fechaResolucion: new Date().toISOString().split('T')[0],
         resueltaPor,
+        estado: 'Resuelta',
+        historialEstado: JSON.stringify(historial),
       },
     });
+
+    console.log(`✅ Incidencia ${id} marcada como resuelta por ${resueltaPor}`);
   } catch (error) {
     console.error('Error marcando incidencia como resuelta:', error);
     throw error;
