@@ -62,11 +62,12 @@ export async function GET(req: NextRequest) {
 
     // Sin filtros: retornar todas
     const incidencias = await getIncidencias();
+    console.log(`📊 GET /api/incidencias: Retornando ${incidencias.length} incidencias desde la base de datos`);
     return NextResponse.json(incidencias);
   } catch (error) {
-    console.error('Error obteniendo incidencias:', error);
+    console.error('❌ Error obteniendo incidencias:', error);
     return NextResponse.json(
-      { error: 'Error al obtener incidencias' },
+      { error: 'Error al obtener incidencias', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -84,12 +85,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Si es un objeto, agregar nueva incidencia
+    console.log('📝 POST /api/incidencias: Guardando nueva incidencia en la base de datos:', {
+      estudiante: body.studentName,
+      tipo: body.tipo,
+      derivacion: body.derivacion
+    });
     const nuevaIncidencia = await addIncidencia(body);
+    console.log('✅ POST /api/incidencias: Incidencia guardada exitosamente:', nuevaIncidencia.id);
     return NextResponse.json(nuevaIncidencia, { status: 201 });
   } catch (error) {
-    console.error('Error guardando incidencia(s):', error);
+    console.error('❌ Error guardando incidencia(s):', error);
     return NextResponse.json(
-      { error: 'Error al guardar incidencia(s)' },
+      { error: 'Error al guardar incidencia(s)', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

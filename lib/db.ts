@@ -209,6 +209,8 @@ export async function getIncidencias(): Promise<Incidencia[]> {
       orderBy: { timestamp: 'desc' }
     });
 
+    console.log(`📊 getIncidencias: Encontradas ${incidencias.length} incidencias en la base de datos`);
+
     return incidencias.map(inc => {
       const historial: EstadoIncidenciaHistorial[] = inc.historialEstado 
         ? JSON.parse(inc.historialEstado) 
