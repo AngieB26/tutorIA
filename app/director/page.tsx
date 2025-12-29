@@ -994,19 +994,6 @@ export default function DirectorPage() {
       }
     };
 
-    // Handler para cuando se actualiza una incidencia (cambio de estado, etc.)
-    const handleIncidenciaActualizada = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      console.log('🔔 Evento incidenciaActualizada recibido:', customEvent.detail);
-      // Recargar incidencias cuando se actualiza una incidencia
-      setTimeout(() => {
-        setRefreshKey(prev => {
-          console.log('🔄 Actualizando refreshKey por incidencia actualizada:', prev + 1);
-          return prev + 1;
-        });
-      }, 200);
-    };
-
     window.addEventListener('incidenciaMarcadaComoVista', handleIncidenciaMarcadaComoVista as EventListener);
     window.addEventListener('todasIncidenciasMarcadasComoVistas', handleTodasMarcadasComoVistas);
     window.addEventListener('abrirIncidenciaDesdeNotificacionNavbar', handleAbrirIncidenciaDesdeNavbar as EventListener);
