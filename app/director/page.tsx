@@ -4644,31 +4644,22 @@ export default function DirectorPage() {
                     {grados.map((grado, idx) => (
                       <div key={`grado-${grado}-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <span className="font-medium text-gray-900">{grado}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                        <button
                           type="button"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('🔄 Intentando eliminar grado:', grado);
-                            const confirmar = window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`);
-                            if (!confirmar) {
-                              console.log('❌ Usuario canceló la eliminación');
+                          onClick={async () => {
+                            console.log('🔄 Click en eliminar grado:', grado);
+                            if (!window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
                               return;
                             }
                             try {
-                              console.log('✅ Usuario confirmó, verificando estudiantes...');
                               const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
-                              console.log('📊 Estudiantes con este grado:', tieneEstudiantes);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a este grado`);
                                 return;
                               }
-                              console.log('💾 Guardando nuevos grados...');
                               const nuevosGrados = grados.filter(g => g !== grado);
+                              console.log('💾 Eliminando grado, nuevos grados:', nuevosGrados);
                               await saveGrados(nuevosGrados);
-                              console.log('✅ Grados guardados en BD');
                               setGrados(nuevosGrados);
                               setRefreshKey(prev => prev + 1);
                               toast.success('Grado eliminado exitosamente');
@@ -4677,10 +4668,10 @@ export default function DirectorPage() {
                               toast.error('Error al eliminar el grado');
                             }
                           }}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -4787,31 +4778,22 @@ export default function DirectorPage() {
                     {secciones.map((seccion, idx) => (
                       <div key={`seccion-${seccion}-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <span className="font-medium text-gray-900">{seccion}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                        <button
                           type="button"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('🔄 Intentando eliminar sección:', seccion);
-                            const confirmar = window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`);
-                            if (!confirmar) {
-                              console.log('❌ Usuario canceló la eliminación');
+                          onClick={async () => {
+                            console.log('🔄 Click en eliminar sección:', seccion);
+                            if (!window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
                               return;
                             }
                             try {
-                              console.log('✅ Usuario confirmó, verificando estudiantes...');
                               const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
-                              console.log('📊 Estudiantes con esta sección:', tieneEstudiantes);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a esta sección`);
                                 return;
                               }
-                              console.log('💾 Guardando nuevas secciones...');
                               const nuevasSecciones = secciones.filter(s => s !== seccion);
+                              console.log('💾 Eliminando sección, nuevas secciones:', nuevasSecciones);
                               await saveSecciones(nuevasSecciones);
-                              console.log('✅ Secciones guardadas en BD');
                               setSecciones(nuevasSecciones);
                               setRefreshKey(prev => prev + 1);
                               toast.success('Sección eliminada exitosamente');
@@ -4820,10 +4802,10 @@ export default function DirectorPage() {
                               toast.error('Error al eliminar la sección');
                             }
                           }}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </div>
                     ))}
                   </div>
