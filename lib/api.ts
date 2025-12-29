@@ -43,6 +43,11 @@ export async function saveEstudiantes(estudiantes: any[]): Promise<void> {
   if (!res.ok) throw new Error('Error al guardar estudiantes');
 }
 
+// Alias para compatibilidad
+export async function saveEstudiantesInfo(estudiantes: any[]): Promise<void> {
+  return saveEstudiantes(estudiantes);
+}
+
 // ============================================
 // INCIDENCIAS
 // ============================================

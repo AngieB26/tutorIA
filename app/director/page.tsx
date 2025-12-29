@@ -22,6 +22,7 @@ import {
   fetchEstudiante,
   fetchEstudiantes,
   saveEstudiantes,
+  saveEstudiantesInfo,
   fetchTutores,
   saveTutores,
   getGrados,
@@ -545,6 +546,78 @@ export default function DirectorPage() {
     loadData();
   }, [refreshKey]);
   const [adminSubTab, setAdminSubTab] = useState<'estudiantes' | 'profesores' | 'grados' | 'cursos'>('estudiantes');
+  const [estudiantesInfo, setEstudiantesInfo] = useState<EstudianteInfo[]>([]);
+  const [tutores, setTutores] = useState<Tutor[]>([]);
+  const [clases, setClases] = useState<Clase[]>([]);
+
+  // Cargar estudiantes al inicio y cuando cambie refreshKey
+  useEffect(() => {
+    const loadEstudiantes = async () => {
+      try {
+        const estudiantes = await fetchEstudiantes();
+        setEstudiantesInfo(estudiantes);
+      } catch (error) {
+        console.error('Error cargando estudiantes:', error);
+        setEstudiantesInfo([]);
+      }
+    };
+    loadEstudiantes();
+  }, [refreshKey]);
+
+  // Cargar tutores al inicio y cuando cambie refreshKey
+  useEffect(() => {
+    const loadTutores = async () => {
+      try {
+        const tutoresData = await fetchTutores();
+        setTutores(tutoresData);
+      } catch (error) {
+        console.error('Error cargando tutores:', error);
+        setTutores([]);
+      }
+    };
+    loadTutores();
+  }, [refreshKey]);
+
+  // Cargar asignaciones de tutores por grado y sección
+  useEffect(() => {
+    const loadAsignaciones = async () => {
+      try {
+        const grados = getGrados();
+        const secciones = getSecciones();
+        const asignaciones: Record<string, any> = {};
+        
+        for (const grado of grados) {
+          for (const seccion of secciones) {
+            const key = `${grado}-${seccion}`;
+            const asignacion = await getTutorGradoSeccion(grado, seccion);
+            if (asignacion) {
+              asignaciones[key] = asignacion;
+            }
+          }
+        }
+        
+        setAsignacionesTutores(asignaciones);
+      } catch (error) {
+        console.error('Error cargando asignaciones:', error);
+        setAsignacionesTutores({});
+      }
+    };
+    loadAsignaciones();
+  }, [refreshKey]);
+
+  // Cargar clases al inicio y cuando cambie refreshKey
+  useEffect(() => {
+    const loadClases = async () => {
+      try {
+        const clasesData = await fetchClases();
+        setClases(clasesData);
+      } catch (error) {
+        console.error('Error cargando clases:', error);
+        setClases([]);
+      }
+    };
+    loadClases();
+  }, [refreshKey]);
   const [mostrarFormularioCurso, setMostrarFormularioCurso] = useState(false);
   const [formularioCurso, setFormularioCurso] = useState({
     nombre: '',
@@ -583,6 +656,7 @@ export default function DirectorPage() {
   // Filtros para administración de grados y secciones
   const [filtroTutoresGrado, setFiltroTutoresGrado] = useState('');
   const [filtroTutoresSeccion, setFiltroTutoresSeccion] = useState('');
+  const [asignacionesTutores, setAsignacionesTutores] = useState<Record<string, any>>({});
   
   // Filtros para administración de cursos
   const [filtroCursosGrado, setFiltroCursosGrado] = useState('');
@@ -1024,27 +1098,6 @@ export default function DirectorPage() {
     loadIncidencias();
   }, [fechaInicio, fechaFin, refreshKey]);
 
-  // Usar useMemo para crear un hash de las incidencias y detectar cambios reales
-  const incidenciasHash = useMemo(() => {
-    return incidenciasGenerales.map(inc => `${inc.id || ''}-${inc.fecha || ''}-${inc.timestamp || ''}`).join('|');
-  }, [incidenciasGenerales]);
-
-  // Regenerar automáticamente el reporte con IA cuando cambien las incidencias
-  useEffect(() => {
-    // Solo regenerar si hay incidencias, no se está generando actualmente, y estamos en la pestaña de reporte general
-    if (incidenciasGenerales.length > 0 && !generatingGeneralReport && activeTab === 'general') {
-      // Pequeño delay para evitar regeneraciones muy frecuentes
-      const timeoutId = setTimeout(() => {
-        // Verificar que aún estamos en la pestaña correcta y no se está generando
-        if (!generatingGeneralReport && activeTab === 'general' && typeof generateGeneralReport === 'function') {
-          generateGeneralReport(incidenciasGenerales);
-        }
-      }, 1500);
-      return () => clearTimeout(timeoutId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incidenciasHash, refreshKey, activeTab]);
-
   // Calcular estadísticas generales
   const getGeneralStats = (incidencias: Incidencia[]) => {
     const total = incidencias.length;
@@ -1088,6 +1141,27 @@ export default function DirectorPage() {
       setGeneratingGeneralReport(false);
     }
   };
+
+  // Usar useMemo para crear un hash de las incidencias y detectar cambios reales
+  const incidenciasHash = useMemo(() => {
+    return incidenciasGenerales.map(inc => `${inc.id || ''}-${inc.fecha || ''}-${inc.timestamp || ''}`).join('|');
+  }, [incidenciasGenerales]);
+
+  // Regenerar automáticamente el reporte con IA cuando cambien las incidencias
+  useEffect(() => {
+    // Solo regenerar si hay incidencias, no se está generando actualmente, y estamos en la pestaña de reporte general
+    if (incidenciasGenerales.length > 0 && !generatingGeneralReport && activeTab === 'general') {
+      // Pequeño delay para evitar regeneraciones muy frecuentes
+      const timeoutId = setTimeout(() => {
+        // Verificar que aún estamos en la pestaña correcta y no se está generando
+        if (!generatingGeneralReport && activeTab === 'general' && typeof generateGeneralReport === 'function') {
+          generateGeneralReport(incidenciasGenerales);
+        }
+      }, 1500);
+      return () => clearTimeout(timeoutId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incidenciasHash, refreshKey, activeTab]);
 
   // --- Handler para exportar reporte a PDF ---
   const handleExportPDF = async () => {
@@ -1500,7 +1574,7 @@ export default function DirectorPage() {
                 <Button variant="outline" onClick={() => setMostrarMapeoEstudiantes(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={() => {
+                <Button onClick={async () => {
                   if (!mapeoEstudiantes['nombre'] || mapeoEstudiantes['nombre'] === 'none' || 
                       !mapeoEstudiantes['grado'] || mapeoEstudiantes['grado'] === 'none' || 
                       !mapeoEstudiantes['seccion'] || mapeoEstudiantes['seccion'] === 'none') {
@@ -1545,7 +1619,7 @@ export default function DirectorPage() {
                       };
                     });
                     
-                    const estudiantesExistentes = getEstudiantesInfo();
+                    const estudiantesExistentes = await fetchEstudiantes();
                     const estudiantesActualizados = [...estudiantesExistentes];
                     let nuevos = 0;
                     let actualizados = 0;
@@ -1561,7 +1635,8 @@ export default function DirectorPage() {
                       }
                     });
                     
-                    saveEstudiantesInfo(estudiantesActualizados);
+                    await saveEstudiantesInfo(estudiantesActualizados);
+                    setEstudiantesInfo(estudiantesActualizados);
                     setRefreshKey(prev => prev + 1);
                     setMostrarMapeoEstudiantes(false);
                     setMapeoEstudiantes({});
@@ -1649,7 +1724,7 @@ export default function DirectorPage() {
                 <Button variant="outline" onClick={() => setMostrarMapeoProfesores(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={() => {
+                <Button onClick={async () => {
                   if (!mapeoProfesores['nombre']) {
                     toast.error('Debes mapear el campo obligatorio: Nombre');
                     return;
@@ -1672,7 +1747,7 @@ export default function DirectorPage() {
                       };
                     });
                     
-                    const profesoresExistentes = getTutores();
+                    const profesoresExistentes = await fetchTutores();
                     const profesoresActualizados = [...profesoresExistentes];
                     let nuevos = 0;
                     let actualizados = 0;
@@ -2301,8 +2376,8 @@ export default function DirectorPage() {
                   {editando ? (
                     <>
                       <Button size="sm" onClick={handleGuardar}>Guardar</Button>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        const original = getEstudianteInfo(selectedStudent || '');
+                      <Button size="sm" variant="outline" onClick={async () => {
+                        const original = await fetchEstudiante(selectedStudent || '');
                         if (original) {
                           setInfoEdit({
                             ...original,
@@ -2861,8 +2936,6 @@ export default function DirectorPage() {
                             negativos: number;
                             estudiante: any 
                           }>;
-                          const storage = require('@/lib/storage');
-                          const estudiantesInfo = storage.getEstudiantesInfo ? storage.getEstudiantesInfo() : [];
                           
                           incidenciasGenerales.forEach(inc => {
                             if (!puntuacionPorEstudiante[inc.studentName]) {
@@ -2948,8 +3021,6 @@ export default function DirectorPage() {
                         {(() => {
                           // Calcular estudiantes con 3+ incidencias graves
                           const gravesPorEstudiante: Record<string, { count: number; ultima: string; estudiante: any }> = {};
-                          const storage = require('@/lib/storage');
-                          const estudiantesInfo = storage.getEstudiantesInfo ? storage.getEstudiantesInfo() : [];
                           incidenciasGenerales.forEach(inc => {
                             if (inc.gravedad === 'grave') {
                               if (!gravesPorEstudiante[inc.studentName]) {
@@ -3817,14 +3888,11 @@ export default function DirectorPage() {
               {/* Lista de estudiantes actuales */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Estudiantes Registrados ({(() => {
-                    const todos = getEstudiantesInfo();
-                    return todos.filter(e => 
+                  Estudiantes Registrados ({estudiantesInfo.filter(e => 
                       (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
                       (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
                       (!busquedaAdminEstudiante || e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
-                    ).length;
-                  })()})
+                    ).length})
                 </h3>
                 <div className="overflow-x-auto">
                   <Table>
@@ -3840,15 +3908,11 @@ export default function DirectorPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(() => {
-                        const todosEstudiantes = getEstudiantesInfo();
-                        const estudiantesFiltrados = todosEstudiantes.filter(e => 
+                      {estudiantesInfo.filter(e => 
                           (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
                           (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
                           (!busquedaAdminEstudiante || e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
-                        );
-                        
-                        return estudiantesFiltrados.map((estudiante) => {
+                        ).map((estudiante) => {
                           const estaEditando = estudianteEditandoAdmin === estudiante.nombre;
                           const formData = estaEditando ? estudianteEditForm : estudiante;
                           
@@ -3935,16 +3999,17 @@ export default function DirectorPage() {
                                       <Button
                                         size="sm"
                                         variant="default"
-                                        onClick={() => {
-                                          const estudiantes = getEstudiantesInfo();
+                                        onClick={async () => {
+                                          const estudiantes = [...estudiantesInfo];
                                           const idx = estudiantes.findIndex(e => e.nombre === estudiante.nombre);
                                           if (idx >= 0) {
                                             estudiantes[idx] = {...estudiantes[idx], ...estudianteEditForm} as EstudianteInfo;
-                                            saveEstudiantesInfo(estudiantes);
+                                            await saveEstudiantesInfo(estudiantes);
+                                            setEstudiantesInfo(estudiantes);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
-                                            const lista = getListaEstudiantes();
-                                            const info = getEstudiantesInfo();
+                                            const lista = await getListaEstudiantes();
+                                            const info = estudiantes;
                                             const nombresUnicos = Array.from(new Set([
                                               ...info.map((i: any) => i.nombre),
                                               ...lista.map((e: any) => e.nombre)
@@ -3964,8 +4029,10 @@ export default function DirectorPage() {
                                             
                                             // Si el estudiante está seleccionado, actualizar también su información
                                             if (selectedStudent === estudiante.nombre) {
-                                              const estudianteActualizado = getEstudianteInfo(estudiante.nombre);
-                                              setInfoEdit(estudianteActualizado);
+                                              const estudianteActualizado = await fetchEstudiante(estudiante.nombre);
+                                              if (estudianteActualizado) {
+                                                setInfoEdit(estudianteActualizado);
+                                              }
                                             }
                                             
                                             setRefreshKey(prev => prev + 1);
@@ -4003,11 +4070,11 @@ export default function DirectorPage() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => {
+                                        onClick={async () => {
                                           if (confirm(`¿Estás seguro de eliminar a ${estudiante.nombre}?`)) {
-                                            const estudiantes = getEstudiantesInfo();
-                                            const estudiantesFiltrados = estudiantes.filter(e => e.nombre !== estudiante.nombre);
-                                            saveEstudiantesInfo(estudiantesFiltrados);
+                                            const estudiantesFiltrados = estudiantesInfo.filter(e => e.nombre !== estudiante.nombre);
+                                            await saveEstudiantesInfo(estudiantesFiltrados);
+                                            setEstudiantesInfo(estudiantesFiltrados);
                                             setRefreshKey(prev => prev + 1);
                                             toast.success('Estudiante eliminado exitosamente');
                                           }
@@ -4021,8 +4088,7 @@ export default function DirectorPage() {
                               </TableCell>
                             </TableRow>
                           );
-                        });
-                      })()}
+                        })}
                     </TableBody>
                   </Table>
                 </div>
@@ -4107,7 +4173,7 @@ export default function DirectorPage() {
 
               {/* Lista de profesores actuales */}
               <div key={`profesores-${refreshKey}`}>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Profesores Registrados ({getTutores().length})</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Profesores Registrados ({tutores.length})</h3>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -4119,7 +4185,7 @@ export default function DirectorPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {getTutores().map((profesor) => {
+                      {tutores.map((profesor) => {
                         const estaEditando = profesorEditandoAdmin === profesor.id;
                         const formData = estaEditando ? profesorEditForm : profesor;
                         
@@ -4169,8 +4235,8 @@ export default function DirectorPage() {
                                     <Button
                                       size="sm"
                                       variant="default"
-                                      onClick={() => {
-                                        const profesores = getTutores();
+                                      onClick={async () => {
+                                        const profesores = await fetchTutores();
                                         const idx = profesores.findIndex(p => p.id === profesor.id);
                                         if (idx >= 0) {
                                           if (!profesorEditForm.nombre || !profesorEditForm.nombre.trim()) {
@@ -4218,9 +4284,9 @@ export default function DirectorPage() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => {
+                                      onClick={async () => {
                                         if (confirm(`¿Estás seguro de eliminar al profesor "${profesor.nombre}"?`)) {
-                                          const profesores = getTutores();
+                                          const profesores = await fetchTutores();
                                           const profesoresFiltrados = profesores.filter(p => p.id !== profesor.id);
                                           saveTutores(profesoresFiltrados);
                                           setRefreshKey(prev => prev + 1);
@@ -4346,11 +4412,10 @@ export default function DirectorPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
+                          onClick={async () => {
                             if (confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
-                              const grados = getGrados();
-                              const estudiantes = getEstudiantesInfo();
-                              const tieneEstudiantes = estudiantes.some(e => e.grado === grado);
+                              const grados = await getGrados();
+                              const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a este grado`);
                               } else {
@@ -4465,11 +4530,10 @@ export default function DirectorPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
+                          onClick={async () => {
                             if (confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
-                              const secciones = getSecciones();
-                              const estudiantes = getEstudiantesInfo();
-                              const tieneEstudiantes = estudiantes.some(e => e.seccion === seccion);
+                              const secciones = await getSecciones();
+                              const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a esta sección`);
                               } else {
@@ -4587,7 +4651,8 @@ export default function DirectorPage() {
                             </TableRow>
                           ) : (
                             combinacionesFiltradas.map((combo) => {
-                              const asignacion = getTutorGradoSeccion(combo.grado, combo.seccion);
+                              const key = `${combo.grado}-${combo.seccion}`;
+                              const asignacion = asignacionesTutores[key];
                               return (
                                 <TableRow key={`${combo.grado}-${combo.seccion}-${refreshKey}`}>
                                   <TableCell className="font-medium text-gray-900">{combo.grado}</TableCell>
@@ -4596,13 +4661,13 @@ export default function DirectorPage() {
                                     <Select
                                       key={`select-${combo.grado}-${combo.seccion}-${asignacion?.tutorId || 'none'}-${refreshKey}`}
                                       value={asignacion?.tutorId || 'none'}
-                                      onValueChange={(tutorId) => {
+                                      onValueChange={async (tutorId) => {
                                         try {
                                           if (tutorId === 'none') {
-                                            removeTutorGradoSeccion(combo.grado, combo.seccion);
+                                            await removeTutorGradoSeccion(combo.grado, combo.seccion);
                                             
                                             // Actualizar estudiantes: remover tutor de todos los estudiantes de este grado y sección
-                                            const estudiantes = getEstudiantesInfo();
+                                            const estudiantes = [...estudiantesInfo];
                                             let estudiantesActualizados = false;
                                             estudiantes.forEach((estudiante) => {
                                               if (estudiante.grado === combo.grado && estudiante.seccion === combo.seccion) {
@@ -4611,17 +4676,19 @@ export default function DirectorPage() {
                                               }
                                             });
                                             if (estudiantesActualizados) {
-                                              saveEstudiantesInfo(estudiantes);
+                                              await saveEstudiantesInfo(estudiantes);
+                                              setEstudiantesInfo(estudiantes);
                                             }
                                             
                                             toast.success(`Tutor removido de ${combo.grado} ${combo.seccion}`);
                                           } else {
-                                            const tutor = getTutores().find(t => t.id === tutorId);
+                                            const tutores = await fetchTutores();
+                                            const tutor = tutores.find(t => t.id === tutorId);
                                             if (tutor) {
-                                              setTutorGradoSeccion(combo.grado, combo.seccion, tutor.id, tutor.nombre);
+                                              await setTutorGradoSeccion(combo.grado, combo.seccion, tutor.id, tutor.nombre);
                                               
                                               // Actualizar estudiantes: asignar tutor a todos los estudiantes de este grado y sección
-                                              const estudiantes = getEstudiantesInfo();
+                                              const estudiantes = [...estudiantesInfo];
                                               let estudiantesActualizados = false;
                                               estudiantes.forEach((estudiante) => {
                                                 if (estudiante.grado === combo.grado && estudiante.seccion === combo.seccion) {
@@ -4634,7 +4701,8 @@ export default function DirectorPage() {
                                                 }
                                               });
                                               if (estudiantesActualizados) {
-                                                saveEstudiantesInfo(estudiantes);
+                                                await saveEstudiantesInfo(estudiantes);
+                                                setEstudiantesInfo(estudiantes);
                                               }
                                               
                                               toast.success(`Tutor asignado a ${combo.grado} ${combo.seccion} y actualizado en estudiantes`);
@@ -4654,7 +4722,7 @@ export default function DirectorPage() {
                                       </SelectTrigger>
                                       <SelectContent>
                                         <SelectItem value="none">Sin tutor asignado</SelectItem>
-                                        {getTutores().map((tutor) => (
+                                        {tutores.map((tutor) => (
                                           <SelectItem key={tutor.id} value={tutor.id}>{tutor.nombre}</SelectItem>
                                         ))}
                                       </SelectContent>
@@ -4759,7 +4827,7 @@ export default function DirectorPage() {
                               <SelectValue placeholder="Selecciona profesor" />
                             </SelectTrigger>
                             <SelectContent>
-                              {getTutores().map((profesor) => (
+                              {tutores.map((profesor) => (
                                 <SelectItem key={profesor.id} value={profesor.nombre}>{profesor.nombre}</SelectItem>
                               ))}
                             </SelectContent>
@@ -4777,14 +4845,14 @@ export default function DirectorPage() {
                           Cancelar
                         </Button>
                         <Button
-                          onClick={() => {
+                          onClick={async () => {
                             if (!formularioCurso.nombre.trim() || !formularioCurso.grado || !formularioCurso.seccion || !formularioCurso.profesor) {
                               toast.error('Por favor completa todos los campos');
                               return;
                             }
                             
-                            const clases = getClases();
-                            const existe = clases.some(c => 
+                            const todasLasClases = await fetchClases();
+                            const existe = todasLasClases.some(c => 
                               c.nombre.toLowerCase() === formularioCurso.nombre.trim().toLowerCase() &&
                               c.grado === formularioCurso.grado &&
                               c.seccion === formularioCurso.seccion
@@ -4892,8 +4960,7 @@ export default function DirectorPage() {
                     </TableHeader>
                     <TableBody>
                       {(() => {
-                        const todasLasClases = getClases();
-                        const clasesFiltradas = todasLasClases.filter(clase =>
+                        const clasesFiltradas = clases.filter(clase =>
                           (!filtroCursosGrado || clase.grado === filtroCursosGrado) &&
                           (!filtroCursosSeccion || clase.seccion === filtroCursosSeccion) &&
                           (!busquedaCursosNombre || clase.nombre.toLowerCase().includes(busquedaCursosNombre.toLowerCase()))
@@ -4903,7 +4970,7 @@ export default function DirectorPage() {
                           return (
                             <TableRow>
                               <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                                {todasLasClases.length === 0
+                                {clases.length === 0
                                   ? 'No hay asignaciones registradas. Crea una nueva asignación.'
                                   : 'No hay asignaciones que coincidan con los filtros seleccionados.'
                                 }
@@ -4920,12 +4987,12 @@ export default function DirectorPage() {
                             <TableCell>
                               <Select
                                 value={clase.profesor}
-                                onValueChange={(nuevoProfesor) => {
-                                  const clases = getClases();
-                                  const idx = clases.findIndex(c => c.id === clase.id);
+                                onValueChange={async (nuevoProfesor) => {
+                                  const todasLasClases = await fetchClases();
+                                  const idx = todasLasClases.findIndex(c => c.id === clase.id);
                                   if (idx >= 0) {
-                                    clases[idx].profesor = nuevoProfesor;
-                                    saveClases(clases);
+                                    todasLasClases[idx].profesor = nuevoProfesor;
+                                    await saveClases(todasLasClases);
                                     setRefreshKey(prev => prev + 1);
                                     toast.success('Profesor actualizado exitosamente');
                                   }
@@ -4935,7 +5002,7 @@ export default function DirectorPage() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {getTutores().map((profesor) => (
+                                  {tutores.map((profesor) => (
                                     <SelectItem key={profesor.id} value={profesor.nombre}>{profesor.nombre}</SelectItem>
                                   ))}
                                 </SelectContent>
@@ -4945,10 +5012,10 @@ export default function DirectorPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => {
+                                onClick={async () => {
                                   if (confirm(`¿Estás seguro de eliminar la asignación de ${clase.nombre} (${clase.grado} ${clase.seccion})?`)) {
-                                    const clases = getClases();
-                                    saveClases(clases.filter(c => c.id !== clase.id));
+                                    const todasLasClases = await fetchClases();
+                                    await saveClases(todasLasClases.filter(c => c.id !== clase.id));
                                     setRefreshKey(prev => prev + 1);
                                     toast.success('Asignación eliminada exitosamente');
                                   }
