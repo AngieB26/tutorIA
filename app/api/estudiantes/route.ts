@@ -40,6 +40,8 @@ export async function GET(req: NextRequest) {
 // POST /api/estudiantes
 export async function POST(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const nombreOriginal = searchParams.get('nombreOriginal') || undefined;
     const body = await req.json();
 
     // Si es un array, usar saveEstudiantesInfo
@@ -48,8 +50,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, count: body.length });
     }
 
-    // Si es un objeto, usar saveEstudianteInfo
-    await saveEstudianteInfo(body);
+    // Si es un objeto, usar saveEstudianteInfo con nombreOriginal si está presente
+    await saveEstudianteInfo(body, nombreOriginal);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error guardando estudiante(s):', error);

@@ -23,6 +23,7 @@ import {
   fetchEstudiantes,
   saveEstudiantes,
   saveEstudiantesInfo,
+  saveEstudiante as saveEstudianteInfo,
   fetchTutores,
   saveTutores,
   deleteTutor,
@@ -729,6 +730,7 @@ export default function DirectorPage() {
   const [busquedaAdminEstudiante, setBusquedaAdminEstudiante] = useState('');
   const [estudianteEditandoAdmin, setEstudianteEditandoAdmin] = useState<string | null>(null);
   const [estudianteEditForm, setEstudianteEditForm] = useState<Partial<EstudianteInfo>>({});
+  const [estudianteNombreOriginal, setEstudianteNombreOriginal] = useState<string | null>(null);
   
   // Estados para edición de profesores
   const [profesorEditandoAdmin, setProfesorEditandoAdmin] = useState<string | null>(null);
@@ -4108,10 +4110,23 @@ export default function DirectorPage() {
                                         variant="default"
                                         onClick={async () => {
                                           const estudiantes = [...estudiantesInfo];
-                                          const idx = estudiantes.findIndex(e => e.nombre === estudiante.nombre);
+                                          const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
+                                          const idx = estudiantes.findIndex(e => e.nombre === nombreOriginal);
                                           if (idx >= 0) {
-                                            estudiantes[idx] = {...estudiantes[idx], ...estudianteEditForm} as EstudianteInfo;
-                                            await saveEstudiantesInfo(estudiantes);
+                                            const estudianteActualizado = {...estudiantes[idx], ...estudianteEditForm} as EstudianteInfo;
+                                            estudiantes[idx] = estudianteActualizado;
+                                            
+                                            // Si cambió el nombre, actualizar el registro existente con el nombre original
+                                            if (estudianteActualizado.nombre !== nombreOriginal) {
+                                              // Primero actualizar el estudiante existente con el nuevo nombre
+                                              await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+                                              // Luego eliminar el registro con el nombre original si es diferente
+                                              if (estudianteActualizado.nombre !== nombreOriginal) {
+                                                // El saveEstudianteInfo ya actualiza el registro, no necesitamos eliminar
+                                              }
+                                            } else {
+                                              await saveEstudiantesInfo(estudiantes);
+                                            }
                                             setEstudiantesInfo(estudiantes);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
@@ -4145,6 +4160,7 @@ export default function DirectorPage() {
                                             setRefreshKey(prev => prev + 1);
                                             setEstudianteEditandoAdmin(null);
                                             setEstudianteEditForm({});
+                                            setEstudianteNombreOriginal(null);
                                             toast.success('Estudiante actualizado exitosamente');
                                           }
                                         }}
@@ -4169,6 +4185,8 @@ export default function DirectorPage() {
                                         variant="outline"
                                         onClick={() => {
                                           setEstudianteEditandoAdmin(estudiante.nombre);
+                                          setEstudianteNombreOriginal(estudiante.nombre);
+                                          setEstudianteEditForm(estudiante);
                                           setEstudianteEditForm({...estudiante});
                                         }}
                                       >

@@ -111,11 +111,14 @@ export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo 
   }
 }
 
-export async function saveEstudianteInfo(estudiante: EstudianteInfo): Promise<void> {
+export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOriginal?: string): Promise<void> {
   try {
-    // Buscar si existe un estudiante con ese nombre
+    // Si se proporciona nombreOriginal, buscar por ese nombre (para actualizaciones)
+    // Si no, buscar por el nombre actual
+    const nombreBusqueda = nombreOriginal || estudiante.nombre;
+    
     const existente = await prisma.estudiante.findFirst({
-      where: { nombre: estudiante.nombre }
+      where: { nombre: nombreBusqueda }
     });
 
     const data = {
@@ -158,48 +161,13 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo): Promise<vo
   }
 }
 
-export async function saveEstudiantesInfo(estudiantes: EstudianteInfo[]): Promise<void> {
+export async function saveEstudiantesInfo(estudiantes: EstudianteInfo[], nombresOriginales?: Map<string, string>): Promise<void> {
   try {
     // Para cada estudiante, crear o actualizar
     for (const est of estudiantes) {
-      const existente = await prisma.estudiante.findFirst({
-        where: { nombre: est.nombre }
-      });
-
-      const data = {
-        nombre: est.nombre,
-        grado: est.grado,
-        seccion: est.seccion,
-        edad: est.edad ?? null,
-        fechaNacimiento: est.fechaNacimiento ?? null,
-        fotoPerfil: est.fotoPerfil ?? null,
-        contactoTelefono: est.contacto?.telefono ?? null,
-        contactoEmail: est.contacto?.email ?? null,
-        contactoNombre: est.contacto?.nombre ?? null,
-        tutorNombre: est.tutor?.nombre ?? est.contacto?.tutor ?? null,
-        tutorTelefono: est.tutor?.telefono ?? null,
-        tutorEmail: est.tutor?.email ?? null,
-        apoderadoNombre: est.apoderado?.nombre ?? null,
-        apoderadoParentesco: est.apoderado?.parentesco ?? null,
-        apoderadoTelefono: est.apoderado?.telefono ?? null,
-        apoderadoTelefonoAlt: est.apoderado?.telefonoAlternativo ?? null,
-        apoderadoEmail: est.apoderado?.email ?? null,
-        apoderadoDireccion: est.apoderado?.direccion ?? null,
-        asistencias: est.asistencias ?? null,
-        ausencias: est.ausencias ?? null,
-        tardanzas: est.tardanzas ?? null,
-      };
-
-      if (existente) {
-        await prisma.estudiante.update({
-          where: { id: existente.id },
-          data,
-        });
-      } else {
-        await prisma.estudiante.create({
-          data,
-        });
-      }
+      // Si hay un mapa de nombres originales, usarlo para buscar el registro existente
+      const nombreOriginal = nombresOriginales?.get(est.nombre);
+      await saveEstudianteInfo(est, nombreOriginal);
     }
   } catch (error) {
     console.error('Error guardando estudiantes:', error);
@@ -457,18 +425,31 @@ export async function deleteTutor(id: string): Promise<void> {
 
 export async function saveTutores(tutores: Tutor[]): Promise<void> {
   try {
-    // Eliminar todos y crear los nuevos
-    await prisma.tutor.deleteMany({});
-
+    // Actualizar individualmente cada tutor por su ID
     for (const tutor of tutores) {
-      await prisma.tutor.create({
-        data: {
-          id: tutor.id,
-          nombre: tutor.nombre,
-          email: tutor.email ?? null,
-          telefono: tutor.telefono ?? null,
-        },
+      const existente = await prisma.tutor.findUnique({
+        where: { id: tutor.id }
       });
+
+      const data = {
+        nombre: tutor.nombre,
+        email: tutor.email ?? null,
+        telefono: tutor.telefono ?? null,
+      };
+
+      if (existente) {
+        await prisma.tutor.update({
+          where: { id: tutor.id },
+          data,
+        });
+      } else {
+        await prisma.tutor.create({
+          data: {
+            id: tutor.id,
+            ...data,
+          },
+        });
+      }
     }
   } catch (error) {
     console.error('Error guardando tutores:', error);

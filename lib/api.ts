@@ -25,8 +25,11 @@ export async function fetchEstudiante(nombre: string): Promise<any | null> {
   return res.json();
 }
 
-export async function saveEstudiante(estudiante: any): Promise<void> {
-  const res = await fetch('/api/estudiantes', {
+export async function saveEstudiante(estudiante: any, nombreOriginal?: string): Promise<void> {
+  const url = nombreOriginal 
+    ? `/api/estudiantes?nombreOriginal=${encodeURIComponent(nombreOriginal)}`
+    : '/api/estudiantes';
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(estudiante),
