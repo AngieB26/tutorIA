@@ -805,13 +805,13 @@ export default function DirectorPage() {
   });
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
 
-  // Cargar incidencias desde la API al montar y cuando cambie refreshKey
+  // Cargar incidencias desde la API al montar, cuando cambie refreshKey, o cuando se cambie al tab de incidencias
   useEffect(() => {
     const loadIncidencias = async () => {
       try {
         const todasIncidencias = await fetchIncidencias();
         console.log('📊 Director: Incidencias cargadas desde API:', todasIncidencias.length);
-        console.log('📊 Director: IDs de incidencias:', todasIncidencias.map((inc: Incidencia) => ({ id: inc.id, estudiante: inc.studentName, derivacion: inc.derivacion, resuelta: inc.resuelta })));
+        console.log('📊 Director: IDs de incidencias:', todasIncidencias.map((inc: Incidencia) => ({ id: inc.id, estudiante: inc.studentName, derivacion: inc.derivacion, resuelta: inc.resuelta, estado: inc.estado })));
         setIncidencias(todasIncidencias);
         
         // Sincronizar incidencias vistas con localStorage después de cargar incidencias
@@ -840,7 +840,7 @@ export default function DirectorPage() {
       }
     };
     loadIncidencias();
-  }, [refreshKey]);
+  }, [refreshKey, activeTab]); // Agregar activeTab para recargar cuando se cambia al tab de incidencias
   
   // Cargar incidencias vistas desde localStorage solo una vez al montar (respaldo, aunque ya se carga en la inicialización)
   useEffect(() => {
@@ -934,10 +934,24 @@ export default function DirectorPage() {
       }
     };
 
+    // Handler para cuando se actualiza una incidencia (cambio de estado, etc.)
+    const handleIncidenciaActualizada = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      console.log('🔔 Evento incidenciaActualizada recibido:', customEvent.detail);
+      // Recargar incidencias cuando se actualiza una incidencia
+      setTimeout(() => {
+        setRefreshKey(prev => {
+          console.log('🔄 Actualizando refreshKey por incidencia actualizada:', prev + 1);
+          return prev + 1;
+        });
+      }, 200);
+    };
+
     // Escuchar eventos de storage (para cambios desde otras pestañas)
     window.addEventListener('storage', handleStorageChange);
     // Escuchar evento personalizado (para cambios en la misma pestaña)
     window.addEventListener('incidenciaRegistrada', handleIncidenciaRegistrada as EventListener);
+    window.addEventListener('incidenciaActualizada', handleIncidenciaActualizada as EventListener);
     
     // Escuchar evento cuando se marca una incidencia como vista desde el navbar
     const handleIncidenciaMarcadaComoVista = (e: Event) => {
@@ -980,9 +994,23 @@ export default function DirectorPage() {
       }
     };
 
+    // Handler para cuando se actualiza una incidencia (cambio de estado, etc.)
+    const handleIncidenciaActualizada = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      console.log('🔔 Evento incidenciaActualizada recibido:', customEvent.detail);
+      // Recargar incidencias cuando se actualiza una incidencia
+      setTimeout(() => {
+        setRefreshKey(prev => {
+          console.log('🔄 Actualizando refreshKey por incidencia actualizada:', prev + 1);
+          return prev + 1;
+        });
+      }, 200);
+    };
+
     window.addEventListener('incidenciaMarcadaComoVista', handleIncidenciaMarcadaComoVista as EventListener);
     window.addEventListener('todasIncidenciasMarcadasComoVistas', handleTodasMarcadasComoVistas);
     window.addEventListener('abrirIncidenciaDesdeNotificacionNavbar', handleAbrirIncidenciaDesdeNavbar as EventListener);
+    window.addEventListener('incidenciaActualizada', handleIncidenciaActualizada as EventListener);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -990,6 +1018,7 @@ export default function DirectorPage() {
       window.removeEventListener('incidenciaMarcadaComoVista', handleIncidenciaMarcadaComoVista as EventListener);
       window.removeEventListener('todasIncidenciasMarcadasComoVistas', handleTodasMarcadasComoVistas);
       window.removeEventListener('abrirIncidenciaDesdeNotificacionNavbar', handleAbrirIncidenciaDesdeNavbar as EventListener);
+      window.removeEventListener('incidenciaActualizada', handleIncidenciaActualizada as EventListener);
     };
   }, [incidencias]);
   
