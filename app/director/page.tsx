@@ -1163,18 +1163,18 @@ export default function DirectorPage() {
   const [reporteGeneral, setReporteGeneral] = useState<ReporteIA | null>(null);
 
   // --- Handler para generar el reporte general por fechas ---
-  const handleFilterByDate = () => {
-    // Filtrar incidencias por fechas usando storage util
-    const storage = require('@/lib/storage');
-    let filtered = [];
-    if (fechaInicio && fechaFin) {
-      // Usar fetchIncidencias con filtros de fecha
-      filtered = await fetchIncidencias({ fechaInicio, fechaFin });
-    } else {
-      filtered = await fetchIncidencias();
+  const handleFilterByDate = async () => {
+    try {
+      // Filtrar incidencias por fechas usando la base de datos
+      const filtered = fechaInicio && fechaFin
+        ? await fetchIncidencias({ fechaInicio, fechaFin })
+        : await fetchIncidencias();
+      setIncidenciasGenerales(filtered);
+      setReporteGeneral(null);
+    } catch (error) {
+      console.error('Error filtrando incidencias por fecha:', error);
+      setIncidenciasGenerales([]);
     }
-    setIncidenciasGenerales(filtered);
-    setReporteGeneral(null);
   };
   // Inicializar y actualizar incidenciasGenerales dinámicamente cuando cambian las fechas o cuando se actualiza refreshKey
   useEffect(() => {
