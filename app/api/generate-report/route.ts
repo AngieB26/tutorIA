@@ -9,10 +9,18 @@ export async function POST(req: NextRequest) {
     
     let prompt = '';
     
-    // Caso 1: Múltiples incidencias para un estudiante (reporte consolidado)
-    if (incidencias && Array.isArray(incidencias) && incidencias.length > 0 && estudiante) {
-      // Para reporte general, no incluir todas las incidencias individuales, solo estadísticas
-      const incidenciasTexto = estudiante === 'Reporte General' 
+    // Caso 1: Múltiples incidencias para un estudiante (reporte consolidado) o sin incidencias
+    if (estudiante && incidencias && Array.isArray(incidencias)) {
+      // Si no hay incidencias, generar un resumen positivo
+      if (incidencias.length === 0) {
+        prompt = `Genera un resumen breve (UNA LÍNEA) para el estudiante ${estudiante}:
+
+El estudiante no tiene incidencias recientes registradas. Genera un resumen positivo y conciso sobre su rendimiento normal.
+
+Formato: Solo una línea, sin encabezados, positivo y alentador.`;
+      } else {
+        // Para reporte general, no incluir todas las incidencias individuales, solo estadísticas
+        const incidenciasTexto = estudiante === 'Reporte General' 
         ? '' // No incluir incidencias individuales para reporte general
         : incidencias.map((inc: any, idx: number) => {
             return `Inc ${idx + 1}: ${inc.tipo || 'N/A'} - ${inc.gravedad || 'N/A'} - ${(inc.descripcion || 'N/A').substring(0, 60)}`;
@@ -41,6 +49,7 @@ Datos: ${totalIncidencias} incidencias | Tipos: ${Object.entries(porTipo).map(([
 
 Sin asteriscos ni markdown.`;
       } else {
+        // Caso con incidencias individuales (length > 0 ya verificado arriba)
         prompt = `Analiza las incidencias y genera un reporte CONCISO:
 
 RESUMEN:
@@ -68,6 +77,7 @@ Incidencias:
 ${incidenciasTexto}
 
 IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown. Lenguaje directo.`;
+        }
       }
     }
     // Caso 2: Una sola incidencia (análisis individual)
