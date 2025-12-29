@@ -264,9 +264,30 @@ export async function getIncidencias(): Promise<Incidencia[]> {
     console.log(`📊 getIncidencias: Encontradas ${incidencias.length} incidencias en la base de datos`);
 
     return incidencias.map(inc => {
-      const historial: EstadoIncidenciaHistorial[] = inc.historialEstado 
-        ? JSON.parse(inc.historialEstado) 
-        : [];
+      let historial: EstadoIncidenciaHistorial[] = [];
+      
+      // Intentar parsear el historialEstado si existe
+      if (inc.historialEstado) {
+        try {
+          historial = JSON.parse(inc.historialEstado);
+          // Asegurar que sea un array
+          if (!Array.isArray(historial)) {
+            historial = [];
+          }
+        } catch (error) {
+          console.error(`Error parseando historialEstado para incidencia ${inc.id}:`, error);
+          historial = [];
+        }
+      }
+      
+      // Si el historial está vacío o es null, inicializarlo con el estado actual
+      if (historial.length === 0) {
+        historial = [{
+          estado: inc.estado as EstadoIncidencia,
+          fecha: inc.createdAt ? new Date(inc.createdAt).toISOString() : new Date().toISOString(),
+          usuario: inc.profesor || 'Sistema',
+        }];
+      }
 
       return {
         id: inc.id,
@@ -287,7 +308,7 @@ export async function getIncidencias(): Promise<Incidencia[]> {
         fechaResolucion: inc.fechaResolucion ?? undefined,
         resueltaPor: inc.resueltaPor ?? undefined,
         estado: inc.estado as EstadoIncidencia,
-        historialEstado: historial.length > 0 ? historial : undefined,
+        historialEstado: historial, // Siempre retornar un array, nunca undefined ni null
       };
     });
   } catch (error) {
@@ -401,10 +422,17 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
 
     console.log('✅ Incidencia guardada exitosamente:', {
       id: newIncidencia.id,
-      derivacion: derivacionValue
+      derivacion: derivacionValue,
+      estado: estadoInicial,
+      historialEstado: historialEstado
     });
 
-    return newIncidencia;
+    // Retornar la incidencia con el historialEstado y estado actualizados
+    return {
+      ...newIncidencia,
+      estado: estadoInicial,
+      historialEstado: historialEstado,
+    };
   } catch (error) {
     console.error('Error agregando incidencia:', error);
     throw error;
