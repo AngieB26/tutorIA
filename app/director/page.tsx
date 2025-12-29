@@ -481,6 +481,12 @@ export default function DirectorPage() {
             // Recargar incidencias derivadas también
             const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
             setIncidenciasDerivadas(derivadas);
+            // Disparar evento para que otros componentes se actualicen
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('incidenciaActualizada', { detail: { id } }));
+            }
+            // Actualizar refreshKey para forzar actualización en otros tabs
+            setRefreshKey(prev => prev + 1);
             toast.success('Incidencia marcada como resuelta');
           } catch (error) {
             console.error('Error marcando incidencia como resuelta:', error);
@@ -841,6 +847,48 @@ export default function DirectorPage() {
     };
     loadIncidencias();
   }, [refreshKey, activeTab]); // Agregar activeTab para recargar cuando se cambia al tab de incidencias
+
+  // Actualizar incidencias cuando se cambia al tab de incidencias
+  useEffect(() => {
+    if (activeTab === 'incidencias') {
+      const loadIncidencias = async () => {
+        try {
+          const todasIncidencias = await fetchIncidencias();
+          console.log('📊 Tab Incidencias: Recargando incidencias desde BD:', todasIncidencias.length);
+          setIncidencias(todasIncidencias);
+        } catch (error) {
+          console.error('Error recargando incidencias en tab:', error);
+        }
+      };
+      loadIncidencias();
+    }
+  }, [activeTab]);
+
+  // Actualizar incidencias periódicamente cuando se está en el tab de incidencias
+  useEffect(() => {
+    if (activeTab === 'incidencias') {
+      const interval = setInterval(async () => {
+        try {
+          const todasIncidencias = await fetchIncidencias();
+          setIncidencias(prev => {
+            // Solo actualizar si hay cambios (comparar por IDs y estados)
+            const idsPrevios = new Set(prev.map(inc => `${inc.id}-${inc.estado}-${inc.resuelta}`));
+            const idsNuevos = new Set(todasIncidencias.map(inc => `${inc.id}-${inc.estado}-${inc.resuelta}`));
+            if (idsPrevios.size !== idsNuevos.size || 
+                !Array.from(idsNuevos).every(id => idsPrevios.has(id))) {
+              console.log('🔄 Actualizando incidencias desde BD (cambios detectados)');
+              return todasIncidencias;
+            }
+            return prev;
+          });
+        } catch (error) {
+          console.error('Error actualizando incidencias periódicamente:', error);
+        }
+      }, 5000); // Actualizar cada 5 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
   
   // Cargar incidencias vistas desde localStorage solo una vez al montar (respaldo, aunque ya se carga en la inicialización)
   useEffect(() => {
@@ -2089,7 +2137,7 @@ export default function DirectorPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todas">Todas</SelectItem>
-                      <SelectItem value="ausencia">Asistencia</SelectItem>
+                      <SelectItem value="asistencia">Asistencia</SelectItem>
                       <SelectItem value="conducta">Conducta</SelectItem>
                       <SelectItem value="academica">Académica</SelectItem>
                       <SelectItem value="positivo">Positivo</SelectItem>
