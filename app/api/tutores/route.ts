@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getTutores,
   saveTutores,
+  deleteTutor,
 } from '@/lib/db';
 
 // GET /api/tutores
@@ -36,6 +37,30 @@ export async function POST(req: NextRequest) {
     console.error('Error guardando tutores:', error);
     return NextResponse.json(
       { error: 'Error al guardar tutores' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/tutores
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID del tutor es requerido' },
+        { status: 400 }
+      );
+    }
+
+    await deleteTutor(id);
+    return NextResponse.json({ success: true, message: `Tutor ${id} eliminado exitosamente` });
+  } catch (error) {
+    console.error('Error eliminando tutor:', error);
+    return NextResponse.json(
+      { error: 'Error al eliminar tutor' },
       { status: 500 }
     );
   }

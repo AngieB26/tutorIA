@@ -48,6 +48,13 @@ export async function saveEstudiantesInfo(estudiantes: any[]): Promise<void> {
   return saveEstudiantes(estudiantes);
 }
 
+export async function deleteEstudiante(nombre: string): Promise<void> {
+  const res = await fetch(`/api/estudiantes?nombre=${encodeURIComponent(nombre)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Error al eliminar estudiante');
+}
+
 // ============================================
 // INCIDENCIAS
 // ============================================
@@ -134,6 +141,13 @@ export async function saveTutores(tutores: any[]): Promise<void> {
     body: JSON.stringify(tutores),
   });
   if (!res.ok) throw new Error('Error al guardar tutores');
+}
+
+export async function deleteTutor(id: string): Promise<void> {
+  const res = await fetch(`/api/tutores?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Error al eliminar profesor');
 }
 
 // ============================================

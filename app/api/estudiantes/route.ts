@@ -5,6 +5,7 @@ import {
   saveEstudianteInfo,
   saveEstudiantesInfo,
   getEstudiantesByGrado,
+  deleteEstudiante,
 } from '@/lib/db';
 
 // GET /api/estudiantes
@@ -54,6 +55,30 @@ export async function POST(req: NextRequest) {
     console.error('Error guardando estudiante(s):', error);
     return NextResponse.json(
       { error: 'Error al guardar estudiante(s)' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/estudiantes
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const nombre = searchParams.get('nombre');
+    
+    if (!nombre) {
+      return NextResponse.json(
+        { error: 'Nombre del estudiante es requerido' },
+        { status: 400 }
+      );
+    }
+
+    await deleteEstudiante(nombre);
+    return NextResponse.json({ success: true, message: `Estudiante ${nombre} eliminado exitosamente` });
+  } catch (error) {
+    console.error('Error eliminando estudiante:', error);
+    return NextResponse.json(
+      { error: 'Error al eliminar estudiante' },
       { status: 500 }
     );
   }

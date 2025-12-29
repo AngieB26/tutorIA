@@ -207,6 +207,24 @@ export async function saveEstudiantesInfo(estudiantes: EstudianteInfo[]): Promis
   }
 }
 
+export async function deleteEstudiante(nombre: string): Promise<void> {
+  try {
+    const estudiante = await prisma.estudiante.findFirst({
+      where: { nombre }
+    });
+    
+    if (estudiante) {
+      await prisma.estudiante.delete({
+        where: { id: estudiante.id }
+      });
+      console.log(`✅ Estudiante ${nombre} eliminado de la base de datos`);
+    }
+  } catch (error) {
+    console.error('Error eliminando estudiante:', error);
+    throw error;
+  }
+}
+
 export async function getEstudiantesByGrado(grado?: string): Promise<EstudianteInfo[]> {
   const estudiantes = await getEstudiantesInfo();
   if (!grado) return estudiantes;

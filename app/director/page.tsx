@@ -25,6 +25,8 @@ import {
   saveEstudiantesInfo,
   fetchTutores,
   saveTutores,
+  deleteTutor,
+  deleteEstudiante,
   getGrados,
   saveGrados,
   getSecciones,
@@ -4177,11 +4179,16 @@ export default function DirectorPage() {
                                         variant="outline"
                                         onClick={async () => {
                                           if (confirm(`¿Estás seguro de eliminar a ${estudiante.nombre}?`)) {
-                                            const estudiantesFiltrados = estudiantesInfo.filter(e => e.nombre !== estudiante.nombre);
-                                            await saveEstudiantesInfo(estudiantesFiltrados);
-                                            setEstudiantesInfo(estudiantesFiltrados);
-                                            setRefreshKey(prev => prev + 1);
-                                            toast.success('Estudiante eliminado exitosamente');
+                                            try {
+                                              await deleteEstudiante(estudiante.nombre);
+                                              const estudiantesFiltrados = estudiantesInfo.filter(e => e.nombre !== estudiante.nombre);
+                                              setEstudiantesInfo(estudiantesFiltrados);
+                                              setRefreshKey(prev => prev + 1);
+                                              toast.success('Estudiante eliminado exitosamente');
+                                            } catch (error) {
+                                              console.error('Error eliminando estudiante:', error);
+                                              toast.error('Error al eliminar estudiante');
+                                            }
                                           }
                                         }}
                                       >
@@ -4392,12 +4399,16 @@ export default function DirectorPage() {
                                       variant="outline"
                                       onClick={async () => {
                                         if (confirm(`¿Estás seguro de eliminar al profesor "${profesor.nombre}"?`)) {
-                                          const profesores = await fetchTutores();
-                                          const profesoresFiltrados = profesores.filter(p => p.id !== profesor.id);
-                                          await saveTutores(profesoresFiltrados);
-                                          setTutores(profesoresFiltrados);
-                                          setRefreshKey(prev => prev + 1);
-                                          toast.success('Profesor eliminado exitosamente');
+                                          try {
+                                            await deleteTutor(profesor.id);
+                                            const profesoresFiltrados = tutores.filter(p => p.id !== profesor.id);
+                                            setTutores(profesoresFiltrados);
+                                            setRefreshKey(prev => prev + 1);
+                                            toast.success('Profesor eliminado exitosamente de la base de datos');
+                                          } catch (error) {
+                                            console.error('Error eliminando profesor:', error);
+                                            toast.error('Error al eliminar profesor');
+                                          }
                                         }
                                       }}
                                     >
