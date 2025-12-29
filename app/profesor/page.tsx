@@ -288,8 +288,8 @@ export default function ProfesorPage() {
     }, 700);
   };
 
-  // Función para guardar incidencia en localStorage
-  function saveIncidenciaLocal(inc: {
+  // Función para guardar incidencia en la base de datos
+  async function saveIncidenciaLocal(inc: {
     profesor: string;
     estudiante: string;
     tipo: string;
@@ -298,21 +298,22 @@ export default function ProfesorPage() {
     descripcion: string;
     fecha: string;
     archivos: { name: string; type: string; size: number }[];
-  }): boolean {
-    // Importar addIncidencia de forma síncrona (import arriba del archivo)
-    // Guardar incidencia en el storage global
+  }): Promise<boolean> {
+    // Guardar incidencia en la base de datos usando la API
     try {
-      // @ts-ignore
-      const { addIncidencia } = require('@/lib/storage');
-      // Guardar primero - esta función guarda síncronamente en localStorage
-      const incidenciaGuardada = addIncidencia({
+      // Importar addIncidencia de la API (guarda en base de datos)
+      const { addIncidencia } = await import('@/lib/api');
+      // Guardar en la base de datos
+      const incidenciaGuardada = await addIncidencia({
         studentName: inc.estudiante,
         tipo: inc.tipo,
         gravedad: inc.gravedad,
         descripcion: inc.descripcion,
         fecha: inc.fecha.split('T')[0],
         profesor: inc.profesor,
-        derivacion: inc.derivar || 'ninguna',
+        derivacion: inc.derivar && inc.derivar !== '' && inc.derivar !== 'ninguna' ? inc.derivar : undefined,
+        resuelta: false,
+        estado: 'Pendiente',
       });
       // Verificar que se guardó correctamente
       if (incidenciaGuardada && incidenciaGuardada.id) {
@@ -909,7 +910,7 @@ export default function ProfesorPage() {
                 <Button
                   className="bg-indigo-600"
                   disabled={loading}
-                  onClick={e => {
+                  onClick={async (e) => {
                     e.preventDefault();
                     if (!incProfesor || !incEstudiante || !incTipo || !incGravedad || !incDescripcion) {
                       alert('Completa todos los campos obligatorios');
@@ -920,7 +921,7 @@ export default function ProfesorPage() {
                       return;
                     }
                     setLoading(true);
-                    // Guardar incidencia en localStorage (solo metadatos de archivos)
+                    // Guardar incidencia en la base de datos
                     const incidencia = {
                       profesor: incProfesor,
                       estudiante: incEstudiante,
@@ -932,7 +933,7 @@ export default function ProfesorPage() {
                       archivos: incArchivos.map(f => ({ name: f.name, type: f.type, size: f.size })),
                     };
                     // Guardar incidencia - verificar que se guardó correctamente
-                    const guardadoExitoso = saveIncidenciaLocal(incidencia);
+                    const guardadoExitoso = await saveIncidenciaLocal(incidencia);
                     if (guardadoExitoso) {
                       setTimeout(() => {
                         setLoading(false);

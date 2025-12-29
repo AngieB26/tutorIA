@@ -240,7 +240,9 @@ export async function getIncidencias(): Promise<Incidencia[]> {
         tutor: inc.tutorNombre ?? undefined,
         lugar: inc.lugar ?? undefined,
         timestamp: Number(inc.timestamp),
-        derivacion: inc.derivacion as TipoDerivacion ?? undefined,
+        derivacion: inc.derivacion && inc.derivacion !== 'ninguna' && inc.derivacion.trim() !== '' 
+          ? (inc.derivacion as TipoDerivacion) 
+          : undefined,
         resuelta: inc.resuelta,
         fechaResolucion: inc.fechaResolucion ?? undefined,
         resueltaPor: inc.resueltaPor ?? undefined,
@@ -296,6 +298,20 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       timestamp: Date.now(),
     };
 
+    const derivacionValue = newIncidencia.derivacion && 
+                            newIncidencia.derivacion !== 'ninguna' && 
+                            newIncidencia.derivacion.trim() !== '' 
+      ? newIncidencia.derivacion 
+      : null;
+
+    console.log('📝 Guardando nueva incidencia:', {
+      id: newIncidencia.id,
+      estudiante: newIncidencia.studentName,
+      derivacionOriginal: newIncidencia.derivacion,
+      derivacionGuardada: derivacionValue,
+      timestamp: newIncidencia.timestamp
+    });
+
     await prisma.incidencia.create({
       data: {
         id: newIncidencia.id,
@@ -309,13 +325,18 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
         tutorNombre: newIncidencia.tutor ?? null,
         lugar: newIncidencia.lugar ?? null,
         timestamp: BigInt(newIncidencia.timestamp),
-        derivacion: newIncidencia.derivacion ?? null,
+        derivacion: derivacionValue,
         resuelta: newIncidencia.resuelta ?? false,
         fechaResolucion: newIncidencia.fechaResolucion ?? null,
         resueltaPor: newIncidencia.resueltaPor ?? null,
         estado: newIncidencia.estado ?? 'Pendiente',
         historialEstado: newIncidencia.historialEstado ? JSON.stringify(newIncidencia.historialEstado) : null,
       },
+    });
+
+    console.log('✅ Incidencia guardada exitosamente:', {
+      id: newIncidencia.id,
+      derivacion: derivacionValue
     });
 
     return newIncidencia;
@@ -749,14 +770,43 @@ export async function getIncidenciasByFiltros(
 
 export async function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): Promise<Incidencia[]> {
   const incidencias = await getIncidencias();
+  
   const derivadas = incidencias
     .filter(inc => {
+      // Verificar que tenga derivación válida (no 'ninguna', null, undefined, o cadena vacía)
+      const derivacionValida = inc.derivacion && 
+                                inc.derivacion !== 'ninguna' &&
+                                inc.derivacion.trim() !== '' &&
+                                typeof inc.derivacion === 'string';
       const noResuelta = !inc.resuelta;
+      
       if (tipoDerivacion) {
         const coincideTipo = inc.derivacion === tipoDerivacion;
-        return noResuelta && coincideTipo;
+        const resultado = derivacionValida && noResuelta && coincideTipo;
+        if (resultado) {
+          console.log('✅ Incidencia derivada encontrada:', {
+            id: inc.id,
+            estudiante: inc.studentName,
+            derivacion: inc.derivacion,
+            tipoFiltro: tipoDerivacion,
+            resuelta: inc.resuelta,
+            timestamp: inc.timestamp
+          });
+        }
+        return resultado;
       } else {
-        return noResuelta;
+        // Sin filtro de tipo: retornar todas las que tengan derivación válida y no estén resueltas
+        const resultado = derivacionValida && noResuelta;
+        if (resultado) {
+          console.log('✅ Incidencia derivada encontrada (sin filtro):', {
+            id: inc.id,
+            estudiante: inc.studentName,
+            derivacion: inc.derivacion,
+            resuelta: inc.resuelta,
+            timestamp: inc.timestamp
+          });
+        }
+        return resultado;
       }
     })
     .sort((a, b) => {
@@ -764,6 +814,19 @@ export async function getIncidenciasDerivadas(tipoDerivacion?: TipoDerivacion): 
       const fechaB = b.timestamp ? new Date(b.timestamp).getTime() : new Date(b.fecha).getTime();
       return fechaB - fechaA;
     });
+  
+  console.log('📊 getIncidenciasDerivadas:', {
+    totalIncidencias: incidencias.length,
+    derivadasEncontradas: derivadas.length,
+    tipoFiltro: tipoDerivacion || 'todas',
+    derivadas: derivadas.map(inc => ({
+      id: inc.id,
+      estudiante: inc.studentName,
+      derivacion: inc.derivacion,
+      resuelta: inc.resuelta
+    }))
+  });
+  
   return derivadas;
 }
 
@@ -1060,10 +1123,66 @@ export async function getAsistenciaClasesByFilters(params: {
 }
 
 // ============================================
-// GRADOS Y SECCIONES (se mantienen en localStorage por ahora)
+// GRADOS Y SECCIONES
 // ============================================
-// Estas funciones pueden mantenerse usando localStorage ya que son datos simples de configuración
-// o pueden migrarse a la base de datos más adelante si se necesita
 
-// Las funciones para Grados y Secciones se pueden implementar después si es necesario
+export async function getGrados(): Promise<string[]> {
+  try {
+    const grados = await prisma.grado.findMany({
+      orderBy: { nombre: 'asc' }
+    });
+    return grados.map(g => g.nombre);
+  } catch (error) {
+    console.error('Error obteniendo grados:', error);
+    // Valores por defecto si hay error
+    return ['1ro', '2do', '3ro', '4to', '5to'];
+  }
+}
+
+export async function saveGrados(grados: string[]): Promise<void> {
+  try {
+    // Eliminar todos los grados existentes
+    await prisma.grado.deleteMany({});
+    
+    // Crear los nuevos grados
+    for (const nombre of grados) {
+      await prisma.grado.create({
+        data: { nombre: nombre.trim() }
+      });
+    }
+  } catch (error) {
+    console.error('Error guardando grados:', error);
+    throw error;
+  }
+}
+
+export async function getSecciones(): Promise<string[]> {
+  try {
+    const secciones = await prisma.seccion.findMany({
+      orderBy: { nombre: 'asc' }
+    });
+    return secciones.map(s => s.nombre);
+  } catch (error) {
+    console.error('Error obteniendo secciones:', error);
+    // Valores por defecto si hay error
+    return ['A', 'B', 'C'];
+  }
+}
+
+export async function saveSecciones(secciones: string[]): Promise<void> {
+  try {
+    // Eliminar todas las secciones existentes
+    await prisma.seccion.deleteMany({});
+    
+    // Crear las nuevas secciones
+    for (const nombre of secciones) {
+      await prisma.seccion.create({
+        data: { nombre: nombre.trim().toUpperCase() }
+      });
+    }
+  } catch (error) {
+    console.error('Error guardando secciones:', error);
+    throw error;
+  }
+}
 

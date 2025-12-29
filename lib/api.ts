@@ -299,48 +299,64 @@ export async function getIncidenciasCompletasByStudent(studentName: string): Pro
 }
 
 // ============================================
-// GRADOS Y SECCIONES (localStorage por ahora)
+// GRADOS Y SECCIONES
 // ============================================
 
-export function getGrados(): string[] {
-  if (typeof window === 'undefined') return ['1ro', '2do', '3ro', '4to', '5to'];
+export async function getGrados(): Promise<string[]> {
   try {
-    const stored = localStorage.getItem('tutoria_grados');
-    if (!stored) return ['1ro', '2do', '3ro', '4to', '5to'];
-    return JSON.parse(stored);
+    const res = await fetch('/api/grados');
+    if (!res.ok) {
+      // Valores por defecto si hay error
+      return ['1ro', '2do', '3ro', '4to', '5to'];
+    }
+    return res.json();
   } catch (error) {
-    console.error('Error reading grados from localStorage:', error);
+    console.error('Error obteniendo grados:', error);
+    // Valores por defecto si hay error
     return ['1ro', '2do', '3ro', '4to', '5to'];
   }
 }
 
-export function saveGrados(grados: string[]): void {
-  if (typeof window === 'undefined') return;
+export async function saveGrados(grados: string[]): Promise<void> {
   try {
-    localStorage.setItem('tutoria_grados', JSON.stringify(grados));
+    const res = await fetch('/api/grados', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(grados),
+    });
+    if (!res.ok) throw new Error('Error al guardar grados');
   } catch (error) {
-    console.error('Error saving grados to localStorage:', error);
+    console.error('Error guardando grados:', error);
+    throw error;
   }
 }
 
-export function getSecciones(): string[] {
-  if (typeof window === 'undefined') return ['A', 'B', 'C'];
+export async function getSecciones(): Promise<string[]> {
   try {
-    const stored = localStorage.getItem('tutoria_secciones');
-    if (!stored) return ['A', 'B', 'C'];
-    return JSON.parse(stored);
+    const res = await fetch('/api/secciones');
+    if (!res.ok) {
+      // Valores por defecto si hay error
+      return ['A', 'B', 'C'];
+    }
+    return res.json();
   } catch (error) {
-    console.error('Error reading secciones from localStorage:', error);
+    console.error('Error obteniendo secciones:', error);
+    // Valores por defecto si hay error
     return ['A', 'B', 'C'];
   }
 }
 
-export function saveSecciones(secciones: string[]): void {
-  if (typeof window === 'undefined') return;
+export async function saveSecciones(secciones: string[]): Promise<void> {
   try {
-    localStorage.setItem('tutoria_secciones', JSON.stringify(secciones));
+    const res = await fetch('/api/secciones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(secciones),
+    });
+    if (!res.ok) throw new Error('Error al guardar secciones');
   } catch (error) {
-    console.error('Error saving secciones to localStorage:', error);
+    console.error('Error guardando secciones:', error);
+    throw error;
   }
 }
 

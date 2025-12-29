@@ -10,7 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileText, Plus, Eye, AlertTriangle, ArrowRight, Users, Calendar, MapPin, User, X, ClipboardList } from 'lucide-react';
-import { addIncidencia, getIncidencias, getIncidenciasByStudent, seedInitialData, getEstudiantesByGrado, getEstudiantesInfo, getTutores, getTutoresGradoSeccion, getTutorGradoSeccion, marcarEstudianteAtendido, getAsistenciaClasesByFilters } from '@/lib/storage';
+import { 
+  addIncidencia, 
+  fetchIncidencias, 
+  getIncidenciasCompletasByStudent, 
+  fetchEstudiantes, 
+  fetchTutores, 
+  getTutoresGradoSeccion, 
+  getTutorGradoSeccion,
+  getAsistenciaClasesByFilters 
+} from '@/lib/api';
 import { TipoIncidencia, Incidencia, TipoDerivacion, SubtipoConducta, SubtipoPositivo, EstudianteInfo, Gravedad } from '@/lib/types';
 import { getTipoColor, getTipoLabel } from '@/lib/utils';
 
@@ -43,14 +52,27 @@ export default function TutorPage() {
     derivacion: '' as TipoDerivacion | '',
   });
 
-  const estudiantes = getEstudiantesInfo();
-  const tutores = getTutores();
-  const asignacionesTutores = getTutoresGradoSeccion();
+  const [estudiantes, setEstudiantes] = useState<EstudianteInfo[]>([]);
+  const [tutores, setTutores] = useState<any[]>([]);
+  const [asignacionesTutores, setAsignacionesTutores] = useState<any[]>([]);
   const gradosUnicos = [...new Set(estudiantes.map(e => e.grado))].sort();
   const seccionesUnicas = [...new Set(estudiantes.map(e => e.seccion))].sort();
 
+  // Cargar estudiantes, tutores y asignaciones
   useEffect(() => {
-    seedInitialData();
+    const loadData = async () => {
+      try {
+        const estudiantesData = await fetchEstudiantes();
+        const tutoresData = await fetchTutores();
+        const asignacionesData = await getTutoresGradoSeccion();
+        setEstudiantes(estudiantesData);
+        setTutores(tutoresData);
+        setAsignacionesTutores(asignacionesData);
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+      }
+    };
+    loadData();
   }, []);
 
   // Obtener secciones asignadas con información del tutor y cantidad de estudiantes
@@ -100,11 +122,27 @@ export default function TutorPage() {
       })
     : [];
 
-  // Determinar si hay un tutor asignado a la sección seleccionada
-  const tutorAsignado = seccionSeleccionada 
-    ? getTutorGradoSeccion(seccionSeleccionada.grado, seccionSeleccionada.seccion)
-    : null;
+  // Estado para tutor asignado
+  const [tutorAsignado, setTutorAsignado] = useState<any>(null);
   const esTutorDeLaSeccion = !!tutorAsignado;
+
+  // Cargar tutor asignado cuando cambia la sección seleccionada
+  useEffect(() => {
+    const loadTutorAsignado = async () => {
+      if (seccionSeleccionada) {
+        try {
+          const tutor = await getTutorGradoSeccion(seccionSeleccionada.grado, seccionSeleccionada.seccion);
+          setTutorAsignado(tutor);
+        } catch (error) {
+          console.error('Error cargando tutor asignado:', error);
+          setTutorAsignado(null);
+        }
+      } else {
+        setTutorAsignado(null);
+      }
+    };
+    loadTutorAsignado();
+  }, [seccionSeleccionada]);
 
   // Cargar resúmenes de IA para estudiantes (solo si es tutor de la sección)
   useEffect(() => {
@@ -112,33 +150,34 @@ export default function TutorPage() {
       return;
     }
 
-    estudiantesFiltrados.forEach(est => {
+    estudiantesFiltrados.forEach(async (est) => {
       // Solo cargar si no existe el resumen (evitar llamadas duplicadas)
       if (iaResumenes[est.nombre] || resumenesCargados.current.has(est.nombre)) return;
 
-      const incidenciasEst = getIncidenciasByStudent(est.nombre);
-      const incidenciasRecientes = incidenciasEst.filter(inc => {
-        const fechaInc = new Date(inc.fecha);
-        const hace30Dias = new Date();
-        hace30Dias.setDate(hace30Dias.getDate() - 30);
-        return fechaInc >= hace30Dias;
-      });
+      try {
+        const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+        const incidenciasRecientes = incidenciasEst.filter(inc => {
+          const fechaInc = new Date(inc.fecha);
+          const hace30Dias = new Date();
+          hace30Dias.setDate(hace30Dias.getDate() - 30);
+          return fechaInc >= hace30Dias;
+        });
 
-      // Marcar como que ya se está procesando
-      resumenesCargados.current.add(est.nombre);
+        // Marcar como que ya se está procesando
+        resumenesCargados.current.add(est.nombre);
 
-      // Marcar como cargando
-      setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
+        // Marcar como cargando
+        setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
 
-      // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
-      fetch('/api/generate-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          estudiante: est.nombre,
-          incidencias: incidenciasRecientes.length > 0 ? incidenciasRecientes : []
+        // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
+        fetch('/api/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            estudiante: est.nombre,
+            incidencias: incidenciasRecientes.length > 0 ? incidenciasRecientes : []
+          })
         })
-      })
         .then(async res => {
           if (!res.ok) throw new Error('Error al obtener resumen de IA');
           const data = await res.json();
@@ -212,7 +251,7 @@ export default function TutorPage() {
     setLoading(true);
     
     try {
-      const incidenciaGuardada = addIncidencia({
+      const incidenciaGuardada = await addIncidencia({
         studentName: formData.estudiante,
         tipo: formData.tipo as TipoIncidencia,
         subtipo: formData.subtipo ? (formData.subtipo as SubtipoConducta | SubtipoPositivo) : undefined,
@@ -222,7 +261,7 @@ export default function TutorPage() {
         profesor: formData.tutor,
         tutor: formData.tutor,
         lugar: formData.lugar,
-        derivacion: formData.derivacion,
+        derivacion: formData.derivacion && formData.derivacion !== 'ninguna' ? formData.derivacion : undefined,
         estado: 'Pendiente',
         historialEstado: [
           { estado: 'Pendiente', fecha: new Date().toISOString(), usuario: formData.tutor }
@@ -234,8 +273,8 @@ export default function TutorPage() {
       if (incidenciaGuardada && incidenciaGuardada.id && typeof window !== 'undefined') {
         try {
           const hoy = new Date().toISOString().split('T')[0];
-          marcarEstudianteAtendido(formData.estudiante, hoy, formData.tutor);
-          console.log('✅ Estudiante marcado como atendido en notificaciones:', formData.estudiante);
+          // Nota: marcarEstudianteAtendido ya no está disponible, se puede implementar después si es necesario
+          console.log('✅ Incidencia guardada:', incidenciaGuardada.id);
           
           // Disparar evento para actualizar notificaciones en el navbar
           // Usar setTimeout para asegurar que el storage se haya actualizado
@@ -456,8 +495,7 @@ export default function TutorPage() {
 
   // Vista de Estudiantes de una Sección
   if (viewMode === 'lista' && seccionSeleccionada) {
-    // Determinar si hay un tutor asignado a esta sección
-    const tutorAsignado = getTutorGradoSeccion(seccionSeleccionada.grado, seccionSeleccionada.seccion);
+    // Determinar si hay un tutor asignado a esta sección (usar estado)
     const esTutorDeLaSeccion = !!tutorAsignado;
 
     // Calcular estadísticas para el bloque REPORTE (solo si es tutor)
@@ -466,7 +504,7 @@ export default function TutorPage() {
       const totalEstudiantes = estudiantesFiltrados.length;
       
       // Calcular asistencia promedio
-      const registrosAsistencia = getAsistenciaClasesByFilters({
+      const registrosAsistencia = await getAsistenciaClasesByFilters({
         grado: seccionSeleccionada.grado,
         seccion: seccionSeleccionada.seccion
       });
@@ -482,7 +520,7 @@ export default function TutorPage() {
       const asistenciaPromedio = totalRegistros > 0 ? Math.round((totalAsistencias / totalRegistros) * 100) : 0;
 
       // Calcular incidencias activas (pendientes o en revisión)
-      const incidencias = getIncidencias();
+      const incidencias = await fetchIncidencias();
       const incidenciasActivas = incidencias.filter(inc => {
         const estudiante = estudiantesFiltrados.find(e => e.nombre === inc.studentName);
         return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
@@ -496,52 +534,66 @@ export default function TutorPage() {
     }
 
     // Calcular estado y resumen IA para cada estudiante (solo si es tutor)
-    const estudiantesConEstado = estudiantesFiltrados.map(est => {
-      if (!esTutorDeLaSeccion) {
-        return { ...est, estado: null, iaResumen: null, estaCargandoIA: false };
-      }
+    // Nota: Esto necesita ser async, pero por ahora usamos Promise.all
+    // Por simplicidad, usamos un estado para cargar los datos de forma asíncrona
+    const [estudiantesConEstado, setEstudiantesConEstado] = useState<any[]>([]);
+    
+    useEffect(() => {
+      const loadEstudiantesConEstado = async () => {
+        if (!esTutorDeLaSeccion || estudiantesFiltrados.length === 0) {
+          setEstudiantesConEstado(estudiantesFiltrados.map(est => ({ ...est, estado: null, iaResumen: null, estaCargandoIA: false })));
+          return;
+        }
 
-      const incidenciasEst = getIncidenciasByStudent(est.nombre);
-      const incidenciasRecientes = incidenciasEst.filter(inc => {
-        const fechaInc = new Date(inc.fecha);
-        const hace30Dias = new Date();
-        hace30Dias.setDate(hace30Dias.getDate() - 30);
-        return fechaInc >= hace30Dias;
-      });
+        const estudiantesPromises = estudiantesFiltrados.map(async (est) => {
+          const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+          const incidenciasRecientes = incidenciasEst.filter(inc => {
+            const fechaInc = new Date(inc.fecha);
+            const hace30Dias = new Date();
+            hace30Dias.setDate(hace30Dias.getDate() - 30);
+            return fechaInc >= hace30Dias;
+          });
 
-      // Separar incidencias positivas y negativas
-      const incidenciasNegativas = incidenciasRecientes.filter(inc => 
-        inc.tipo === 'ausencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
-      );
-      const incidenciasPositivas = incidenciasRecientes.filter(inc => inc.tipo === 'positivo');
-      
-      const incidenciasGraves = incidenciasNegativas.filter(inc => inc.gravedad === 'grave');
-      const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'ausencia').length;
-      const totalIncidenciasNegativas = incidenciasNegativas.length;
-      const totalIncidenciasPositivas = incidenciasPositivas.length;
+          // Separar incidencias positivas y negativas
+          const incidenciasNegativas = incidenciasRecientes.filter(inc => 
+            inc.tipo === 'ausencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
+          );
+          const incidenciasPositivas = incidenciasRecientes.filter(inc => inc.tipo === 'positivo');
+          
+          const incidenciasGraves = incidenciasNegativas.filter(inc => inc.gravedad === 'grave');
+          const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'ausencia').length;
+          const totalIncidenciasNegativas = incidenciasNegativas.length;
+          const totalIncidenciasPositivas = incidenciasPositivas.length;
 
-      // Determinar estado: Normal, Atención o Riesgo (solo basado en incidencias negativas)
-      // Las incidencias positivas mejoran el estado
-      let estado: 'normal' | 'atencion' | 'riesgo' = 'normal';
-      
-      // Si hay muchas incidencias positivas, favorece estado normal
-      const balance = totalIncidenciasPositivas - totalIncidenciasNegativas;
-      
-      if (incidenciasGraves.length > 0 || ausencias >= 5 || (totalIncidenciasNegativas >= 8 && balance < -3)) {
-        estado = 'riesgo';
-      } else if ((totalIncidenciasNegativas >= 3 && balance < 0) || (ausencias >= 2 && balance < 0)) {
-        estado = 'atencion';
-      } else if (totalIncidenciasNegativas >= 5 && balance <= 0) {
-        estado = 'atencion';
-      }
-      // Si balance >= 0 (más positivas que negativas), mantener normal
+          // Determinar estado: Normal, Atención o Riesgo (solo basado en incidencias negativas)
+          // Las incidencias positivas mejoran el estado
+          let estado: 'normal' | 'atencion' | 'riesgo' = 'normal';
+          
+          // Si hay muchas incidencias positivas, favorece estado normal
+          const balance = totalIncidenciasPositivas - totalIncidenciasNegativas;
+          
+          if (incidenciasGraves.length > 0 || ausencias >= 5 || (totalIncidenciasNegativas >= 8 && balance < -3)) {
+            estado = 'riesgo';
+          } else if ((totalIncidenciasNegativas >= 3 && balance < 0) || (ausencias >= 2 && balance < 0)) {
+            estado = 'atencion';
+          } else if (totalIncidenciasNegativas >= 5 && balance <= 0) {
+            estado = 'atencion';
+          }
+          // Si balance >= 0 (más positivas que negativas), mantener normal
 
-      // Resumen IA será cargado de forma asíncrona desde la API
-      const iaResumen = iaResumenes[est.nombre] || null;
-      const estaCargandoIA = iaCargando[est.nombre] || false;
+          // Resumen IA será cargado de forma asíncrona desde la API
+          const iaResumen = iaResumenes[est.nombre] || null;
+          const estaCargandoIA = iaCargando[est.nombre] || false;
 
-      return { ...est, estado, iaResumen, estaCargandoIA };
-    });
+          return { ...est, estado, iaResumen, estaCargandoIA };
+        });
+
+        const estudiantes = await Promise.all(estudiantesPromises);
+        setEstudiantesConEstado(estudiantes);
+      };
+
+      loadEstudiantesConEstado();
+    }, [estudiantesFiltrados, esTutorDeLaSeccion, iaResumenes, iaCargando]);
 
     return (
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-6xl">

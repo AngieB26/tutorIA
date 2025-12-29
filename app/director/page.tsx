@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles, User, AlertTriangle, CheckCircle, Calendar, BarChart3, CheckCircle2, X, Eye, FileText, TrendingUp, Shield, Target, AlertCircle, Download, Users, Upload, Plus, Trash2, Edit2, Bell } from 'lucide-react';
+import { Sparkles, User, AlertTriangle, CheckCircle, Calendar, BarChart3, CheckCircle2, X, Eye, FileText, TrendingUp, Shield, Target, AlertCircle, Download, Users, Upload, Plus, Trash2, Edit2, Bell, RefreshCw } from 'lucide-react';
 import { 
   fetchIncidencias,
   getIncidenciasDerivadas,
@@ -404,35 +404,6 @@ export default function DirectorPage() {
   const handleVerDetalleIncidencia = (inc: Incidencia) => {
     setIncidenciaDetalle(inc);
   };
-
-  // Filtrar incidencias derivadas cuando cambia el filtroDerivacion
-  useEffect(() => {
-    const loadIncidencias = async () => {
-      try {
-        const tipo = filtroDerivacion === 'todas' ? undefined : filtroDerivacion;
-        const derivadas = await getIncidenciasDerivadas(tipo);
-        setIncidenciasDerivadas(derivadas);
-      } catch (error) {
-        console.error('Error cargando incidencias derivadas:', error);
-        setIncidenciasDerivadas([]);
-      }
-    };
-    loadIncidencias();
-  }, [filtroDerivacion]);
-
-  // Cargar incidencias derivadas al montar
-  useEffect(() => {
-    const loadIncidencias = async () => {
-      try {
-        const derivadas = await getIncidenciasDerivadas();
-        setIncidenciasDerivadas(derivadas);
-      } catch (error) {
-        console.error('Error cargando incidencias derivadas:', error);
-        setIncidenciasDerivadas([]);
-      }
-    };
-    loadIncidencias();
-  }, []);
   // Handler para generar análisis con IA en perfil de estudiante
   const handleGenerateReport = async () => {
     if (!selectedStudent || incidenciasEstudiante.length === 0) return;
@@ -549,6 +520,8 @@ export default function DirectorPage() {
   const [estudiantesInfo, setEstudiantesInfo] = useState<EstudianteInfo[]>([]);
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
+  const [grados, setGrados] = useState<string[]>([]);
+  const [secciones, setSecciones] = useState<string[]>([]);
 
   // Cargar estudiantes al inicio y cuando cambie refreshKey
   useEffect(() => {
@@ -582,8 +555,8 @@ export default function DirectorPage() {
   useEffect(() => {
     const loadAsignaciones = async () => {
       try {
-        const grados = getGrados();
-        const secciones = getSecciones();
+        const grados = await getGrados();
+        const secciones = await getSecciones();
         const asignaciones: Record<string, any> = {};
         
         for (const grado of grados) {
@@ -618,6 +591,101 @@ export default function DirectorPage() {
     };
     loadClases();
   }, [refreshKey]);
+
+  // Cargar grados y secciones al inicio y cuando cambie refreshKey
+  useEffect(() => {
+    const loadGradosSecciones = async () => {
+      try {
+        const gradosData = await getGrados();
+        const seccionesData = await getSecciones();
+        setGrados(gradosData);
+        setSecciones(seccionesData);
+      } catch (error) {
+        console.error('Error cargando grados y secciones:', error);
+        setGrados(['1ro', '2do', '3ro', '4to', '5to']);
+        setSecciones(['A', 'B', 'C']);
+      }
+    };
+    loadGradosSecciones();
+  }, [refreshKey]);
+
+  // Cargar incidencias derivadas al inicio y cuando cambie refreshKey o filtroDerivacion
+  useEffect(() => {
+    const loadIncidenciasDerivadas = async () => {
+      try {
+        const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
+        setIncidenciasDerivadas(derivadas);
+      } catch (error) {
+        console.error('Error cargando incidencias derivadas:', error);
+        setIncidenciasDerivadas([]);
+      }
+    };
+    loadIncidenciasDerivadas();
+  }, [refreshKey, filtroDerivacion]);
+
+  // Recargar incidencias derivadas cuando se cambia al tab de derivadas
+  useEffect(() => {
+    if (activeTab === 'derivadas') {
+      const loadIncidenciasDerivadas = async () => {
+        try {
+          const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
+          setIncidenciasDerivadas(derivadas);
+        } catch (error) {
+          console.error('Error cargando incidencias derivadas:', error);
+          setIncidenciasDerivadas([]);
+        }
+      };
+      loadIncidenciasDerivadas();
+    }
+  }, [activeTab, filtroDerivacion]);
+
+  // Actualizar automáticamente las incidencias derivadas cada 30 segundos cuando el tab está activo
+  useEffect(() => {
+    if (activeTab !== 'derivadas') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
+        setIncidenciasDerivadas(derivadas);
+        console.log('🔄 Incidencias derivadas actualizadas automáticamente');
+      } catch (error) {
+        console.error('Error actualizando incidencias derivadas:', error);
+      }
+    }, 30000); // Cada 30 segundos
+
+    return () => clearInterval(interval);
+  }, [activeTab, filtroDerivacion]);
+
+  // Recargar incidencias derivadas cuando la ventana vuelve a tener foco
+  useEffect(() => {
+    if (activeTab !== 'derivadas') return;
+
+    const handleFocus = async () => {
+      try {
+        const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
+        setIncidenciasDerivadas(derivadas);
+        console.log('🔄 Incidencias derivadas actualizadas al volver el foco');
+      } catch (error) {
+        console.error('Error actualizando incidencias derivadas:', error);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [activeTab, filtroDerivacion]);
+
+  // Función para actualizar manualmente las incidencias derivadas
+  const handleActualizarDerivadas = async () => {
+    try {
+      const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
+      setIncidenciasDerivadas(derivadas);
+      toast.success('Incidencias derivadas actualizadas');
+    } catch (error) {
+      console.error('Error actualizando incidencias derivadas:', error);
+      toast.error('Error al actualizar incidencias derivadas');
+    }
+  };
+
   const [mostrarFormularioCurso, setMostrarFormularioCurso] = useState(false);
   const [formularioCurso, setFormularioCurso] = useState({
     nombre: '',
@@ -687,32 +755,39 @@ export default function DirectorPage() {
   });
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
 
-  // Cargar incidencias desde el almacenamiento JSON al montar y cuando cambie refreshKey
+  // Cargar incidencias desde la API al montar y cuando cambie refreshKey
   useEffect(() => {
-    const storage = require('@/lib/storage');
-    const todasIncidencias = storage.getIncidencias ? storage.getIncidencias() : [];
-    setIncidencias(todasIncidencias);
-    
-    // Sincronizar incidencias vistas con localStorage después de cargar incidencias
-    if (typeof window !== 'undefined') {
+    const loadIncidencias = async () => {
       try {
-        const vistasStr = localStorage.getItem('incidencias_vistas');
-        if (vistasStr) {
-          const vistasArray = JSON.parse(vistasStr);
-          const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-          // Solo actualizar si hay diferencias para evitar loops infinitos
-          setIncidenciasVistas(prev => {
-            const nuevoSet = new Set<string>(idsValidos);
-            if (prev.size !== nuevoSet.size || !idsValidos.every((id: string) => prev.has(id))) {
-              return nuevoSet;
+        const todasIncidencias = await fetchIncidencias();
+        setIncidencias(todasIncidencias);
+        
+        // Sincronizar incidencias vistas con localStorage después de cargar incidencias
+        if (typeof window !== 'undefined') {
+          try {
+            const vistasStr = localStorage.getItem('incidencias_vistas');
+            if (vistasStr) {
+              const vistasArray = JSON.parse(vistasStr);
+              const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
+              // Solo actualizar si hay diferencias para evitar loops infinitos
+              setIncidenciasVistas(prev => {
+                const nuevoSet = new Set<string>(idsValidos);
+                if (prev.size !== nuevoSet.size || !idsValidos.every((id: string) => prev.has(id))) {
+                  return nuevoSet;
+                }
+                return prev;
+              });
             }
-            return prev;
-          });
+          } catch (error) {
+            console.error('Error sincronizando incidencias vistas:', error);
+          }
         }
       } catch (error) {
-        console.error('Error sincronizando incidencias vistas:', error);
+        console.error('Error cargando incidencias:', error);
+        setIncidencias([]);
       }
-    }
+    };
+    loadIncidencias();
   }, [refreshKey]);
   
   // Cargar incidencias vistas desde localStorage solo una vez al montar (respaldo, aunque ya se carga en la inicialización)
@@ -1831,6 +1906,18 @@ export default function DirectorPage() {
               Orientación
             </Button>
           </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Incidencias Derivadas</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleActualizarDerivadas}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualizar
+            </Button>
+          </div>
           {incidenciasDerivadas.length > 0 ? (
             <Card>
               <CardHeader>
@@ -2105,7 +2192,7 @@ export default function DirectorPage() {
                     <SelectContent>
                       <SelectItem value="todas">Todos</SelectItem>
                       {(() => {
-                        const todosLosGrados = getGrados();
+                        const todosLosGrados = grados;
                         // Orden deseado de grados
                         const ordenGrados = ['1ro', '2do', '3ro', '4to', '5to'];
                         // Ordenar grados según el orden deseado, luego agregar los que no están en la lista
@@ -2132,7 +2219,7 @@ export default function DirectorPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todas">Todas</SelectItem>
-                      {getSecciones().map(seccion => (
+                      {secciones.map(seccion => (
                         <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
                       ))}
                     </SelectContent>
@@ -3842,7 +3929,7 @@ export default function DirectorPage() {
                     <SelectContent>
                       <SelectItem value="todas">Todos</SelectItem>
                       {(() => {
-                        const todosLosGrados = getGrados();
+                        const todosLosGrados = grados;
                         const ordenGrados = ['1ro', '2do', '3ro', '4to', '5to'];
                         const gradosOrdenados = [
                           ...ordenGrados.filter(g => todosLosGrados.includes(g)),
@@ -3867,7 +3954,7 @@ export default function DirectorPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todas">Todas</SelectItem>
-                      {getSecciones().map(seccion => (
+                      {secciones.map(seccion => (
                         <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
                       ))}
                     </SelectContent>
@@ -4353,9 +4440,10 @@ export default function DirectorPage() {
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               if (nuevoGradoInput.trim()) {
-                                const grados = getGrados();
                                 if (!grados.includes(nuevoGradoInput.trim())) {
-                                  saveGrados([...grados, nuevoGradoInput.trim()]);
+                                  const nuevosGrados = [...grados, nuevoGradoInput.trim()];
+                                  await saveGrados(nuevosGrados);
+                                  setGrados(nuevosGrados);
                                   setMostrarAgregarGrado(false);
                                   setNuevoGradoInput('');
                                   setRefreshKey(prev => prev + 1);
@@ -4373,17 +4461,16 @@ export default function DirectorPage() {
                         />
                         <Button
                           size="sm"
-                          onClick={() => {
+                          onClick={async () => {
                             if (nuevoGradoInput.trim()) {
-                              const grados = getGrados();
                               if (!grados.includes(nuevoGradoInput.trim())) {
-                                saveGrados([...grados, nuevoGradoInput.trim()]);
-                                setRefreshKey(prev => prev + 1);
+                                const nuevosGrados = [...grados, nuevoGradoInput.trim()];
+                                await saveGrados(nuevosGrados);
+                                setGrados(nuevosGrados);
                                 setMostrarAgregarGrado(false);
                                 setNuevoGradoInput('');
+                                setRefreshKey(prev => prev + 1);
                                 toast.success('Grado agregado exitosamente');
-                                // Forzar re-render de componentes que usan grados
-                                setTimeout(() => setRefreshKey(prev => prev + 1), 100);
                               } else {
                                 toast.error('Este grado ya existe');
                               }
@@ -4406,7 +4493,7 @@ export default function DirectorPage() {
                     </div>
                   )}
                   <div className="space-y-2">
-                    {getGrados().map((grado, idx) => (
+                    {grados.map((grado, idx) => (
                       <div key={`grado-${grado}-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <span className="font-medium text-gray-900">{grado}</span>
                         <Button
@@ -4414,12 +4501,13 @@ export default function DirectorPage() {
                           variant="ghost"
                           onClick={async () => {
                             if (confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
-                              const grados = await getGrados();
                               const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a este grado`);
                               } else {
-                                saveGrados(grados.filter(g => g !== grado));
+                                const nuevosGrados = grados.filter(g => g !== grado);
+                                await saveGrados(nuevosGrados);
+                                setGrados(nuevosGrados);
                                 setRefreshKey(prev => prev + 1);
                                 toast.success('Grado eliminado exitosamente');
                               }
@@ -4470,12 +4558,14 @@ export default function DirectorPage() {
                           onChange={(e) => setNuevaSeccionInput(e.target.value)}
                           placeholder="Nombre de la sección"
                           className="flex-1"
-                          onKeyDown={(e) => {
+                          onKeyDown={async (e) => {
                             if (e.key === 'Enter') {
                               if (nuevaSeccionInput.trim()) {
-                                const secciones = getSecciones();
-                                if (!secciones.includes(nuevaSeccionInput.trim().toUpperCase())) {
-                                  saveSecciones([...secciones, nuevaSeccionInput.trim().toUpperCase()]);
+                                const nuevaSeccion = nuevaSeccionInput.trim().toUpperCase();
+                                if (!secciones.includes(nuevaSeccion)) {
+                                  const nuevasSecciones = [...secciones, nuevaSeccion];
+                                  await saveSecciones(nuevasSecciones);
+                                  setSecciones(nuevasSecciones);
                                   setMostrarAgregarSeccion(false);
                                   setNuevaSeccionInput('');
                                   setRefreshKey(prev => prev + 1);
@@ -4493,15 +4583,17 @@ export default function DirectorPage() {
                         />
                         <Button
                           size="sm"
-                          onClick={() => {
+                          onClick={async () => {
                             if (nuevaSeccionInput.trim()) {
-                              const secciones = getSecciones();
-                              if (!secciones.includes(nuevaSeccionInput.trim().toUpperCase())) {
-                                  saveSecciones([...secciones, nuevaSeccionInput.trim().toUpperCase()]);
-                                  setMostrarAgregarSeccion(false);
-                                  setNuevaSeccionInput('');
-                                  setRefreshKey(prev => prev + 1);
-                                  toast.success('Sección agregada exitosamente');
+                              const nuevaSeccion = nuevaSeccionInput.trim().toUpperCase();
+                              if (!secciones.includes(nuevaSeccion)) {
+                                const nuevasSecciones = [...secciones, nuevaSeccion];
+                                await saveSecciones(nuevasSecciones);
+                                setSecciones(nuevasSecciones);
+                                setMostrarAgregarSeccion(false);
+                                setNuevaSeccionInput('');
+                                setRefreshKey(prev => prev + 1);
+                                toast.success('Sección agregada exitosamente');
                               } else {
                                 toast.error('Esta sección ya existe');
                               }
@@ -4524,7 +4616,7 @@ export default function DirectorPage() {
                     </div>
                   )}
                   <div className="space-y-2">
-                    {getSecciones().map((seccion, idx) => (
+                    {secciones.map((seccion, idx) => (
                       <div key={`seccion-${seccion}-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <span className="font-medium text-gray-900">{seccion}</span>
                         <Button
@@ -4532,12 +4624,13 @@ export default function DirectorPage() {
                           variant="ghost"
                           onClick={async () => {
                             if (confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
-                              const secciones = await getSecciones();
                               const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
                               if (tieneEstudiantes) {
                                 toast.error(`No se puede eliminar: hay estudiantes asignados a esta sección`);
                               } else {
-                                saveSecciones(secciones.filter(s => s !== seccion));
+                                const nuevasSecciones = secciones.filter(s => s !== seccion);
+                                await saveSecciones(nuevasSecciones);
+                                setSecciones(nuevasSecciones);
                                 setRefreshKey(prev => prev + 1);
                                 toast.success('Sección eliminada exitosamente');
                               }
@@ -4581,7 +4674,7 @@ export default function DirectorPage() {
                         <SelectContent>
                           <SelectItem value="todas">Todos</SelectItem>
                           {(() => {
-                            const todosLosGrados = getGrados();
+                            const todosLosGrados = grados;
                             const ordenGrados = ['1ro', '2do', '3ro', '4to', '5to'];
                             const gradosOrdenados = [
                               ...ordenGrados.filter(g => todosLosGrados.includes(g)),
@@ -4606,7 +4699,7 @@ export default function DirectorPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="todas">Todas</SelectItem>
-                          {getSecciones().map(seccion => (
+                          {secciones.map(seccion => (
                             <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
                           ))}
                         </SelectContent>
@@ -4625,8 +4718,7 @@ export default function DirectorPage() {
                       </TableHeader>
                       <TableBody>
                         {(() => {
-                          const grados = getGrados();
-                          const secciones = getSecciones();
+                          // Usar estados de grados y secciones
                           const combinaciones: Array<{grado: string, seccion: string}> = [];
                           grados.forEach(grado => {
                             secciones.forEach(seccion => {
@@ -4794,7 +4886,7 @@ export default function DirectorPage() {
                               <SelectValue placeholder="Selecciona grado" />
                             </SelectTrigger>
                           <SelectContent>
-                            {getGrados().map((grado) => (
+                            {grados.map((grado) => (
                               <SelectItem key={grado} value={grado}>{grado}</SelectItem>
                             ))}
                           </SelectContent>
@@ -4811,7 +4903,7 @@ export default function DirectorPage() {
                             <SelectValue placeholder="Selecciona sección" />
                           </SelectTrigger>
                           <SelectContent>
-                            {getSecciones().map((seccion) => (
+                            {secciones.map((seccion) => (
                               <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
                             ))}
                           </SelectContent>
@@ -4903,7 +4995,7 @@ export default function DirectorPage() {
                       <SelectContent>
                         <SelectItem value="todas">Todos</SelectItem>
                         {(() => {
-                          const todosLosGrados = getGrados();
+                          const todosLosGrados = grados;
                           const ordenGrados = ['1ro', '2do', '3ro', '4to', '5to'];
                           const gradosOrdenados = [
                             ...ordenGrados.filter(g => todosLosGrados.includes(g)),
@@ -4928,7 +5020,7 @@ export default function DirectorPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="todas">Todas</SelectItem>
-                        {getSecciones().map(seccion => (
+                        {secciones.map(seccion => (
                           <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
                         ))}
                       </SelectContent>
