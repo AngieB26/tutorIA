@@ -6,16 +6,18 @@
 
 import { useState, useEffect } from 'react';
 import {
-  getTutores,
-  getEstudiantesInfo,
   getClases,
   getAsistenciaClases,
   saveAsistenciaClases,
   addRegistroAsistenciaClase,
   findRegistroAsistencia,
   marcarEstudianteAtendido,
-  seedInitialData
 } from '@/lib/storage';
+import {
+  fetchTutores,
+  fetchEstudiantes,
+  fetchClases,
+} from '@/lib/api';
 
 import {
   Card,
@@ -88,12 +90,6 @@ export default function ProfesorPage() {
 
   const [loading, setLoading] = useState(false);
 
-  // Ejecutar seed al cargar la página para asegurar datos de prueba
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      seedInitialData();
-    }
-  }, []);
 
   // ---------- asistencia (states SIEMPRE ARRIBA) ----------
   const [profesor, setProfesor] = useState('');
@@ -134,9 +130,29 @@ export default function ProfesorPage() {
   const periodo = 1;
 
   /* ---------- datos ---------- */
-  const profesores = getTutores().map(t => t.nombre) || [];
-  const estudiantes = getEstudiantesInfo() || [];
-  const clases = getClases() || [];
+  const [profesores, setProfesores] = useState<string[]>([]);
+  const [estudiantes, setEstudiantes] = useState<any[]>([]);
+  const [clases, setClases] = useState<any[]>([]);
+
+  // Cargar profesores, estudiantes y clases desde la base de datos
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const tutoresData = await fetchTutores();
+        const estudiantesData = await fetchEstudiantes();
+        const clasesData = await fetchClases();
+        setProfesores(tutoresData.map(t => t.nombre) || []);
+        setEstudiantes(estudiantesData || []);
+        setClases(clasesData || []);
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        setProfesores([]);
+        setEstudiantes([]);
+        setClases([]);
+      }
+    };
+    loadData();
+  }, []);
 
   // Guardar profesor seleccionado en localStorage (tanto de asistencia como de incidencia)
   useEffect(() => {

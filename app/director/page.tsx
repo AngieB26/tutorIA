@@ -3376,8 +3376,6 @@ export default function DirectorPage() {
                       </CardHeader>
                       <CardContent>
                         {(() => {
-                  const storage = require('@/lib/storage');
-                  const estudiantesInfo = storage.getEstudiantesInfo ? storage.getEstudiantesInfo() : [];
                   const porGradoSeccion: Record<string, number> = {};
                   
                   incidenciasGenerales.forEach((inc: Incidencia) => {
