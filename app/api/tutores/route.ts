@@ -1,0 +1,43 @@
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  getTutores,
+  saveTutores,
+} from '@/lib/db';
+
+// GET /api/tutores
+export async function GET() {
+  try {
+    const tutores = await getTutores();
+    return NextResponse.json(tutores);
+  } catch (error) {
+    console.error('Error obteniendo tutores:', error);
+    return NextResponse.json(
+      { error: 'Error al obtener tutores' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/tutores
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    if (!Array.isArray(body)) {
+      return NextResponse.json(
+        { error: 'Se espera un array de tutores' },
+        { status: 400 }
+      );
+    }
+
+    await saveTutores(body);
+    return NextResponse.json({ success: true, count: body.length });
+  } catch (error) {
+    console.error('Error guardando tutores:', error);
+    return NextResponse.json(
+      { error: 'Error al guardar tutores' },
+      { status: 500 }
+    );
+  }
+}
+

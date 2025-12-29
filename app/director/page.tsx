@@ -12,7 +12,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, User, AlertTriangle, CheckCircle, Calendar, BarChart3, CheckCircle2, X, Eye, FileText, TrendingUp, Shield, Target, AlertCircle, Download, Users, Upload, Plus, Trash2, Edit2, Bell } from 'lucide-react';
-import { getIncidenciasByDateRange, getIncidenciasDerivadas, getListaEstudiantes, getIncidenciasCompletasByStudent, marcarIncidenciaResuelta, getNotasByStudent, getEstudianteInfo, getIncidencias, getEstudiantesInfo, saveEstudiantesInfo, getTutores, saveTutores, getGrados, saveGrados, getSecciones, saveSecciones, getClases, saveClases, addClase, getTutoresGradoSeccion, setTutorGradoSeccion, removeTutorGradoSeccion, getTutorGradoSeccion } from '@/lib/storage';
+import { 
+  fetchIncidencias,
+  getIncidenciasDerivadas,
+  getListaEstudiantes,
+  getIncidenciasCompletasByStudent,
+  marcarIncidenciaResuelta,
+  fetchNotas,
+  fetchEstudiante,
+  fetchEstudiantes,
+  saveEstudiantes,
+  fetchTutores,
+  saveTutores,
+  getGrados,
+  saveGrados,
+  getSecciones,
+  saveSecciones,
+  fetchClases,
+  saveClases,
+  addClase,
+  fetchTutoresGradoSeccion,
+  setTutorGradoSeccion,
+  removeTutorGradoSeccion,
+  getTutorGradoSeccion,
+} from '@/lib/api';
 import { Incidencia, ReporteIA, TipoDerivacion, Gravedad, TipoIncidencia, EstudianteInfo, Tutor, Clase, DiaSemana } from '@/lib/types';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
 import jsPDF from 'jspdf';
@@ -383,19 +406,31 @@ export default function DirectorPage() {
 
   // Filtrar incidencias derivadas cuando cambia el filtroDerivacion
   useEffect(() => {
-    const storage = require('@/lib/storage');
-    if (filtroDerivacion === 'todas') {
-      setIncidenciasDerivadas(storage.getIncidenciasDerivadas());
-    } else {
-      setIncidenciasDerivadas(storage.getIncidenciasDerivadas(filtroDerivacion));
-    }
+    const loadIncidencias = async () => {
+      try {
+        const tipo = filtroDerivacion === 'todas' ? undefined : filtroDerivacion;
+        const derivadas = await getIncidenciasDerivadas(tipo);
+        setIncidenciasDerivadas(derivadas);
+      } catch (error) {
+        console.error('Error cargando incidencias derivadas:', error);
+        setIncidenciasDerivadas([]);
+      }
+    };
+    loadIncidencias();
   }, [filtroDerivacion]);
 
   // Cargar incidencias derivadas al montar
   useEffect(() => {
-    const storage = require('@/lib/storage');
-    const derivadas = storage.getIncidenciasDerivadas();
-    setIncidenciasDerivadas(derivadas);
+    const loadIncidencias = async () => {
+      try {
+        const derivadas = await getIncidenciasDerivadas();
+        setIncidenciasDerivadas(derivadas);
+      } catch (error) {
+        console.error('Error cargando incidencias derivadas:', error);
+        setIncidenciasDerivadas([]);
+      }
+    };
+    loadIncidencias();
   }, []);
   // Handler para generar análisis con IA en perfil de estudiante
   const handleGenerateReport = async () => {
@@ -438,31 +473,33 @@ export default function DirectorPage() {
       setGeneratingReport(false);
     }
   };
-        // Handler para marcar incidencia como resuelta (stub)
-        const handleMarcarResuelta = (id: string) => {
-          if (typeof marcarIncidenciaResuelta === 'function') {
-            marcarIncidenciaResuelta(id);
-            // Recargar incidencias desde almacenamiento
-            const storage = require('@/lib/storage');
-            const todasIncidencias = storage.getIncidencias ? storage.getIncidencias() : [];
+        // Handler para marcar incidencia como resuelta
+        const handleMarcarResuelta = async (id: string) => {
+          try {
+            await marcarIncidenciaResuelta(id);
+            // Recargar incidencias desde la API
+            const todasIncidencias = await fetchIncidencias();
             setIncidencias(todasIncidencias);
-            // Mostrar mensaje de confirmación visual
-            if (typeof toast !== 'undefined' && toast.success) {
-              toast.success('Incidencia marcada como resuelta');
-            }
-          } else {
-            if (typeof toast !== 'undefined' && toast.error) {
-              toast.error('No se pudo marcar como resuelta. Función no disponible.');
-            } else {
-              alert('No se pudo marcar como resuelta. Función no disponible.');
-            }
+            // Recargar incidencias derivadas también
+            const derivadas = await getIncidenciasDerivadas(filtroDerivacion === 'todas' ? undefined : filtroDerivacion);
+            setIncidenciasDerivadas(derivadas);
+            toast.success('Incidencia marcada como resuelta');
+          } catch (error) {
+            console.error('Error marcando incidencia como resuelta:', error);
+            toast.error('No se pudo marcar como resuelta');
           }
         };
       // Handler para ver el perfil de un estudiante
-      const handleVerPerfil = (nombre: string) => {
+      const handleVerPerfil = async (nombre: string) => {
         setActiveTab('estudiantes');
         setSelectedStudent(nombre);
-        setIncidenciasEstudiante(getIncidenciasCompletasByStudent(nombre));
+        try {
+          const incidencias = await getIncidenciasCompletasByStudent(nombre);
+          setIncidenciasEstudiante(incidencias);
+        } catch (error) {
+          console.error('Error cargando incidencias del estudiante:', error);
+          setIncidenciasEstudiante([]);
+        }
         setReporte(null);
         setMostrarNotas(false);
       };
@@ -484,20 +521,28 @@ export default function DirectorPage() {
   
   // Cargar lista completa de estudiantes al montar y cuando cambie refreshKey
   useEffect(() => {
-    const info = require('@/lib/storage').getEstudiantesInfo();
-    const incidencias = getListaEstudiantes();
-    // Unir ambos: si el estudiante no tiene incidencias, poner 0 y N/A
-    const listaCompleta = info.map((est: { nombre: string; grado?: string; seccion?: string }) => {
-      const inc = incidencias.find(i => i.nombre === est.nombre);
-      return {
-        nombre: est.nombre,
-        grado: est.grado || '',
-        seccion: est.seccion || '',
-        totalIncidencias: inc ? inc.totalIncidencias : 0,
-        ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
-      };
-    });
-    setListaEstudiantes(listaCompleta);
+    const loadData = async () => {
+      try {
+        const info = await fetchEstudiantes();
+        const incidencias = await getListaEstudiantes();
+        // Unir ambos: si el estudiante no tiene incidencias, poner 0 y N/A
+        const listaCompleta = info.map((est: { nombre: string; grado?: string; seccion?: string }) => {
+          const inc = incidencias.find(i => i.nombre === est.nombre);
+          return {
+            nombre: est.nombre,
+            grado: est.grado || '',
+            seccion: est.seccion || '',
+            totalIncidencias: inc ? inc.totalIncidencias : 0,
+            ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
+          };
+        });
+        setListaEstudiantes(listaCompleta);
+      } catch (error) {
+        console.error('Error cargando lista de estudiantes:', error);
+        setListaEstudiantes([]);
+      }
+    };
+    loadData();
   }, [refreshKey]);
   const [adminSubTab, setAdminSubTab] = useState<'estudiantes' | 'profesores' | 'grados' | 'cursos'>('estudiantes');
   const [mostrarFormularioCurso, setMostrarFormularioCurso] = useState(false);
@@ -814,34 +859,42 @@ export default function DirectorPage() {
 
   // Sincronizar infoEdit y fotoPreview cuando cambia el estudiante seleccionado o refreshKey
   useEffect(() => {
-    if (selectedStudent) {
-      const estudianteInfo = getEstudianteInfo(selectedStudent);
-      if (estudianteInfo) {
-        // Si el estudiante no tiene tutor asignado, verificar si hay un tutor general para su grado y sección
-        const grado = estudianteInfo.grado;
-        const seccion = estudianteInfo.seccion;
-        if (!estudianteInfo.tutor && grado && seccion) {
-          const tutorGradoSeccion = getTutorGradoSeccion(grado, seccion);
-          if (tutorGradoSeccion) {
-            const tutor = getTutores().find(t => t.id === tutorGradoSeccion.tutorId);
-            if (tutor) {
-              estudianteInfo.tutor = {
-                nombre: tutor.nombre,
-                telefono: tutor.telefono,
-                email: tutor.email
-              };
+    const loadEstudianteInfo = async () => {
+      if (selectedStudent) {
+        try {
+          const estudianteInfo = await fetchEstudiante(selectedStudent);
+          if (estudianteInfo) {
+            // Si el estudiante no tiene tutor asignado, verificar si hay un tutor general para su grado y sección
+            const grado = estudianteInfo.grado;
+            const seccion = estudianteInfo.seccion;
+            if (!estudianteInfo.tutor && grado && seccion) {
+              const tutorGradoSeccion = await getTutorGradoSeccion(grado, seccion);
+              if (tutorGradoSeccion) {
+                const tutores = await fetchTutores();
+                const tutor = tutores.find(t => t.id === tutorGradoSeccion.tutorId);
+                if (tutor) {
+                  estudianteInfo.tutor = {
+                    nombre: tutor.nombre,
+                    telefono: tutor.telefono,
+                    email: tutor.email
+                  };
+                }
+              }
             }
+            setInfoEdit(estudianteInfo);
+            setFotoPreview(estudianteInfo?.fotoPerfil || '');
+            setEditando(false);
           }
+        } catch (error) {
+          console.error('Error cargando información del estudiante:', error);
         }
-        setInfoEdit(estudianteInfo);
-        setFotoPreview(estudianteInfo?.fotoPerfil || '');
+      } else {
+        setInfoEdit(null);
+        setFotoPreview('');
         setEditando(false);
       }
-    } else {
-      setInfoEdit(null);
-      setFotoPreview('');
-      setEditando(false);
-    }
+    };
+    loadEstudianteInfo();
   }, [selectedStudent, refreshKey]);
 
   // --- HANDLERS DE EDICIÓN ---
@@ -868,63 +921,39 @@ export default function DirectorPage() {
     setFotoPreview('');
     setInfoEdit((prev: any) => ({ ...prev, fotoPerfil: '' }));
   };
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     try {
-      const storage = require('@/lib/storage');
-      let estudiantes = storage.getEstudiantesInfo();
+      if (!infoEdit || !selectedStudent) {
+        toast.error('No hay información para guardar');
+        return;
+      }
+
+      let estudiantes = await fetchEstudiantes();
       // Buscar por el nombre original (selectedStudent)
       const idx = estudiantes.findIndex((e: any) => e.nombre === selectedStudent);
       if (idx !== -1) {
-        // Si el nombre cambió, actualizar también en la lista base (getListaEstudiantes)
+        // Si el nombre cambió, actualizar también en las incidencias y notas
         const nombreAnterior = estudiantes[idx].nombre;
         estudiantes[idx] = infoEdit;
-        storage.saveEstudiantesInfo(estudiantes);
+        await saveEstudiantes(estudiantes);
+
         if (infoEdit.nombre && infoEdit.nombre !== nombreAnterior) {
-          // Actualizar nombre en la lista base si existe
-          let listaBase = getListaEstudiantes();
-          const idxBase = listaBase.findIndex((e: any) => e.nombre === nombreAnterior);
-          if (idxBase !== -1) {
-            listaBase[idxBase].nombre = infoEdit.nombre;
-            if (storage.saveListaEstudiantes) {
-              storage.saveListaEstudiantes(listaBase);
-            }
-          }
-          // Migrar incidencias al nuevo nombre
-          if (storage.getIncidencias && storage.saveIncidencias) {
-            let todasIncidencias = storage.getIncidencias();
-            let incidenciasActualizadas = todasIncidencias.map((inc: any) =>
-              inc.studentName === nombreAnterior ? { ...inc, studentName: infoEdit.nombre } : inc
-            );
-            storage.saveIncidencias(incidenciasActualizadas);
-          }
-          // Migrar incidencias derivadas al nuevo nombre
-          if (storage.getIncidenciasDerivadas && storage.saveIncidenciasDerivadas) {
-            let derivadas = storage.getIncidenciasDerivadas();
-            let derivadasActualizadas = derivadas.map((inc: any) =>
-              inc.studentName === nombreAnterior ? { ...inc, studentName: infoEdit.nombre } : inc
-            );
-            storage.saveIncidenciasDerivadas(derivadasActualizadas);
-          }
-          // Migrar notas al nuevo nombre
-          if (storage.getNotasByStudent && storage.saveNotas) {
-            let todasNotas = storage.getNotasByStudent();
-            if (Array.isArray(todasNotas)) {
-              // Reemplazar las notas del estudiante antiguo por las nuevas
-              todasNotas = todasNotas.map((nota: any) =>
-                nota.nombre === nombreAnterior ? { ...nota, nombre: infoEdit.nombre } : nota
-              );
-              storage.saveNotas(todasNotas);
-            }
-          }
+          // Nota: En la base de datos, las incidencias y notas tienen referencias por estudianteId o studentName
+          // La actualización del nombre se puede hacer a través de las relaciones en la BD
+          // Por ahora, actualizamos el nombre del estudiante y las relaciones deberían mantenerse
+          // En una versión futura, se podría actualizar masivamente en la BD
+
           // Actualizar el estado y recargar incidencias y notas con el nuevo nombre
           setSelectedStudent(infoEdit.nombre);
-          setIncidenciasEstudiante(getIncidenciasCompletasByStudent(infoEdit.nombre));
+          const nuevasIncidencias = await getIncidenciasCompletasByStudent(infoEdit.nombre);
+          setIncidenciasEstudiante(nuevasIncidencias);
           setReporte(null);
           setMostrarNotas(false);
         }
-        // Refrescar lista de estudiantes combinando ambas fuentes
-        const lista = getListaEstudiantes();
-        const info = storage.getEstudiantesInfo();
+        
+        // Refrescar lista de estudiantes
+        const lista = await getListaEstudiantes();
+        const info = await fetchEstudiantes();
         // Unir ambas fuentes para asegurar que todos los estudiantes estén presentes
         const nombresUnicos = Array.from(new Set([
           ...info.map((i: any) => i.nombre),
@@ -943,7 +972,7 @@ export default function DirectorPage() {
         });
         setListaEstudiantes(listaFinal);
         setRefreshKey(prev => prev + 1); // Forzar re-render en toda la página
-      setEditando(false);
+        setEditando(false);
         toast.success('Información del estudiante guardada exitosamente');
       } else {
         toast.error('No se encontró el estudiante');
@@ -976,16 +1005,23 @@ export default function DirectorPage() {
   };
   // Inicializar y actualizar incidenciasGenerales dinámicamente cuando cambian las fechas o cuando se actualiza refreshKey
   useEffect(() => {
-    const storage = require('@/lib/storage');
-    // Si hay fechas, filtrar, si no, mostrar todo
-    const nuevasIncidencias = fechaInicio && fechaFin
-      ? storage.getIncidenciasByDateRange(fechaInicio, fechaFin)
-      : (storage.getIncidencias ? storage.getIncidencias() : []);
-    
-    // Siempre actualizar para asegurar que se reflejen los cambios
-    setIncidenciasGenerales(nuevasIncidencias);
-    // Limpiar reporte cuando cambian las fechas o las incidencias
-    setReporteGeneral(null);
+    const loadIncidencias = async () => {
+      try {
+        // Si hay fechas, filtrar, si no, mostrar todo
+        const nuevasIncidencias = fechaInicio && fechaFin
+          ? await fetchIncidencias({ fechaInicio, fechaFin })
+          : await fetchIncidencias();
+        
+        // Siempre actualizar para asegurar que se reflejen los cambios
+        setIncidenciasGenerales(nuevasIncidencias);
+        // Limpiar reporte cuando cambian las fechas o las incidencias
+        setReporteGeneral(null);
+      } catch (error) {
+        console.error('Error cargando incidencias generales:', error);
+        setIncidenciasGenerales([]);
+      }
+    };
+    loadIncidencias();
   }, [fechaInicio, fechaFin, refreshKey]);
 
   // Usar useMemo para crear un hash de las incidencias y detectar cambios reales

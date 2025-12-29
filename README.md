@@ -19,12 +19,13 @@ TutorIA es una plataforma que digitaliza el registro de incidencias y asistencia
 - **TypeScript**
 - **Tailwind CSS**
 - **shadcn/ui** para componentes UI
+- **PostgreSQL** con **Prisma ORM** para base de datos
 - **Google Gemini API** para reportes IA (gratis)
-- **localStorage** para persistencia (demo hackathon)
 
 ## 📋 Requisitos Previos
 
 - Node.js 18+ instalado
+- Base de datos PostgreSQL (recomendamos [Neon](https://neon.tech) - gratis)
 - Cuenta de Google (gratis) para obtener API key de Gemini
 
 ## 🔧 Instalación Local
@@ -40,10 +41,31 @@ TutorIA es una plataforma que digitaliza el registro de incidencias y asistencia
    
    Crea un archivo `.env.local` en la raíz del proyecto:
    ```bash
+   # Base de datos PostgreSQL (Neon, Supabase, etc.)
+   DATABASE_URL="postgresql://user:password@host:port/database?sslmode=require"
+   
+   # API Key de Google Gemini
    GOOGLE_AI_API_KEY=tu-api-key-de-google-aqui
    ```
+   
+   📖 **Guía completa de configuración de base de datos**: Ver [NEON_SETUP.md](./NEON_SETUP.md)
 
-4. **Obtener API Key de Google Gemini (GRATIS):**
+4. **Configurar la base de datos:**
+   
+   ```bash
+   # Generar el cliente de Prisma
+   npm run db:generate
+   
+   # Crear las tablas en la base de datos (desarrollo)
+   npm run db:push
+   
+   # O usar migraciones (producción)
+   npm run db:migrate
+   ```
+   
+   💡 **Recomendación**: Usa [Neon](https://neon.tech) para una base de datos PostgreSQL gratuita y serverless.
+
+5. **Obtener API Key de Google Gemini (GRATIS):**
    
    **Resumen rápido:**
    - Ve a [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
@@ -58,12 +80,12 @@ TutorIA es una plataforma que digitaliza el registro de incidencias y asistencia
    - ✅ Fácil de obtener (solo cuenta de Google)
    - ✅ Perfecto para hackathons
 
-5. **Ejecutar el servidor de desarrollo:**
+6. **Ejecutar el servidor de desarrollo:**
    ```bash
    npm run dev
    ```
 
-6. **Abrir en el navegador:**
+7. **Abrir en el navegador:**
    ```
    http://localhost:3000
    ```
@@ -195,16 +217,16 @@ Puedes buscar estos nombres en la página del director para ver los reportes.
 ## 🔒 Notas de Seguridad
 
 - Esta es una aplicación de demostración para hackathon
-- Los datos se almacenan en localStorage (solo en el navegador)
-- Para producción, se recomienda usar una base de datos real
-- La API key de Anthropic debe mantenerse segura y nunca compartirse
+- Los datos se almacenan en PostgreSQL usando Prisma ORM
+- La API key de Google Gemini debe mantenerse segura y nunca compartirse
+- La URL de la base de datos contiene credenciales sensibles - nunca la subas a Git
 
 ## 🚧 Próximas Mejoras
 
 Ver [ROADMAP.md](./ROADMAP.md) para el plan completo de funcionalidades futuras.
 
 ### Prioridades Inmediatas:
-- [ ] Base de datos real (PostgreSQL/MongoDB)
+- [x] Base de datos real (PostgreSQL con Prisma) ✅
 - [ ] Autenticación de usuarios
 - [ ] Gestión de pagos (mensualidades, matrículas)
 - [ ] Gestión de documentos (expedientes digitales)
@@ -227,6 +249,10 @@ Ver [ROADMAP.md](./ROADMAP.md) para el plan completo de funcionalidades futuras.
 - `npm run build` - Construye la aplicación para producción
 - `npm start` - Inicia el servidor de producción
 - `npm run lint` - Ejecuta el linter
+- `npm run db:generate` - Genera el cliente de Prisma
+- `npm run db:migrate` - Ejecuta migraciones de base de datos
+- `npm run db:push` - Sincroniza el schema con la base de datos (desarrollo)
+- `npm run db:studio` - Abre Prisma Studio para ver/editar datos
 
 ## 🚀 Despliegue Rápido
 
@@ -242,6 +268,7 @@ Ver [DEPLOY.md](./DEPLOY.md) para instrucciones completas.
 
 - **[BACKEND.md](./BACKEND.md)** - Guía completa del backend y API
 - **[BACKEND-CHECKLIST.md](./BACKEND-CHECKLIST.md)** - Checklist rápido para verificar que todo funciona
+- **[NEON_SETUP.md](./NEON_SETUP.md)** - Guía para configurar la base de datos PostgreSQL con Neon
 
 ## 🤝 Contribuir
 
