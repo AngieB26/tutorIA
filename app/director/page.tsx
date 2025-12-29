@@ -2241,12 +2241,18 @@ export default function DirectorPage() {
                             <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.profesor}</TableCell>
                             <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.lugar || '-'}</TableCell>
                             <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
-                              {inc.resuelta ? (
+                              {inc.estado === 'Resuelta' ? (
                                 <Badge className="bg-primary text-white">Resuelta</Badge>
-                              ) : inc.derivacion && inc.derivacion !== 'ninguna' ? (
+                              ) : inc.estado === 'Pendiente' ? (
                                 <Badge className="bg-yellow-400 text-black">Pendiente</Badge>
-                              ) : (
+                              ) : inc.estado === 'normal' ? (
                                 <Badge variant="secondary" className="bg-gray-100 text-gray-900">Normal</Badge>
+                              ) : inc.estado === 'En revisión' ? (
+                                <Badge className="bg-orange-400 text-white">En revisión</Badge>
+                              ) : inc.estado === 'Cerrada' ? (
+                                <Badge className="bg-gray-600 text-white">Cerrada</Badge>
+                              ) : (
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-900">{inc.estado || 'Normal'}</Badge>
                               )}
                             </TableCell>
                             <TableCell>
