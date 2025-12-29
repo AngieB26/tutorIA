@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
+import { fetchIncidencias } from '@/lib/api';
 
 export function Navbar() {
   const router = useRouter();
@@ -259,10 +260,10 @@ export function Navbar() {
   // Cargar notificaciones del director cuando estemos en la página del director
   useEffect(() => {
     if (isDirector && typeof window !== 'undefined') {
-      const actualizarNotificaciones = () => {
+      const actualizarNotificaciones = async () => {
         try {
-          const { getIncidencias } = require('@/lib/storage');
-          const todasIncidencias = getIncidencias ? getIncidencias() : [];
+          // Cargar incidencias desde la base de datos
+          const todasIncidencias = await fetchIncidencias();
           
           // Sincronizar incidencias vistas con localStorage
           try {
@@ -289,6 +290,7 @@ export function Navbar() {
           setNuevasIncidencias(noVistas);
         } catch (error) {
           console.error('Error cargando notificaciones del director:', error);
+          setNuevasIncidencias([]);
         }
       };
       
@@ -306,12 +308,6 @@ export function Navbar() {
             console.error('Error procesando cambio en localStorage:', error);
           }
         }
-        if (e.key === 'tutoria_incidencias' || e.key === null) {
-          setTimeout(() => {
-            setRefreshKeyDirector(prev => prev + 1);
-            actualizarNotificaciones();
-          }, 200);
-        }
       };
 
       const handleIncidenciaRegistrada = (e: Event) => {
@@ -328,7 +324,7 @@ export function Navbar() {
       window.addEventListener('storage', handleStorageChange);
       window.addEventListener('incidenciaRegistrada', handleIncidenciaRegistrada as EventListener);
       
-      const interval = setInterval(actualizarNotificaciones, 2000);
+      const interval = setInterval(actualizarNotificaciones, 5000); // Actualizar cada 5 segundos
       
       return () => {
         clearInterval(interval);
