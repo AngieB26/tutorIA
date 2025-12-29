@@ -4647,23 +4647,34 @@ export default function DirectorPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={async () => {
-                            if (confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
-                              try {
-                                const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
-                                if (tieneEstudiantes) {
-                                  toast.error(`No se puede eliminar: hay estudiantes asignados a este grado`);
-                                  return;
-                                }
-                                const nuevosGrados = grados.filter(g => g !== grado);
-                                await saveGrados(nuevosGrados);
-                                setGrados(nuevosGrados);
-                                setRefreshKey(prev => prev + 1);
-                                toast.success('Grado eliminado exitosamente');
-                              } catch (error) {
-                                console.error('Error eliminando grado:', error);
-                                toast.error('Error al eliminar el grado');
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('🔄 Intentando eliminar grado:', grado);
+                            const confirmar = window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`);
+                            if (!confirmar) {
+                              console.log('❌ Usuario canceló la eliminación');
+                              return;
+                            }
+                            try {
+                              console.log('✅ Usuario confirmó, verificando estudiantes...');
+                              const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
+                              console.log('📊 Estudiantes con este grado:', tieneEstudiantes);
+                              if (tieneEstudiantes) {
+                                toast.error(`No se puede eliminar: hay estudiantes asignados a este grado`);
+                                return;
                               }
+                              console.log('💾 Guardando nuevos grados...');
+                              const nuevosGrados = grados.filter(g => g !== grado);
+                              await saveGrados(nuevosGrados);
+                              console.log('✅ Grados guardados en BD');
+                              setGrados(nuevosGrados);
+                              setRefreshKey(prev => prev + 1);
+                              toast.success('Grado eliminado exitosamente');
+                            } catch (error) {
+                              console.error('❌ Error eliminando grado:', error);
+                              toast.error('Error al eliminar el grado');
                             }
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -4779,23 +4790,34 @@ export default function DirectorPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={async () => {
-                            if (confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
-                              try {
-                                const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
-                                if (tieneEstudiantes) {
-                                  toast.error(`No se puede eliminar: hay estudiantes asignados a esta sección`);
-                                  return;
-                                }
-                                const nuevasSecciones = secciones.filter(s => s !== seccion);
-                                await saveSecciones(nuevasSecciones);
-                                setSecciones(nuevasSecciones);
-                                setRefreshKey(prev => prev + 1);
-                                toast.success('Sección eliminada exitosamente');
-                              } catch (error) {
-                                console.error('Error eliminando sección:', error);
-                                toast.error('Error al eliminar la sección');
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('🔄 Intentando eliminar sección:', seccion);
+                            const confirmar = window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`);
+                            if (!confirmar) {
+                              console.log('❌ Usuario canceló la eliminación');
+                              return;
+                            }
+                            try {
+                              console.log('✅ Usuario confirmó, verificando estudiantes...');
+                              const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
+                              console.log('📊 Estudiantes con esta sección:', tieneEstudiantes);
+                              if (tieneEstudiantes) {
+                                toast.error(`No se puede eliminar: hay estudiantes asignados a esta sección`);
+                                return;
                               }
+                              console.log('💾 Guardando nuevas secciones...');
+                              const nuevasSecciones = secciones.filter(s => s !== seccion);
+                              await saveSecciones(nuevasSecciones);
+                              console.log('✅ Secciones guardadas en BD');
+                              setSecciones(nuevasSecciones);
+                              setRefreshKey(prev => prev + 1);
+                              toast.success('Sección eliminada exitosamente');
+                            } catch (error) {
+                              console.error('❌ Error eliminando sección:', error);
+                              toast.error('Error al eliminar la sección');
                             }
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
