@@ -254,8 +254,15 @@ export async function POST() {
       { nombre: 'Arte', grado: '5to', seccion: 'A', profesor: 'Prof. Ramírez', dias: posiblesDias, periodos: [3, 7] },
     ];
     console.log('💾 Guardando clases...');
-    for (const clase of clasesSeed) {
-      await addClase(clase);
+    console.log('💾 Guardando clases...');
+    try {
+      for (const clase of clasesSeed) {
+        await addClase(clase);
+      }
+      console.log(`✅ ${clasesSeed.length} clases guardadas`);
+    } catch (error) {
+      console.error('❌ Error guardando clases:', error);
+      throw error;
     }
     console.log(`✅ ${clasesSeed.length} clases guardadas`);
 
