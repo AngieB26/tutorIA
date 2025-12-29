@@ -258,6 +258,14 @@ export default function TutorPage() {
     setLoading(true);
     
     try {
+      // Validar y preparar derivación
+      // Ya validamos antes que derivacion no sea vacía ni 'ninguna'
+      const derivacionStr: string = formData.derivacion || '';
+      const derivacionValue: TipoDerivacion | undefined = 
+        derivacionStr && derivacionStr !== '' && derivacionStr !== 'ninguna'
+          ? (derivacionStr as TipoDerivacion)
+          : undefined;
+
       const incidenciaGuardada = await addIncidencia({
         studentName: formData.estudiante,
         tipo: formData.tipo as TipoIncidencia,
@@ -268,7 +276,7 @@ export default function TutorPage() {
         profesor: formData.tutor,
         tutor: formData.tutor,
         lugar: formData.lugar,
-        derivacion: formData.derivacion && formData.derivacion !== 'ninguna' ? formData.derivacion : undefined,
+        derivacion: derivacionValue,
         estado: 'Pendiente',
         historialEstado: [
           { estado: 'Pendiente', fecha: new Date().toISOString(), usuario: formData.tutor }
