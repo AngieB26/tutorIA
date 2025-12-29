@@ -4,13 +4,24 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GraduationCap, User, Shield } from 'lucide-react';
-import { seedInitialData } from '@/lib/storage';
 
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    seedInitialData();
+    // Ejecutar seed automáticamente al cargar la página
+    const runSeed = async () => {
+      try {
+        const response = await fetch('/api/seed', { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+          console.log('Seed ejecutado:', data.message);
+        }
+      } catch (error) {
+        console.error('Error ejecutando seed:', error);
+      }
+    };
+    runSeed();
   }, []);
 
   return (
