@@ -933,7 +933,7 @@ export async function marcarIncidenciaResuelta(
     });
 
     // Actualizar la incidencia con el estado y el historial
-    await prisma.incidencia.update({
+    const incidenciaActualizada = await prisma.incidencia.update({
       where: { id },
       data: {
         resuelta: true,
@@ -945,6 +945,13 @@ export async function marcarIncidenciaResuelta(
     });
 
     console.log(`✅ Incidencia ${id} marcada como resuelta por ${resueltaPor}`);
+    console.log(`📊 Estado actualizado en BD:`, {
+      id: incidenciaActualizada.id,
+      estado: incidenciaActualizada.estado,
+      resuelta: incidenciaActualizada.resuelta,
+      fechaResolucion: incidenciaActualizada.fechaResolucion,
+      resueltaPor: incidenciaActualizada.resueltaPor,
+    });
   } catch (error) {
     console.error('Error marcando incidencia como resuelta:', error);
     throw error;
