@@ -26,8 +26,9 @@ function getPrisma(): PrismaClient {
     return prismaInstance;
   }
   
-  // Durante el build, no inicializar Prisma - retornar un proxy que fallará si se usa
-  if (process.env.NEXT_PHASE === 'phase-production-build' || !process.env.DATABASE_URL) {
+  // Solo verificar si estamos en build time, no si falta DATABASE_URL
+  // porque DATABASE_URL puede no estar disponible por otras razones en runtime
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
     // Crear un proxy que lanzará error si se intenta usar durante build
     return new Proxy({} as PrismaClient, {
       get() {
@@ -36,6 +37,8 @@ function getPrisma(): PrismaClient {
     });
   }
   
+  // En runtime, intentar inicializar Prisma
+  // Si falta DATABASE_URL, getPrismaClient() lanzará el error apropiado
   const client = getPrismaClient();
   prismaInstance = globalForPrisma.prisma ?? client;
   if (process.env.NODE_ENV !== 'production') {
