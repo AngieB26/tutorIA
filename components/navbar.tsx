@@ -494,16 +494,16 @@ export function Navbar() {
               
               {/* Dropdown de notificaciones del director */}
               {mostrarNotificacionesDirector && (
-                <div className="notificaciones-dropdown-director absolute right-0 top-12 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
-                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Nuevas Incidencias</h3>
-                    <div className="flex items-center gap-2">
+                <div className="notificaciones-dropdown-director absolute right-0 top-12 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
+                  <div className="p-3 sm:p-4 border-b border-gray-200 flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Nuevas Incidencias</h3>
+                    <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                       {nuevasIncidencias.length > 0 && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={marcarTodasComoVistas}
-                          className="text-xs text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                          className="text-xs text-gray-700 hover:bg-gray-100 hover:text-gray-900 hidden sm:inline-flex"
                         >
                           Marcar todas como vistas
                         </Button>
@@ -602,9 +602,9 @@ export function Navbar() {
               
               {/* Dropdown de notificaciones */}
               {mostrarNotificaciones && (
-                <div className="notificaciones-dropdown-navbar absolute right-0 top-12 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Estudiantes que requieren atención</h3>
+                <div className="notificaciones-dropdown-navbar absolute right-0 top-12 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                  <div className="p-3 sm:p-4 border-b border-gray-200 flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Estudiantes que requieren atención</h3>
                     <Button
                       variant="ghost"
                       size="icon"

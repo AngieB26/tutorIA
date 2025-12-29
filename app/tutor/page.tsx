@@ -406,10 +406,11 @@ export default function TutorPage() {
                           <Button
                             size="sm"
                             onClick={() => setSeccionSeleccionada({ grado: seccion.grado, seccion: seccion.seccion })}
-                            className="gap-1"
+                            className="gap-1 w-full sm:w-auto"
                           >
                             <Eye className="h-4 w-4" />
-                            Ver Estudiantes
+                            <span className="hidden sm:inline">Ver Estudiantes</span>
+                            <span className="sm:hidden">Ver</span>
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -516,18 +517,18 @@ export default function TutorPage() {
     return (
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-6xl">
         <div className="mb-6 sm:mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
                 <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                Estudiantes - {seccionSeleccionada.grado} {seccionSeleccionada.seccion}
+                <span className="break-words">Estudiantes - {seccionSeleccionada.grado} {seccionSeleccionada.seccion}</span>
               </h1>
               <p className="text-sm sm:text-base text-gray-900 mt-1">Lista de estudiantes de la sección</p>
             </div>
             <Button variant="outline" onClick={() => {
               setSeccionSeleccionada(null);
               setBusquedaEstudiante('');
-            }}>
+            }} className="w-full sm:w-auto">
               <X className="h-4 w-4 mr-2" />
               Volver
             </Button>
@@ -596,22 +597,27 @@ export default function TutorPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-sm font-semibold">Estudiante</TableHead>
-                        <TableHead className="text-sm font-semibold">Grado</TableHead>
-                        <TableHead className="text-sm font-semibold">Sección</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold">Estudiante</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold hidden sm:table-cell">Grado</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold hidden sm:table-cell">Sección</TableHead>
                         {esTutorDeLaSeccion && (
-                          <TableHead className="text-sm font-semibold">Estado</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold">Estado</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {estudiantesConEstado.map((estudiante) => (
                         <TableRow key={estudiante.nombre} className="hover:bg-gray-50">
-                          <TableCell className="font-medium text-gray-900">{estudiante.nombre}</TableCell>
-                          <TableCell className="text-gray-900">{estudiante.grado}</TableCell>
-                          <TableCell className="text-gray-900">{estudiante.seccion}</TableCell>
+                          <TableCell className="font-medium text-gray-900 text-xs sm:text-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                              <span>{estudiante.nombre}</span>
+                              <span className="text-gray-500 text-xs sm:hidden">{estudiante.grado} {estudiante.seccion}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{estudiante.grado}</TableCell>
+                          <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{estudiante.seccion}</TableCell>
                           {esTutorDeLaSeccion && (
-                            <TableCell>
+                            <TableCell className="text-xs sm:text-sm">
                               {estudiante.estado === 'normal' && (
                                 <Badge className="bg-green-100 text-green-800 border-green-300">Normal</Badge>
                               )}
@@ -638,13 +644,15 @@ export default function TutorPage() {
                     <CardContent>
                       <div className="space-y-2">
                         {estudiantesConEstado.map(est => (
-                          <div key={est.nombre} className="text-sm text-gray-700">
-                            <span className="font-semibold">{est.nombre}:</span>{' '}
-                            {est.estaCargandoIA ? (
-                              <span className="text-gray-500 italic">Generando resumen...</span>
-                            ) : (
-                              est.iaResumen || 'Sin análisis disponible'
-                            )}
+                          <div key={est.nombre} className="text-sm text-gray-700 break-words">
+                            <span className="font-semibold block sm:inline">{est.nombre}:</span>{' '}
+                            <span className="block sm:inline">
+                              {est.estaCargandoIA ? (
+                                <span className="text-gray-500 italic">Generando resumen...</span>
+                              ) : (
+                                est.iaResumen || 'Sin análisis disponible'
+                              )}
+                            </span>
                           </div>
                         ))}
                       </div>
