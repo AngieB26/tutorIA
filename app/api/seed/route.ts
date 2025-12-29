@@ -15,9 +15,27 @@ export async function POST() {
   try {
     console.log('🌱 Iniciando seed...');
     // Verificar si ya hay datos
-    const existingEstudiantes = await getEstudiantesInfo();
-    const existingIncidencias = await getIncidencias();
-    const existingTutores = await getTutores();
+    let existingEstudiantes: any[] = [];
+    let existingIncidencias: any[] = [];
+    let existingTutores: any[] = [];
+    
+    try {
+      existingEstudiantes = await getEstudiantesInfo();
+    } catch (error) {
+      console.error('Error obteniendo estudiantes existentes:', error);
+    }
+    
+    try {
+      existingIncidencias = await getIncidencias();
+    } catch (error) {
+      console.error('Error obteniendo incidencias existentes:', error);
+    }
+    
+    try {
+      existingTutores = await getTutores();
+    } catch (error) {
+      console.error('Error obteniendo tutores existentes:', error);
+    }
 
     console.log('Datos existentes:', {
       estudiantes: existingEstudiantes.length,
@@ -25,11 +43,12 @@ export async function POST() {
       tutores: existingTutores.length
     });
 
-    if (existingEstudiantes.length > 0 || existingIncidencias.length > 0) {
-      console.log('✅ Ya hay datos, no se ejecuta seed');
+    // Solo ejecutar seed si NO hay estudiantes (los estudiantes son el dato principal)
+    if (existingEstudiantes.length > 0) {
+      console.log('✅ Ya hay estudiantes, no se ejecuta seed');
       return NextResponse.json({ 
         success: true, 
-        message: 'La base de datos ya tiene datos. No se ejecutó el seed.',
+        message: 'La base de datos ya tiene estudiantes. No se ejecutó el seed.',
         estudiantes: existingEstudiantes.length,
         incidencias: existingIncidencias.length,
         tutores: existingTutores.length
