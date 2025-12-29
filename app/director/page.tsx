@@ -352,7 +352,29 @@ export default function DirectorPage() {
               <div className="text-sm"><span className="font-semibold text-gray-700">Descripción:</span> <span className="text-gray-700">{incidencia.descripcion}</span></div>
               <div className="text-sm"><span className="font-semibold text-gray-700">Fecha y hora:</span> <span className="text-gray-700">{formatFecha(incidencia.fecha)}</span></div>
               {incidencia.gravedad && <div className="text-sm"><span className="font-semibold text-gray-700">Gravedad:</span> <span className="text-gray-700">{getGravedadLabel ? getGravedadLabel(incidencia.gravedad) : incidencia.gravedad}</span></div>}
-              {incidencia.derivacion && <div className="text-sm"><span className="font-semibold text-gray-700">Derivación:</span> <span className="text-gray-700">{incidencia.derivacion}</span></div>}
+              {incidencia.derivacion && incidencia.derivacion !== 'ninguna' && (
+                <div className="text-sm">
+                  <span className="font-semibold text-gray-700">Derivación:</span>{' '}
+                  <Badge className="bg-yellow-400 text-black">
+                    {incidencia.derivacion === 'director' ? 'Director' :
+                     incidencia.derivacion === 'psicologia' ? 'Psicología' :
+                     incidencia.derivacion === 'enfermeria' ? 'Enfermería' :
+                     incidencia.derivacion === 'coordinacion' ? 'Coordinación' :
+                     incidencia.derivacion === 'orientacion' ? 'Orientación' :
+                     incidencia.derivacion}
+                  </Badge>
+                </div>
+              )}
+              {incidencia.resuelta !== undefined && (
+                <div className="text-sm">
+                  <span className="font-semibold text-gray-700">Estado:</span>{' '}
+                  {incidencia.resuelta ? (
+                    <Badge className="bg-primary text-white">Resuelta</Badge>
+                  ) : (
+                    <Badge className="bg-yellow-400 text-black">Pendiente</Badge>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="mb-4">
@@ -1946,49 +1968,84 @@ export default function DirectorPage() {
                   Incidencias que Requieren tu Atención
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-900">
-                  {incidenciasDerivadas.length} {incidenciasDerivadas.length === 1 ? 'incidencia pendiente' : 'incidencias pendientes'}
+                  {incidenciasDerivadas.length} {incidenciasDerivadas.length === 1 ? 'incidencia pendiente' : 'incidencias pendientes'} (no resueltas)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {incidenciasDerivadas.map((inc) => (
-                    <div
-                      key={inc.id}
-                      className="p-4 border border-gray-300 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge className={inc.tipo === 'asistencia' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : getTipoColor(inc.tipo)}>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-sm font-semibold">Fecha</TableHead>
+                        <TableHead className="text-sm font-semibold">Estudiante</TableHead>
+                        <TableHead className="text-sm font-semibold">Tipo</TableHead>
+                        <TableHead className="text-sm font-semibold">Gravedad</TableHead>
+                        <TableHead className="text-sm font-semibold">Descripción</TableHead>
+                        <TableHead className="text-sm font-semibold hidden sm:table-cell">Profesor</TableHead>
+                        <TableHead className="text-sm font-semibold hidden sm:table-cell">Derivación</TableHead>
+                        <TableHead className="text-sm font-semibold">Acción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {incidenciasDerivadas.map((inc) => (
+                        <TableRow key={inc.id} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap text-gray-900">
+                            {formatFechaHora(inc)}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium text-gray-900">
+                            {inc.studentName}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge className={`${getTipoColor(inc.tipo)} text-xs`}>
                               {getTipoLabel(inc.tipo)}
                             </Badge>
-                            <span className="text-sm font-semibold text-gray-900">{inc.studentName}</span>
-                          </div>
-                          <p className="text-sm text-gray-900 mb-2">{inc.descripcion}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-900">
-                            <span className="flex items-center gap-1"><Calendar className="inline h-3 w-3 mr-1" />{formatFecha(inc.fecha)}</span>
-                            <span className="flex items-center gap-1"><User className="inline h-3 w-3 mr-1" />{inc.profesor}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end ml-4 gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleMarcarResuelta(inc.id)}
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Marcar Resuelta
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleVerDetalleIncidencia(inc)}
-                          >
-                            Ver Detalle
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge className={`${getGravedadColor(inc.gravedad)} text-xs`}>
+                              {getGravedadLabel(inc.gravedad)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm max-w-xs sm:max-w-none text-gray-900">
+                            {inc.descripcion}
+                          </TableCell>
+                          <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">
+                            {inc.profesor}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
+                            <Badge className="bg-yellow-400 text-black">
+                              {inc.derivacion === 'director' ? 'Director' :
+                               inc.derivacion === 'psicologia' ? 'Psicología' :
+                               inc.derivacion === 'enfermeria' ? 'Enfermería' :
+                               inc.derivacion === 'coordinacion' ? 'Coordinación' :
+                               inc.derivacion === 'orientacion' ? 'Orientación' :
+                               inc.derivacion || '-'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleMarcarResuelta(inc.id)}
+                                className="gap-1"
+                              >
+                                <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="hidden sm:inline">Resuelta</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleVerDetalleIncidencia(inc)}
+                                className="gap-1"
+                              >
+                                <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="hidden sm:inline">Ver</span>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
