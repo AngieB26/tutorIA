@@ -4349,7 +4349,8 @@ export default function DirectorPage() {
                                             return;
                                           }
                                           profesores[idx] = {...profesores[idx], ...profesorEditForm} as Tutor;
-                                          saveTutores(profesores);
+                                          await saveTutores(profesores);
+                                          setTutores(profesores);
                                           setRefreshKey(prev => prev + 1);
                                           setProfesorEditandoAdmin(null);
                                           setProfesorEditForm({});
@@ -4393,7 +4394,8 @@ export default function DirectorPage() {
                                         if (confirm(`¿Estás seguro de eliminar al profesor "${profesor.nombre}"?`)) {
                                           const profesores = await fetchTutores();
                                           const profesoresFiltrados = profesores.filter(p => p.id !== profesor.id);
-                                          saveTutores(profesoresFiltrados);
+                                          await saveTutores(profesoresFiltrados);
+                                          setTutores(profesoresFiltrados);
                                           setRefreshKey(prev => prev + 1);
                                           toast.success('Profesor eliminado exitosamente');
                                         }
