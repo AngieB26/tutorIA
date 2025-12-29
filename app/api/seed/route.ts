@@ -299,9 +299,21 @@ export async function POST() {
     console.error('❌ Error ejecutando seed:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Mensaje más amigable si falta DATABASE_URL
+    let userFriendlyMessage = errorMessage;
+    if (errorMessage.includes('DATABASE_URL')) {
+      userFriendlyMessage = 'DATABASE_URL no está configurada. Por favor, configura la variable de entorno DATABASE_URL en Vercel (Settings → Environment Variables).';
+    }
+    
     console.error('Error details:', { errorMessage, errorStack });
     return NextResponse.json(
-      { error: 'Error ejecutando seed', details: errorMessage, stack: errorStack },
+      { 
+        error: 'Error ejecutando seed', 
+        details: userFriendlyMessage,
+        technicalDetails: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
+      },
       { status: 500 }
     );
   }

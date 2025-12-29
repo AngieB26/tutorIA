@@ -9,13 +9,20 @@ const globalForPrisma = globalThis as unknown as {
 function getPrismaClient(): PrismaClient {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is not set');
+    const errorMsg = 'DATABASE_URL environment variable is not set. Please configure it in Vercel Environment Variables.';
+    console.error('❌', errorMsg);
+    throw new Error(errorMsg);
   }
 
-  const cleanUrl = databaseUrl.replace(/^["'\s]+|["'\s]+$/g, '').trim();
-  const pool = new Pool({ connectionString: cleanUrl });
-  const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
+  try {
+    const cleanUrl = databaseUrl.replace(/^["'\s]+|["'\s]+$/g, '').trim();
+    const pool = new Pool({ connectionString: cleanUrl });
+    const adapter = new PrismaPg(pool);
+    return new PrismaClient({ adapter });
+  } catch (error) {
+    console.error('❌ Error creando PrismaClient:', error);
+    throw error;
+  }
 }
 
 // Inicialización lazy: solo crear el cliente cuando se necesite, no durante el build
