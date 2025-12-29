@@ -1129,14 +1129,12 @@ export default function DirectorPage() {
         return;
       }
 
-      let estudiantes = await fetchEstudiantes();
-      // Buscar por el nombre original (selectedStudent)
-      const idx = estudiantes.findIndex((e: any) => e.nombre === selectedStudent);
-      if (idx !== -1) {
-        // Si el nombre cambió, actualizar también en las incidencias y notas
-        const nombreAnterior = estudiantes[idx].nombre;
-        estudiantes[idx] = infoEdit;
-        await saveEstudiantes(estudiantes);
+      // Usar el nombre original (selectedStudent) para actualizar el registro existente
+      const nombreOriginal = selectedStudent;
+      
+      // Actualizar el estudiante usando saveEstudianteInfo con nombreOriginal
+      // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
+      await saveEstudianteInfo(infoEdit, nombreOriginal);
 
         if (infoEdit.nombre && infoEdit.nombre !== nombreAnterior) {
           // Nota: En la base de datos, las incidencias y notas tienen referencias por estudianteId o studentName
