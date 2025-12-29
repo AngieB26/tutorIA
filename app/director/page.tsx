@@ -1136,46 +1136,45 @@ export default function DirectorPage() {
       // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
       await saveEstudianteInfo(infoEdit, nombreOriginal);
 
-        if (infoEdit.nombre && infoEdit.nombre !== nombreAnterior) {
-          // Nota: En la base de datos, las incidencias y notas tienen referencias por estudianteId o studentName
-          // La actualización del nombre se puede hacer a través de las relaciones en la BD
-          // Por ahora, actualizamos el nombre del estudiante y las relaciones deberían mantenerse
-          // En una versión futura, se podría actualizar masivamente en la BD
-
-          // Actualizar el estado y recargar incidencias y notas con el nuevo nombre
-          setSelectedStudent(infoEdit.nombre);
-          const nuevasIncidencias = await getIncidenciasCompletasByStudent(infoEdit.nombre);
-          setIncidenciasEstudiante(nuevasIncidencias);
-          setReporte(null);
-          setMostrarNotas(false);
-        }
-        
-        // Refrescar lista de estudiantes
-        const lista = await getListaEstudiantes();
-        const info = await fetchEstudiantes();
-        // Unir ambas fuentes para asegurar que todos los estudiantes estén presentes
-        const nombresUnicos = Array.from(new Set([
-          ...info.map((i: any) => i.nombre),
-          ...lista.map((e: any) => e.nombre)
-        ]));
-        const listaFinal = nombresUnicos.map((nombre: string) => {
-          const estInfo = info.find((i: any) => i.nombre === nombre);
-          const inc = lista.find((e: any) => e.nombre === nombre);
-          return {
-            nombre,
-            grado: estInfo?.grado || (inc as any)?.grado || '',
-            seccion: estInfo?.seccion || (inc as any)?.seccion || '',
-            totalIncidencias: inc ? inc.totalIncidencias : 0,
-            ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
-          };
-        });
-        setListaEstudiantes(listaFinal);
-        setRefreshKey(prev => prev + 1); // Forzar re-render en toda la página
-        setEditando(false);
-        toast.success('Información del estudiante guardada exitosamente');
+      // Si el nombre cambió, actualizar el estado y recargar datos
+      if (infoEdit.nombre && infoEdit.nombre !== nombreOriginal) {
+        // Actualizar el estado y recargar incidencias y notas con el nuevo nombre
+        setSelectedStudent(infoEdit.nombre);
+        const nuevasIncidencias = await getIncidenciasCompletasByStudent(infoEdit.nombre);
+        setIncidenciasEstudiante(nuevasIncidencias);
+        setReporte(null);
+        setMostrarNotas(false);
       } else {
-        toast.error('No se encontró el estudiante');
+        // Si el nombre no cambió, solo recargar los datos del estudiante
+        const estudianteActualizado = await fetchEstudiante(infoEdit.nombre || nombreOriginal);
+        if (estudianteActualizado) {
+          setInfoEdit(estudianteActualizado);
+        }
       }
+      
+      // Refrescar lista de estudiantes
+      const lista = await getListaEstudiantes();
+      const info = await fetchEstudiantes();
+      // Unir ambas fuentes para asegurar que todos los estudiantes estén presentes
+      const nombresUnicos = Array.from(new Set([
+        ...info.map((i: any) => i.nombre),
+        ...lista.map((e: any) => e.nombre)
+      ]));
+      const listaFinal = nombresUnicos.map((nombre: string) => {
+        const estInfo = info.find((i: any) => i.nombre === nombre);
+        const inc = lista.find((e: any) => e.nombre === nombre);
+        return {
+          nombre,
+          grado: estInfo?.grado || (inc as any)?.grado || '',
+          seccion: estInfo?.seccion || (inc as any)?.seccion || '',
+          totalIncidencias: inc ? inc.totalIncidencias : 0,
+          ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
+        };
+      });
+      setListaEstudiantes(listaFinal);
+      setRefreshKey(prev => prev + 1); // Forzar re-render en toda la página
+      setEditando(false);
+      toast.success('Información del estudiante guardada exitosamente');
     } catch (error: any) {
       console.error('Error guardando estudiante:', error);
       toast.error('Error al guardar la información del estudiante');
