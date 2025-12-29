@@ -2076,7 +2076,7 @@ export default function DirectorPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todas">Todas</SelectItem>
-                      <SelectItem value="ausencia">Ausencia</SelectItem>
+                      <SelectItem value="ausencia">Asistencia</SelectItem>
                       <SelectItem value="conducta">Conducta</SelectItem>
                       <SelectItem value="academica">Académica</SelectItem>
                       <SelectItem value="positivo">Positivo</SelectItem>
@@ -2577,7 +2577,7 @@ export default function DirectorPage() {
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
                       <p className="text-2xl font-bold text-orange-500">{stats.porTipo.ausencia}</p>
-                      <p className="text-xs text-gray-900 font-semibold mt-1">Ausencias</p>
+                      <p className="text-xs text-gray-900 font-semibold mt-1">Asistencias</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
                       <p className="text-2xl font-bold text-red-600">{stats.porTipo.conducta}</p>

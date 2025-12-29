@@ -31,7 +31,7 @@ export function getTipoLabel(tipo: string): string {
     case 'positivo':
       return 'Comportamiento Positivo';
     case 'ausencia':
-      return 'Ausencia';
+      return 'Asistencia';
     case 'tardanza':
       return 'Tardanza';
     case 'conducta':
