@@ -4649,18 +4649,23 @@ export default function DirectorPage() {
                           onClick={async () => {
                             console.log('🔄 Click en eliminar grado:', grado);
                             console.log('📊 Grados actuales:', grados);
+                            
+                            // Verificar primero si tiene estudiantes antes de mostrar el diálogo
+                            const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
+                            if (tieneEstudiantes) {
+                              const estudiantesCount = estudiantesInfo.filter(e => e.grado === grado).length;
+                              toast.error(`No se puede eliminar el grado "${grado}": hay ${estudiantesCount} estudiante(s) asignado(s) a este grado`);
+                              return;
+                            }
+                            
+                            // Si no tiene estudiantes, mostrar el diálogo de confirmación
                             if (!window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
                               console.log('❌ Usuario canceló');
                               return;
                             }
+                            
                             try {
                               console.log('✅ Usuario confirmó eliminación');
-                              const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
-                              console.log('📊 Tiene estudiantes?', tieneEstudiantes);
-                              if (tieneEstudiantes) {
-                                toast.error(`No se puede eliminar: hay estudiantes asignados a este grado`);
-                                return;
-                              }
                               const nuevosGrados = grados.filter(g => g !== grado);
                               console.log('💾 Nuevos grados después de filtrar:', nuevosGrados);
                               console.log('💾 Guardando en BD...');
@@ -4793,18 +4798,23 @@ export default function DirectorPage() {
                           onClick={async () => {
                             console.log('🔄 Click en eliminar sección:', seccion);
                             console.log('📊 Secciones actuales:', secciones);
+                            
+                            // Verificar primero si tiene estudiantes antes de mostrar el diálogo
+                            const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
+                            if (tieneEstudiantes) {
+                              const estudiantesCount = estudiantesInfo.filter(e => e.seccion === seccion).length;
+                              toast.error(`No se puede eliminar la sección "${seccion}": hay ${estudiantesCount} estudiante(s) asignado(s) a esta sección`);
+                              return;
+                            }
+                            
+                            // Si no tiene estudiantes, mostrar el diálogo de confirmación
                             if (!window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
                               console.log('❌ Usuario canceló');
                               return;
                             }
+                            
                             try {
                               console.log('✅ Usuario confirmó eliminación');
-                              const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
-                              console.log('📊 Tiene estudiantes?', tieneEstudiantes);
-                              if (tieneEstudiantes) {
-                                toast.error(`No se puede eliminar: hay estudiantes asignados a esta sección`);
-                                return;
-                              }
                               const nuevasSecciones = secciones.filter(s => s !== seccion);
                               console.log('💾 Nuevas secciones después de filtrar:', nuevasSecciones);
                               console.log('💾 Guardando en BD...');
