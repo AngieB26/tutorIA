@@ -127,22 +127,16 @@ export default function TutorPage() {
       // Marcar como que ya se está procesando
       resumenesCargados.current.add(est.nombre);
 
-      // Si no hay incidencias recientes, usar mensaje simple sin llamar a la API
-      if (incidenciasRecientes.length === 0) {
-        setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Sin incidencias recientes. Rendimiento normal.' }));
-        return;
-      }
-
       // Marcar como cargando
       setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
 
-      // Llamar a la API para generar resumen de IA (una línea)
+      // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
       fetch('/api/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           estudiante: est.nombre,
-          incidencias: incidenciasRecientes
+          incidencias: incidenciasRecientes.length > 0 ? incidenciasRecientes : []
         })
       })
         .then(async res => {
