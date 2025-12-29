@@ -14,6 +14,27 @@ import { EstudianteInfo, Incidencia, Tutor, Nota, Clase, DiaSemana } from '@/lib
 export async function POST() {
   try {
     console.log('🌱 Iniciando seed...');
+    
+    // Verificar que DATABASE_URL esté configurada
+    if (!process.env.DATABASE_URL) {
+      const errorMsg = 'DATABASE_URL no está configurada en Vercel. Por favor, ve a Settings → Environment Variables y agrega DATABASE_URL con tu connection string de PostgreSQL.';
+      console.error('❌', errorMsg);
+      return NextResponse.json(
+        { 
+          error: 'DATABASE_URL no configurada', 
+          details: errorMsg,
+          instructions: [
+            '1. Ve a tu proyecto en Vercel',
+            '2. Settings → Environment Variables',
+            '3. Agrega DATABASE_URL con tu connection string de PostgreSQL',
+            '4. Marca Production, Preview y Development',
+            '5. Guarda y redeploya'
+          ]
+        },
+        { status: 500 }
+      );
+    }
+    
     // Verificar si ya hay datos
     let existingEstudiantes: any[] = [];
     let existingIncidencias: any[] = [];
