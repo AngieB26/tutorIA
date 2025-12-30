@@ -638,6 +638,16 @@ export default function TutorPage() {
         return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
       }).length;
 
+      setResumenData({
+        totalEstudiantes,
+        asistenciaPromedio,
+        incidenciasActivas
+      });
+    };
+
+    loadResumenData();
+  }, [seccionSeleccionada, esTutorDeLaSeccion, estudiantesFiltrados.length]);
+
   // Vista de Estudiantes de una Sección
   if (viewMode === 'lista' && seccionSeleccionada) {
 
