@@ -171,40 +171,50 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
     // Construir nombre completo desde nombres y apellidos
     const nombreCompleto = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
 
-    const data = {
-      nombres: estudiante.nombres.trim(), // Campo principal
-      apellidos: estudiante.apellidos.trim(), // Campo principal
-      grado: estudiante.grado,
-      seccion: estudiante.seccion,
-      edad: estudiante.edad ?? null,
-      fechaNacimiento: estudiante.fechaNacimiento ?? null,
-      fotoPerfil: estudiante.fotoPerfil ?? null,
-      contactoTelefono: estudiante.contacto?.telefono ?? null,
-      contactoEmail: estudiante.contacto?.email ?? null,
-      contactoNombre: estudiante.contacto?.nombre ?? null,
-      tutorNombre: estudiante.tutor?.nombre ?? estudiante.contacto?.tutor ?? null,
-      tutorTelefono: estudiante.tutor?.telefono ?? null,
-      tutorEmail: estudiante.tutor?.email ?? null,
-      apoderadoNombre: estudiante.apoderado?.nombre ?? null,
-      apoderadoParentesco: estudiante.apoderado?.parentesco ?? null,
-      apoderadoTelefono: estudiante.apoderado?.telefono ?? null,
-      apoderadoTelefonoAlt: estudiante.apoderado?.telefonoAlternativo ?? null,
-      apoderadoEmail: estudiante.apoderado?.email ?? null,
-      apoderadoDireccion: estudiante.apoderado?.direccion ?? null,
-      asistencias: estudiante.asistencias ?? null,
-      ausencias: estudiante.ausencias ?? null,
-      tardanzas: estudiante.tardanzas ?? null,
-    };
-
     if (existente) {
       // Construir nombre completo para comparación
       const nombreCompletoNuevo = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
       const nombreCambio = nombreOriginal && nombreOriginal !== nombreCompletoNuevo;
       
+      // Crear objeto de datos que solo incluya los campos que están presentes (no undefined)
+      // Esto preserva los valores existentes para campos que no se están editando
+      const dataToUpdate: any = {
+        nombres: estudiante.nombres.trim(),
+        apellidos: estudiante.apellidos.trim(),
+        grado: estudiante.grado ?? existente.grado,
+        seccion: estudiante.seccion ?? existente.seccion,
+      };
+      
+      // Solo actualizar campos que están presentes en el objeto estudiante
+      if (estudiante.edad !== undefined) dataToUpdate.edad = estudiante.edad ?? null;
+      if (estudiante.fechaNacimiento !== undefined) dataToUpdate.fechaNacimiento = estudiante.fechaNacimiento ?? null;
+      if (estudiante.fotoPerfil !== undefined) dataToUpdate.fotoPerfil = estudiante.fotoPerfil ?? null;
+      if (estudiante.contacto !== undefined) {
+        dataToUpdate.contactoTelefono = estudiante.contacto?.telefono ?? null;
+        dataToUpdate.contactoEmail = estudiante.contacto?.email ?? null;
+        dataToUpdate.contactoNombre = estudiante.contacto?.nombre ?? null;
+      }
+      if (estudiante.tutor !== undefined) {
+        dataToUpdate.tutorNombre = estudiante.tutor?.nombre ?? estudiante.contacto?.tutor ?? null;
+        dataToUpdate.tutorTelefono = estudiante.tutor?.telefono ?? null;
+        dataToUpdate.tutorEmail = estudiante.tutor?.email ?? null;
+      }
+      if (estudiante.apoderado !== undefined) {
+        dataToUpdate.apoderadoNombre = estudiante.apoderado?.nombre ?? null;
+        dataToUpdate.apoderadoParentesco = estudiante.apoderado?.parentesco ?? null;
+        dataToUpdate.apoderadoTelefono = estudiante.apoderado?.telefono ?? null;
+        dataToUpdate.apoderadoTelefonoAlt = estudiante.apoderado?.telefonoAlternativo ?? null;
+        dataToUpdate.apoderadoEmail = estudiante.apoderado?.email ?? null;
+        dataToUpdate.apoderadoDireccion = estudiante.apoderado?.direccion ?? null;
+      }
+      if (estudiante.asistencias !== undefined) dataToUpdate.asistencias = estudiante.asistencias ?? null;
+      if (estudiante.ausencias !== undefined) dataToUpdate.ausencias = estudiante.ausencias ?? null;
+      if (estudiante.tardanzas !== undefined) dataToUpdate.tardanzas = estudiante.tardanzas ?? null;
+      
       // Actualizar el estudiante
       await prisma.estudiante.update({
         where: { id: existente.id },
-        data,
+        data: dataToUpdate,
       });
 
       // Si el nombre cambió, actualizar todas las incidencias, notas y registros relacionados

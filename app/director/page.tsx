@@ -1200,12 +1200,44 @@ export default function DirectorPage() {
         return;
       }
 
+      // Obtener el estudiante completo desde la base de datos para preservar todos los campos
+      const estudianteCompleto = await fetchEstudiante(selectedStudent);
+      if (!estudianteCompleto) {
+        toast.error('No se pudo cargar la información del estudiante');
+        return;
+      }
+
+      // Fusionar la información editada con la información completa existente
+      // Esto asegura que no se pierdan campos que no se están editando
+      const estudianteActualizado: EstudianteInfo = {
+        ...estudianteCompleto,
+        ...infoEdit,
+        // Preservar nombres y apellidos si no se están editando
+        nombres: infoEdit.nombres ?? estudianteCompleto.nombres,
+        apellidos: infoEdit.apellidos ?? estudianteCompleto.apellidos,
+        // Preservar contacto si existe
+        contacto: infoEdit.contacto ? {
+          ...estudianteCompleto.contacto,
+          ...infoEdit.contacto
+        } : estudianteCompleto.contacto,
+        // Preservar tutor si existe
+        tutor: infoEdit.tutor ? {
+          ...estudianteCompleto.tutor,
+          ...infoEdit.tutor
+        } : estudianteCompleto.tutor,
+        // Preservar apoderado si existe
+        apoderado: infoEdit.apoderado ? {
+          ...estudianteCompleto.apoderado,
+          ...infoEdit.apoderado
+        } : estudianteCompleto.apoderado,
+      };
+
       // Usar el nombre original (selectedStudent) para actualizar el registro existente
       const nombreOriginal = selectedStudent;
       
       // Actualizar el estudiante usando saveEstudianteInfo con nombreOriginal
       // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
-      await saveEstudianteInfo(infoEdit, nombreOriginal);
+      await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
 
       // Recargar estudiantes desde la base de datos para reflejar cambios
       const estudiantesActualizados = await fetchEstudiantes();
