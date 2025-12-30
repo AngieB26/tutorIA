@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getEstudiantesInfo,
   getEstudianteInfo,
+  getEstudianteInfoById,
   saveEstudianteInfo,
   saveEstudiantesInfo,
   getEstudiantesByGrado,
@@ -14,6 +15,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const grado = searchParams.get('grado') || undefined;
     const nombre = searchParams.get('nombre') || undefined;
+    const id = searchParams.get('id') || undefined;
+
+    // Priorizar búsqueda por ID (más confiable)
+    if (id) {
+      const estudiante = await getEstudianteInfoById(id);
+      if (!estudiante) {
+        return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 });
+      }
+      return NextResponse.json(estudiante);
+    }
 
     if (nombre) {
       const estudiante = await getEstudianteInfo(nombre);
@@ -41,7 +52,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const nombreOriginal = searchParams.get('nombreOriginal') || undefined;
+    const estudianteId = searchParams.get('estudianteId') || undefined;
+    const nombreOriginal = searchParams.get('nombreOriginal') || undefined; // Mantener para compatibilidad
     const body = await req.json();
 
     // Si es un array, usar saveEstudiantesInfo
@@ -50,8 +62,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, count: body.length });
     }
 
-    // Si es un objeto, usar saveEstudianteInfo con nombreOriginal si está presente
-    await saveEstudianteInfo(body, nombreOriginal);
+    // Priorizar estudianteId sobre nombreOriginal (más confiable)
+    const idToUse = estudianteId || (body.id ? body.id : undefined);
+    await saveEstudianteInfo(body, idToUse);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error guardando estudiante(s):', error);

@@ -25,9 +25,18 @@ export async function fetchEstudiante(nombre: string): Promise<any | null> {
   return res.json();
 }
 
-export async function saveEstudiante(estudiante: any, nombreOriginal?: string): Promise<void> {
-  const url = nombreOriginal 
-    ? `/api/estudiantes?nombreOriginal=${encodeURIComponent(nombreOriginal)}`
+export async function fetchEstudianteById(id: string): Promise<any | null> {
+  const res = await fetch(`/api/estudiantes?id=${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error('Error al obtener estudiante');
+  }
+  return res.json();
+}
+
+export async function saveEstudiante(estudiante: any, estudianteId?: string): Promise<void> {
+  const url = estudianteId 
+    ? `/api/estudiantes?estudianteId=${encodeURIComponent(estudianteId)}`
     : '/api/estudiantes';
   const res = await fetch(url, {
     method: 'POST',

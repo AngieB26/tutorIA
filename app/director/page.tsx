@@ -510,7 +510,8 @@ export default function DirectorPage() {
 
       // Handler para volver a la lista de estudiantes
       const handleVolverALista = () => {
-        setSelectedStudent(null);
+        setSelectedStudentId(null);
+        setSelectedStudentName(null);
         setIncidenciasEstudiante([]);
         setReporte(null);
         setMostrarNotas(false);
@@ -1119,7 +1120,8 @@ export default function DirectorPage() {
   
   // Estados para lista de estudiantes
   const [listaEstudiantes, setListaEstudiantes] = useState<Array<{ nombre: string; totalIncidencias: number; ultimaIncidencia: string; grado: string; seccion: string }>>([]);
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudentName, setSelectedStudentName] = useState<string | null>(null); // Para mostrar en UI
   const [incidenciasEstudiante, setIncidenciasEstudiante] = useState<Incidencia[]>([]);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reporte, setReporte] = useState<ReporteIA | null>(null);
@@ -1140,10 +1142,15 @@ export default function DirectorPage() {
     }
     
     const loadEstudianteInfo = async () => {
-      if (selectedStudent) {
+      if (selectedStudentId) {
         try {
-          const estudianteInfo = await fetchEstudiante(selectedStudent);
+          // Usar ID para buscar (más confiable)
+          const estudianteInfo = await fetchEstudianteById(selectedStudentId);
           if (estudianteInfo) {
+            // Actualizar también el nombre para mostrar en UI
+            if (estudianteInfo.nombre) {
+              setSelectedStudentName(estudianteInfo.nombre);
+            }
             // Si el estudiante no tiene tutor asignado, verificar si hay un tutor general para su grado y sección
             const grado = estudianteInfo.grado;
             const seccion = estudianteInfo.seccion;
@@ -1208,19 +1215,19 @@ export default function DirectorPage() {
       // Activar bandera para evitar que el useEffect interfiera
       setGuardandoEstudiante(true);
       
-      if (!infoEdit || !selectedStudent) {
-        console.error('❌ Faltan datos:', { infoEdit, selectedStudent });
+      if (!infoEdit || !selectedStudentId) {
+        console.error('❌ Faltan datos:', { infoEdit, selectedStudentId });
         toast.error('No hay información para guardar');
         setGuardandoEstudiante(false);
         return;
       }
 
       console.log('📝 Datos a guardar:', infoEdit);
-      console.log('📝 Estudiante seleccionado:', selectedStudent);
+      console.log('📝 Estudiante ID seleccionado:', selectedStudentId);
 
-      // Obtener el estudiante completo desde la base de datos para preservar todos los campos
-      console.log('🔍 Buscando estudiante completo...');
-      const estudianteCompleto = await fetchEstudiante(selectedStudent);
+      // Obtener el estudiante completo desde la base de datos usando ID (más confiable)
+      console.log('🔍 Buscando estudiante completo por ID...');
+      const estudianteCompleto = await fetchEstudianteById(selectedStudentId);
       if (!estudianteCompleto) {
         console.error('❌ No se encontró el estudiante completo');
         toast.error('No se pudo cargar la información del estudiante');
@@ -1331,22 +1338,23 @@ export default function DirectorPage() {
         return;
       }
 
-      // Usar los nombres y apellidos originales del estudiante cargado desde la BD
-      // Esto es crítico: usar los nombres/apellidos que están actualmente en la BD,
-      // no el selectedStudent que puede haber cambiado si el usuario editó el nombre
-      const nombresOriginales = estudianteCompleto.nombres || '';
-      const apellidosOriginales = estudianteCompleto.apellidos || '';
-      const nombreOriginal = nombresOriginales && apellidosOriginales 
-        ? `${nombresOriginales} ${apellidosOriginales}`.trim()
-        : selectedStudent; // Fallback al selectedStudent si no hay nombres/apellidos
+      // Usar el ID del estudiante (más confiable que el nombre)
+      const estudianteId = estudianteCompleto.id || selectedStudentId;
       
-      console.log('📝 Nombres originales en BD:', { nombresOriginales, apellidosOriginales, nombreOriginal });
+      if (!estudianteId) {
+        console.error('❌ No se pudo obtener el ID del estudiante');
+        toast.error('Error: No se pudo identificar al estudiante');
+        setGuardandoEstudiante(false);
+        return;
+      }
       
-      // Actualizar el estudiante usando saveEstudianteInfo con nombreOriginal
+      console.log('📝 Guardando estudiante con ID:', estudianteId);
+      
+      // Actualizar el estudiante usando saveEstudianteInfo con estudianteId
       // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
       console.log('💾 Guardando estudiante en base de datos...');
       try {
-        await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+        await saveEstudianteInfo(estudianteActualizado, estudianteId);
         console.log('✅ Estudiante guardado exitosamente en la base de datos');
       } catch (error: any) {
         console.error('❌ Error al guardar en la base de datos:', error);
@@ -1368,14 +1376,13 @@ export default function DirectorPage() {
       // Esperar un momento para asegurar que la base de datos se actualizó completamente
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Recargar el estudiante desde la base de datos usando el nuevo nombre
-      // Esto asegura que obtenemos los datos actualizados después del guardado
-      console.log(`🔄 Recargando estudiante con nombre: "${nombreCompletoNuevo}"`);
+      // Recargar el estudiante desde la base de datos usando el ID (más confiable)
+      console.log(`🔄 Recargando estudiante con ID: "${estudianteId}"`);
       
       // Intentar recargar hasta 3 veces si falla (por posibles problemas de timing)
       let estudianteRecargado = null;
       for (let intento = 0; intento < 3; intento++) {
-        estudianteRecargado = await fetchEstudiante(nombreCompletoNuevo);
+        estudianteRecargado = await fetchEstudianteById(estudianteId);
         if (estudianteRecargado) break;
         if (intento < 2) {
           console.log(`⚠️ Intento ${intento + 1} falló, reintentando...`);
@@ -1385,14 +1392,9 @@ export default function DirectorPage() {
       
       if (!estudianteRecargado) {
         console.error('❌ No se pudo recargar el estudiante después de guardar después de 3 intentos');
-        // Intentar recargar con el nombre original como fallback
-        console.log(`🔄 Intentando recargar con nombre original: "${nombreOriginal}"`);
-        estudianteRecargado = await fetchEstudiante(nombreOriginal);
-        if (!estudianteRecargado) {
-          toast.error('Error al recargar la información del estudiante. Por favor, recarga la página.');
-          setGuardandoEstudiante(false);
-          return;
-        }
+        toast.error('Error al recargar la información del estudiante. Por favor, recarga la página.');
+        setGuardandoEstudiante(false);
+        return;
       }
       
       console.log('✅ Estudiante recargado:', estudianteRecargado);
@@ -1402,34 +1404,19 @@ export default function DirectorPage() {
       
       // Recargar incidencias con el nuevo nombre (siempre, para asegurar que estén actualizadas)
       console.log(`🔄 Recargando incidencias con nombre: "${nombreCompletoNuevo}"`);
-      let nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
-      
-      // Si no se encontraron incidencias con el nombre nuevo, intentar con el nombre original
-      // (por si acaso las incidencias aún no se actualizaron)
-      if (nuevasIncidencias.length === 0 && nombreCompletoNuevo !== nombreOriginal) {
-        console.log(`⚠️ No se encontraron incidencias con el nombre nuevo, intentando con el nombre original: "${nombreOriginal}"`);
-        nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreOriginal);
-        if (nuevasIncidencias.length > 0) {
-          console.log(`✅ Se encontraron ${nuevasIncidencias.length} incidencias con el nombre original`);
-        }
-      }
+      const nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
       
       setIncidenciasEstudiante(nuevasIncidencias);
       console.log(`✅ ${nuevasIncidencias.length} incidencias recargadas`);
-      
-      // Verificar si el nombre cambió
-      if (nombreCompletoNuevo !== nombreOriginal) {
-        console.log(`🔄 Nombre cambió: ${nombreOriginal} → ${nombreCompletoNuevo}`);
-        setReporte(null);
-        setMostrarNotas(false);
-      }
       
       // Actualizar TODOS los estados de una vez para evitar renders intermedios
       // Esto asegura que el useEffect no interfiera con la actualización
       console.log('🔄 Actualizando estados con datos recargados...');
       setInfoEdit(estudianteRecargado);
       setFotoPreview(estudianteRecargado.fotoPerfil || '');
-      setSelectedStudent(nombreCompletoNuevo);
+      // Mantener el mismo ID (no cambia)
+      setSelectedStudentId(estudianteId);
+      setSelectedStudentName(nombreCompletoNuevo);
       setEditando(false);
       
       // Refrescar lista de estudiantes

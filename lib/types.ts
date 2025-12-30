@@ -44,6 +44,7 @@ export interface Nota {
 }
 
 export interface EstudianteInfo {
+  id?: string; // ID único del estudiante (UUID)
   nombre: string;
   nombres?: string;
   apellidos?: string;
