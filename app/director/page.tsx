@@ -4704,19 +4704,39 @@ export default function DirectorPage() {
                                             // Cerrar el formulario de edición INMEDIATAMENTE después de guardar exitosamente
                                             // Esto debe hacerse ANTES de cualquier otra operación asíncrona
                                             console.log('🔄 Cerrando formulario de edición...');
-                                            console.log('📝 ID del estudiante que se estaba editando:', estudianteEditandoAdmin);
+                                            console.log('📝 Identificador que se estaba editando:', estudianteEditandoAdmin);
                                             console.log('📝 ID del estudiante guardado:', estudianteId);
                                             
-                                            // Usar flushSync para forzar la actualización síncrona del estado
-                                            // Esto asegura que React procese el cambio inmediatamente
-                                            flushSync(() => {
-                                              setEstudianteEditandoAdmin(null);
-                                              setEstudianteEditForm({});
-                                              setEstudianteNombreOriginal(null);
-                                              setFormularioCerradoKey(prev => prev + 1);
-                                            });
+                                            // IMPORTANTE: Cerrar el formulario basándose en el ID del estudiante guardado
+                                            // Esto asegura que se cierre incluso si el identificador cambió
+                                            // Primero verificar si el estudiante que se está editando coincide con el que se guardó
+                                            const identificadorActual = estudianteEditandoAdmin;
+                                            const debeCerrar = !identificadorActual || 
+                                              identificadorActual === estudianteId || 
+                                              identificadorActual === estudianteCompleto.id ||
+                                              identificadorActual === estudianteCompleto.nombre ||
+                                              identificadorActual === (estudianteCompleto.nombres + ' ' + estudianteCompleto.apellidos).trim();
                                             
-                                            console.log('✅ Formulario cerrado');
+                                            if (debeCerrar) {
+                                              console.log('✅ Cerrando formulario porque coincide con el estudiante guardado');
+                                              // Usar flushSync para forzar la actualización síncrona del estado
+                                              // Esto asegura que React procese el cambio inmediatamente
+                                              flushSync(() => {
+                                                setEstudianteEditandoAdmin(null);
+                                                setEstudianteEditForm({});
+                                                setEstudianteNombreOriginal(null);
+                                                setFormularioCerradoKey(prev => prev + 1);
+                                              });
+                                              console.log('✅ Formulario cerrado');
+                                            } else {
+                                              console.log('⚠️ Identificador no coincide, forzando cierre de todas formas');
+                                              flushSync(() => {
+                                                setEstudianteEditandoAdmin(null);
+                                                setEstudianteEditForm({});
+                                                setEstudianteNombreOriginal(null);
+                                                setFormularioCerradoKey(prev => prev + 1);
+                                              });
+                                            }
                                           
                                             // Mostrar toast de éxito inmediatamente
                                             toast.success('Estudiante actualizado exitosamente');
