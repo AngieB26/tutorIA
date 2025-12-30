@@ -181,8 +181,6 @@ export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo 
         email: estudiante.apoderadoEmail ?? undefined,
         direccion: estudiante.apoderadoDireccion ?? undefined,
       },
-      nombres: estudiante.nombres,
-      apellidos: estudiante.apellidos,
       asistencias: estudiante.asistencias ?? undefined,
       ausencias: estudiante.ausencias ?? undefined,
       tardanzas: estudiante.tardanzas ?? undefined,
