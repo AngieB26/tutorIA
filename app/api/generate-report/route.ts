@@ -109,83 +109,105 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
       }, { status: 500 });
     }
 
+    // Lista de modelos a probar en orden de preferencia
+    const modelosAPrueba = [
+      { nombre: 'gemini-2.5-flash', version: 'v1beta' },
+      { nombre: 'gemini-2.0-flash', version: 'v1beta' },
+      { nombre: 'gemini-2.0-flash-exp', version: 'v1beta' },
+      { nombre: 'gemini-2.5-pro', version: 'v1beta' },
+      { nombre: 'gemini-3-flash', version: 'v1beta' },
+      { nombre: 'gemini-2.5-flash-lite', version: 'v1beta' },
+      { nombre: 'gemini-2.0-flash-lite', version: 'v1beta' },
+      { nombre: 'gemini-pro', version: 'v1' }, // Fallback a v1
+    ];
+
     // Log para debugging (sin mostrar la key completa por seguridad)
     console.log('🔑 API Key configurada:', geminiApiKey ? `${geminiApiKey.substring(0, 10)}...` : 'NO ENCONTRADA');
-    console.log('📡 Enviando request a Gemini con modelo: gemini-2.5-flash');
     
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: incidencias && Array.isArray(incidencias) 
-              ? (estudiante === 'Reporte General' ? 4000 : 2500) // Aumentado aún más para reporte general
-              : 2000, // Tokens aumentados para evitar truncamiento
-            topP: 0.95,
-            topK: 40
-          }
-        })
+    // Preparar el body de la solicitud
+    const requestBody = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: incidencias && Array.isArray(incidencias) 
+          ? (estudiante === 'Reporte General' ? 4000 : 2500)
+          : 2000,
+        topP: 0.95,
+        topK: 40
       }
-    );
-    
-    console.log('Respuesta HTTP Gemini:', geminiRes.status, geminiRes.statusText);
-    
-    if (!geminiRes.ok) {
-      const errorText = await geminiRes.text();
-      console.error('Error de Gemini API:', errorText);
+    };
+
+    let geminiRes: Response | null = null;
+    let modeloUsado = '';
+    let ultimoError: any = null;
+
+    // Intentar cada modelo hasta que uno funcione
+    for (const modelo of modelosAPrueba) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/${modelo.version}/models/${modelo.nombre}:generateContent?key=${geminiApiKey}`;
+        console.log(`📡 Intentando modelo: ${modelo.nombre} (${modelo.version})`);
+        
+        geminiRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+        
+        console.log(`📥 Respuesta HTTP para ${modelo.nombre}:`, geminiRes.status, geminiRes.statusText);
+        
+        if (geminiRes.ok) {
+          modeloUsado = modelo.nombre;
+          console.log(`✅ Modelo ${modelo.nombre} funcionó correctamente`);
+          break; // Salir del loop si funciona
+        } else {
+          const errorText = await geminiRes.text();
+          console.warn(`⚠️ Modelo ${modelo.nombre} falló:`, geminiRes.status, errorText.substring(0, 100));
+          ultimoError = { status: geminiRes.status, text: errorText, modelo: modelo.nombre };
+          // Continuar con el siguiente modelo
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error al intentar modelo ${modelo.nombre}:`, error);
+        ultimoError = { error, modelo: modelo.nombre };
+        // Continuar con el siguiente modelo
+      }
+    }
+
+    // Si ningún modelo funcionó
+    if (!geminiRes || !geminiRes.ok) {
+      console.error('❌ Todos los modelos fallaron. Último error:', ultimoError);
       
       let mensajeError = 'Error al conectar con el servicio de IA';
       let recomendaciones = 'Por favor, intenta nuevamente más tarde.';
       
-      // Intentar parsear el error para dar un mensaje más específico
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.error) {
-          if (errorJson.error.message) {
+      if (ultimoError) {
+        try {
+          const errorJson = typeof ultimoError.text === 'string' ? JSON.parse(ultimoError.text) : null;
+          if (errorJson?.error?.message) {
             const errorMessage = errorJson.error.message.toLowerCase();
-            // Detectar si la API key expiró
             if (errorMessage.includes('expired') || errorMessage.includes('expirada')) {
               mensajeError = 'La API key ha expirado';
-              recomendaciones = 'Por favor, genera una nueva API key en Google AI Studio y actualízala en la configuración de Vercel.';
+              recomendaciones = 'Por favor, genera una nueva API key en Google AI Studio.';
             } else if (errorMessage.includes('invalid') || errorMessage.includes('invalid api key')) {
               mensajeError = 'API key inválida';
-              recomendaciones = 'Por favor, verifica que la API key sea correcta en la configuración de Vercel.';
+              recomendaciones = 'Por favor, verifica que la API key sea correcta.';
             } else {
               mensajeError = `Error del servicio de IA: ${errorJson.error.message}`;
             }
           }
-          // Errores comunes de Gemini API
-          if (geminiRes.status === 400) {
-            recomendaciones = 'Por favor, verifica que los datos enviados sean correctos.';
-          } else if (geminiRes.status === 401 || geminiRes.status === 403) {
-            if (!mensajeError.includes('expirado') && !mensajeError.includes('inválida')) {
-              mensajeError = 'Error de autenticación con el servicio de IA';
-              recomendaciones = 'Por favor, verifica la configuración de la API key en Vercel.';
-            }
-          } else if (geminiRes.status === 429) {
-            mensajeError = 'Límite de solicitudes excedido';
-            recomendaciones = 'Por favor, espera unos minutos antes de intentar nuevamente.';
-          } else if (geminiRes.status === 500 || geminiRes.status === 503) {
-            mensajeError = 'El servicio de IA no está disponible temporalmente';
-            recomendaciones = 'Por favor, intenta nuevamente en unos momentos.';
-          }
+        } catch (e) {
+          // Ignorar errores de parsing
         }
-      } catch (e) {
-        // Si no se puede parsear el JSON, usar el error genérico
-        console.error('No se pudo parsear el error de Gemini:', e);
       }
       
       return NextResponse.json({ 
         resumen: mensajeError, 
         recomendaciones: recomendaciones,
         error: 'API Error',
-        status: geminiRes.status
+        status: ultimoError?.status || 500
       }, { status: 200 });
     }
+    
+    console.log(`✅ Usando modelo exitoso: ${modeloUsado}`);
 
     let data = null;
     let text = '';
