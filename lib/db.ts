@@ -147,6 +147,9 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
       throw new Error('Los campos nombres y apellidos son requeridos');
     }
 
+    // Construir nombre completo nuevo
+    const nombreCompletoNuevo = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
+
     // Si hay nombreOriginal, buscar primero por el nombre original (para actualizaciones)
     // Esto es crítico cuando se cambia el nombre del estudiante
     let existente = null;
@@ -155,24 +158,48 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
       if (partes.length >= 2) {
         const apellidosOriginal = partes[partes.length - 1];
         const nombresOriginal = partes.slice(0, -1).join(' ');
+        console.log(`🔍 Buscando estudiante por nombre original: "${nombresOriginal}" "${apellidosOriginal}"`);
         existente = await prisma.estudiante.findFirst({
           where: {
             nombres: nombresOriginal,
             apellidos: apellidosOriginal
           }
         });
+        if (existente) {
+          console.log(`✅ Estudiante encontrado por nombre original (ID: ${existente.id})`);
+        }
       }
     }
     
-    // Si no se encuentra por nombre original, buscar por los nuevos nombres y apellidos
-    // (esto es para casos donde no hay nombreOriginal, como creación de nuevos estudiantes)
-    if (!existente) {
+    // Si no se encuentra por nombre original Y el nombre nuevo es diferente al original,
+    // buscar por los nuevos nombres y apellidos para evitar crear duplicados
+    // (esto es para casos donde el usuario cambió el nombre y luego lo volvió a cambiar)
+    if (!existente && nombreOriginal && nombreCompletoNuevo !== nombreOriginal) {
+      console.log(`🔍 Buscando estudiante por nombre nuevo: "${estudiante.nombres}" "${estudiante.apellidos}"`);
       existente = await prisma.estudiante.findFirst({
         where: {
           nombres: estudiante.nombres,
           apellidos: estudiante.apellidos
         }
       });
+      if (existente) {
+        console.log(`✅ Estudiante encontrado por nombre nuevo (ID: ${existente.id})`);
+      }
+    }
+    
+    // Si aún no se encuentra y no hay nombreOriginal, buscar por los nuevos nombres y apellidos
+    // (esto es para casos donde no hay nombreOriginal, como creación de nuevos estudiantes)
+    if (!existente && !nombreOriginal) {
+      console.log(`🔍 Buscando estudiante por nombres nuevos (sin nombreOriginal): "${estudiante.nombres}" "${estudiante.apellidos}"`);
+      existente = await prisma.estudiante.findFirst({
+        where: {
+          nombres: estudiante.nombres,
+          apellidos: estudiante.apellidos
+        }
+      });
+      if (existente) {
+        console.log(`✅ Estudiante encontrado (ID: ${existente.id})`);
+      }
     }
 
     // Construir nombre completo desde nombres y apellidos

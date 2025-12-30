@@ -1258,8 +1258,16 @@ export default function DirectorPage() {
         return;
       }
 
-      // Usar el nombre original (selectedStudent) para actualizar el registro existente
-      const nombreOriginal = selectedStudent;
+      // Usar los nombres y apellidos originales del estudiante cargado desde la BD
+      // Esto es crítico: usar los nombres/apellidos que están actualmente en la BD,
+      // no el selectedStudent que puede haber cambiado si el usuario editó el nombre
+      const nombresOriginales = estudianteCompleto.nombres || '';
+      const apellidosOriginales = estudianteCompleto.apellidos || '';
+      const nombreOriginal = nombresOriginales && apellidosOriginales 
+        ? `${nombresOriginales} ${apellidosOriginales}`.trim()
+        : selectedStudent; // Fallback al selectedStudent si no hay nombres/apellidos
+      
+      console.log('📝 Nombres originales en BD:', { nombresOriginales, apellidosOriginales, nombreOriginal });
       
       // Actualizar el estudiante usando saveEstudianteInfo con nombreOriginal
       // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
