@@ -4463,7 +4463,6 @@ export default function DirectorPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-sm font-semibold">ID</TableHead>
                         <TableHead className="text-sm font-semibold">Nombres</TableHead>
                         <TableHead className="text-sm font-semibold">Apellidos</TableHead>
                         <TableHead className="text-sm font-semibold">Grado</TableHead>
@@ -4498,9 +4497,6 @@ export default function DirectorPage() {
                           
                           return (
                             <TableRow key={rowKey}>
-                              <TableCell className="font-mono text-xs text-gray-500">
-                                {estudiante.id || '-'}
-                              </TableCell>
                               <TableCell className="font-medium text-gray-900">
                                 {estaEditando ? (
                                   <Input
