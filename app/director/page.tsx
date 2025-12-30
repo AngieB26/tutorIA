@@ -1591,7 +1591,7 @@ export default function DirectorPage() {
   const getGeneralStats = (incidencias: Incidencia[]) => {
     const total = incidencias.length;
     const porTipo = {
-      ausencia: incidencias.filter(i => i.tipo === 'ausencia').length,
+      asistencia: incidencias.filter(i => i.tipo === 'asistencia').length,
       conducta: incidencias.filter(i => i.tipo === 'conducta').length,
       academica: incidencias.filter(i => i.tipo === 'academica').length,
       positivo: incidencias.filter(i => i.tipo === 'positivo').length,
@@ -3005,9 +3005,9 @@ export default function DirectorPage() {
                 const stats = {
                   total: incidenciasEstudiante.length,
                   porTipo: {
-                    ausencia: incidenciasEstudiante.filter(i => {
+                    asistencia: incidenciasEstudiante.filter(i => {
                       const tipo = String(i.tipo || '').toLowerCase();
-                      return tipo === 'ausencia' || tipo === 'asistencia';
+                      return tipo === 'asistencia';
                     }).length,
                     conducta: incidenciasEstudiante.filter(i => {
                       const tipo = String(i.tipo || '').toLowerCase();
@@ -3046,7 +3046,7 @@ export default function DirectorPage() {
                       <p className="text-xs text-gray-900 font-semibold mt-1">Total</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                      <p className="text-2xl font-bold text-orange-500">{stats.porTipo.ausencia}</p>
+                      <p className="text-2xl font-bold text-orange-500">{stats.porTipo.asistencia}</p>
                       <p className="text-xs text-gray-900 font-semibold mt-1">Asistencias</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
@@ -3427,7 +3427,7 @@ export default function DirectorPage() {
           </Card>
           {/* SECCIÓN 2: INDICADORES CLAVE */}
                   {(() => {
-                    const stats = typeof getGeneralStats === 'function' ? getGeneralStats(incidenciasGenerales) : { total: 0, porTipo: { ausencia: 0, conducta: 0, academica: 0, positivo: 0 }, estudiantesUnicos: 0 };
+                    const stats = typeof getGeneralStats === 'function' ? getGeneralStats(incidenciasGenerales) : { total: 0, porTipo: { asistencia: 0, conducta: 0, academica: 0, positivo: 0 }, estudiantesUnicos: 0 };
             
             // Calcular total de incidencias (si hay filtro de fechas, mostrar total del rango; si no, total general)
             // Como incidenciasGenerales ya está filtrado por fechaInicio/fechaFin, solo contamos las que hay
@@ -3955,7 +3955,7 @@ export default function DirectorPage() {
                 {(() => {
                   const matriz: Record<string, Record<string, number>> = {
                     conducta: { grave: 0, moderada: 0, leve: 0 },
-                    ausencia: { grave: 0, moderada: 0, leve: 0 },
+                    asistencia: { grave: 0, moderada: 0, leve: 0 },
                     academica: { grave: 0, moderada: 0, leve: 0 },
                     positivo: { grave: 0, moderada: 0, leve: 0 },
                   };
@@ -4132,7 +4132,7 @@ export default function DirectorPage() {
                       // Calcular tendencia de tipos problemáticos
                       const porTipo = {
                         conducta: incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'conducta').length,
-                        ausencia: incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'ausencia').length,
+                        asistencia: incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'asistencia').length,
                         academica: incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'academica').length,
                       };
                       const tipoMasProblema = Object.entries(porTipo).sort(([_, a], [__, b]) => b - a)[0];
