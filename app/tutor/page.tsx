@@ -154,10 +154,14 @@ export default function TutorPage() {
 
     const loadResumenes = async () => {
       for (const est of estudiantesFiltrados) {
-        // Solo cargar si no existe el resumen (evitar llamadas duplicadas)
-        if (iaResumenes[est.nombre] || resumenesCargados.current.has(est.nombre)) continue;
+        // Solo cargar si no existe el resumen y no se está cargando (evitar llamadas duplicadas)
+        if (iaResumenes[est.nombre] || resumenesCargados.current.has(est.nombre)) {
+          console.log(`⏭️ Saltando ${est.nombre}: ya tiene resumen o está en proceso`);
+          continue;
+        }
 
         try {
+          console.log(`🔄 Cargando resumen IA para: ${est.nombre}`);
           const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
           const incidenciasRecientes = incidenciasEst.filter(inc => {
             const fechaInc = new Date(inc.fecha);
@@ -165,6 +169,8 @@ export default function TutorPage() {
             hace30Dias.setDate(hace30Dias.getDate() - 30);
             return fechaInc >= hace30Dias;
           });
+
+          console.log(`📊 ${est.nombre}: ${incidenciasRecientes.length} incidencias recientes`);
 
           // Marcar como que ya se está procesando
           resumenesCargados.current.add(est.nombre);
@@ -174,6 +180,7 @@ export default function TutorPage() {
 
           // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
           try {
+            console.log(`📡 Llamando API para ${est.nombre}...`);
             const res = await fetch('/api/generate-report', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -183,22 +190,45 @@ export default function TutorPage() {
               })
             });
 
-            if (!res.ok) throw new Error('Error al obtener resumen de IA');
+            console.log(`📥 Respuesta API para ${est.nombre}:`, res.status, res.statusText);
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              console.error(`❌ Error HTTP para ${est.nombre}:`, res.status, errorText);
+              throw new Error(`Error ${res.status}: ${errorText}`);
+            }
+
             const data = await res.json();
-            // Extraer solo el resumen (primera línea o parte del resumen)
+            console.log(`✅ Datos recibidos para ${est.nombre}:`, { 
+              tieneResumen: !!data.resumen, 
+              resumenLength: data.resumen?.length || 0,
+              tieneReport: !!data.report,
+              error: data.error 
+            });
+
+            // Extraer el resumen de la respuesta
             let resumen = '';
-            if (data.resumen) {
-              // Tomar solo la primera línea o las primeras palabras del resumen
-              const primeraLinea = typeof data.resumen === 'string' 
-                ? data.resumen.split('\n')[0].trim() 
-                : '';
-              resumen = primeraLinea || 'Análisis generado por IA.';
+            if (data.resumen && typeof data.resumen === 'string' && data.resumen.trim()) {
+              // Tomar solo la primera línea o las primeras 150 caracteres del resumen
+              const primeraLinea = data.resumen.split('\n')[0].trim();
+              resumen = primeraLinea.length > 150 
+                ? primeraLinea.substring(0, 150) + '...' 
+                : primeraLinea;
+            } else if (data.report && typeof data.report === 'string' && data.report.trim()) {
+              // Fallback: usar el report completo si no hay resumen
+              const primeraLinea = data.report.split('\n')[0].trim();
+              resumen = primeraLinea.length > 150 
+                ? primeraLinea.substring(0, 150) + '...' 
+                : primeraLinea;
             } else {
               resumen = 'Sin análisis disponible.';
+              console.warn(`⚠️ No se encontró resumen válido para ${est.nombre}`);
             }
+
+            console.log(`💾 Guardando resumen para ${est.nombre}:`, resumen.substring(0, 50) + '...');
             setIaResumenes(prev => ({ ...prev, [est.nombre]: resumen }));
           } catch (error) {
-            console.error('Error generando resumen IA para', est.nombre, error);
+            console.error(`❌ Error generando resumen IA para ${est.nombre}:`, error);
             setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error al generar resumen de IA.' }));
           } finally {
             setIaCargando(prev => {
@@ -208,13 +238,21 @@ export default function TutorPage() {
             });
           }
         } catch (error) {
-          console.error('Error cargando incidencias para', est.nombre, error);
+          console.error(`❌ Error cargando incidencias para ${est.nombre}:`, error);
+          // Limpiar el estado de carga si hay error
+          resumenesCargados.current.delete(est.nombre);
+          setIaCargando(prev => {
+            const nuevo = { ...prev };
+            delete nuevo[est.nombre];
+            return nuevo;
+          });
         }
       }
     };
 
     loadResumenes();
-  }, [estudiantesFiltrados.length, esTutorDeLaSeccion, seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '', iaResumenes]);
+    // Removido iaResumenes de las dependencias para evitar loops infinitos
+  }, [estudiantesFiltrados.length, esTutorDeLaSeccion, seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '']);
 
   // Cargar estudiantes con estado cuando cambia la sección seleccionada
   useEffect(() => {
