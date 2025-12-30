@@ -1356,8 +1356,17 @@ export default function DirectorPage() {
       });
       setListaEstudiantes(listaFinal);
       console.log('✅ Lista de estudiantes actualizada');
-      setRefreshKey(prev => prev + 1); // Forzar re-render en toda la página
+      
+      // Actualizar refreshKey DESPUÉS de actualizar todos los estados
+      // Esto evita que el useEffect se ejecute prematuramente
       setEditando(false);
+      
+      // Actualizar refreshKey al final para forzar re-render en toda la página
+      // pero después de que todos los estados estén actualizados
+      setTimeout(() => {
+        setRefreshKey(prev => prev + 1);
+      }, 100);
+      
       toast.success('Información actualizada exitosamente en la base de datos');
       console.log('✅ Guardado completado exitosamente');
     } catch (error: any) {
