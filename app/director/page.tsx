@@ -4685,20 +4685,14 @@ export default function DirectorPage() {
                                             console.log('📝 ID del estudiante que se estaba editando:', estudianteEditandoAdmin);
                                             console.log('📝 ID del estudiante guardado:', estudianteId);
                                             
-                                            // Limpiar el estado de edición de forma explícita y forzar re-render
-                                            // Hacer esto de forma síncrona y múltiple para asegurar que funcione
-                                            setEstudianteEditandoAdmin(null);
-                                            setEstudianteEditForm({});
-                                            setEstudianteNombreOriginal(null);
-                                            
-                                            // Forzar re-render de la tabla incrementando la key
-                                            setFormularioCerradoKey(prev => prev + 1);
-                                            
-                                            // Hacer una segunda llamada para asegurar que el estado se actualice
-                                            setTimeout(() => {
+                                            // Usar flushSync para forzar la actualización síncrona del estado
+                                            // Esto asegura que React procese el cambio inmediatamente
+                                            flushSync(() => {
                                               setEstudianteEditandoAdmin(null);
+                                              setEstudianteEditForm({});
+                                              setEstudianteNombreOriginal(null);
                                               setFormularioCerradoKey(prev => prev + 1);
-                                            }, 0);
+                                            });
                                             
                                             console.log('✅ Formulario cerrado');
                                           
