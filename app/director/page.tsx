@@ -4373,17 +4373,17 @@ export default function DirectorPage() {
                                           // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
                                           // Esto preserva todos los campos existentes y solo actualiza los editados
                                           await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
-                                            
-                                            // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
-                                            const estudiantesActualizados = await fetchEstudiantes();
-                                            setEstudiantesInfo(estudiantesActualizados);
-                                            
-                                            // Forzar actualización del refreshKey para recargar todos los datos
-                                            setRefreshKey(prev => prev + 1);
-                                            
-                                            // Actualizar lista de estudiantes para reflejar cambios
-                                            const lista = await getListaEstudiantes();
-                                            const info = estudiantesActualizados;
+                                          
+                                          // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
+                                          const estudiantesActualizados = await fetchEstudiantes();
+                                          setEstudiantesInfo(estudiantesActualizados);
+                                          
+                                          // Forzar actualización del refreshKey para recargar todos los datos
+                                          setRefreshKey(prev => prev + 1);
+                                          
+                                          // Actualizar lista de estudiantes para reflejar cambios
+                                          const lista = await getListaEstudiantes();
+                                          const info = estudiantesActualizados;
                                             const nombresUnicos = Array.from(new Set([
                                               ...info.map((i: any) => i.nombre),
                                               ...lista.map((e: any) => e.nombre)
