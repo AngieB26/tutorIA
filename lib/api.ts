@@ -423,6 +423,16 @@ export async function getIncidenciasCompletasByStudent(studentName: string): Pro
   return res.json();
 }
 
+export async function corregirIncidenciasEstudiantes(): Promise<{ actualizadas: number; errores: number }> {
+  const res = await fetch('/api/incidencias/corregir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Error al corregir incidencias');
+  const data = await res.json();
+  return { actualizadas: data.actualizadas, errores: data.errores };
+}
+
 // ============================================
 // GRADOS Y SECCIONES
 // ============================================

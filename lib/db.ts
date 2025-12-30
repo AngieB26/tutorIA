@@ -1615,6 +1615,116 @@ export async function getListaEstudiantes(): Promise<Array<{ nombre: string; tot
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
+// Función para corregir incidencias existentes: actualizar estudianteId y normalizar studentName
+export async function corregirIncidenciasEstudiantes(): Promise<{ actualizadas: number; errores: number }> {
+  try {
+    console.log('🔧 Iniciando corrección de incidencias...');
+    
+    // Obtener todas las incidencias
+    const todasIncidencias = await prisma.incidencia.findMany({
+      orderBy: { timestamp: 'desc' }
+    });
+    
+    console.log(`📊 Total de incidencias a revisar: ${todasIncidencias.length}`);
+    
+    let actualizadas = 0;
+    let errores = 0;
+    
+    for (const incidencia of todasIncidencias) {
+      try {
+        // Si ya tiene estudianteId, verificar que el estudiante existe y el nombre está correcto
+        let estudiante = null;
+        
+        if (incidencia.estudianteId) {
+          estudiante = await prisma.estudiante.findUnique({
+            where: { id: incidencia.estudianteId }
+          });
+          
+          if (estudiante) {
+            const nombreCompletoCorrecto = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+            // Si el nombre no coincide, actualizarlo
+            if (incidencia.studentName !== nombreCompletoCorrecto) {
+              await prisma.incidencia.update({
+                where: { id: incidencia.id },
+                data: { studentName: nombreCompletoCorrecto }
+              });
+              console.log(`✅ Actualizada incidencia ${incidencia.id}: nombre "${incidencia.studentName}" -> "${nombreCompletoCorrecto}"`);
+              actualizadas++;
+            }
+            continue; // Ya está correcta
+          } else {
+            // El estudianteId no existe, buscar por nombre
+            console.log(`⚠️ EstudianteId ${incidencia.estudianteId} no encontrado para incidencia ${incidencia.id}, buscando por nombre...`);
+          }
+        }
+        
+        // Buscar estudiante por nombre
+        if (incidencia.studentName && incidencia.studentName.trim()) {
+          const partes = incidencia.studentName.trim().split(/\s+/);
+          
+          if (partes.length >= 2) {
+            const apellidos = partes[partes.length - 1];
+            const nombres = partes.slice(0, -1).join(' ');
+            
+            // Buscar con coincidencia exacta
+            estudiante = await prisma.estudiante.findFirst({
+              where: {
+                nombres: nombres,
+                apellidos: apellidos
+              }
+            });
+            
+            // Si no se encuentra, buscar con contains
+            if (!estudiante) {
+              estudiante = await prisma.estudiante.findFirst({
+                where: {
+                  nombres: { contains: nombres, mode: 'insensitive' },
+                  apellidos: { contains: apellidos, mode: 'insensitive' }
+                }
+              });
+            }
+          } else {
+            // Solo una parte, buscar en nombres o apellidos
+            estudiante = await prisma.estudiante.findFirst({
+              where: {
+                OR: [
+                  { nombres: { contains: partes[0], mode: 'insensitive' } },
+                  { apellidos: { contains: partes[0], mode: 'insensitive' } }
+                ]
+              }
+            });
+          }
+        }
+        
+        if (estudiante) {
+          const nombreCompletoCorrecto = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+          await prisma.incidencia.update({
+            where: { id: incidencia.id },
+            data: {
+              estudianteId: estudiante.id,
+              studentName: nombreCompletoCorrecto
+            }
+          });
+          console.log(`✅ Corregida incidencia ${incidencia.id}: estudianteId=${estudiante.id}, nombre="${nombreCompletoCorrecto}"`);
+          actualizadas++;
+        } else {
+          console.log(`⚠️ No se encontró estudiante para incidencia ${incidencia.id} con nombre: "${incidencia.studentName}"`);
+          errores++;
+        }
+      } catch (error) {
+        console.error(`❌ Error procesando incidencia ${incidencia.id}:`, error);
+        errores++;
+      }
+    }
+    
+    console.log(`✅ Corrección completada: ${actualizadas} actualizadas, ${errores} errores`);
+    return { actualizadas, errores };
+  } catch (error) {
+    console.error('❌ Error en corregirIncidenciasEstudiantes:', error);
+    throw error;
+  }
+}
+
 // ============================================
 // ASISTENCIA POR CLASE
 // ============================================
