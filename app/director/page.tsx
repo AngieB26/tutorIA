@@ -1329,8 +1329,8 @@ export default function DirectorPage() {
       toast.success('Información actualizada exitosamente en la base de datos');
       console.log('✅ Guardado completado exitosamente');
     } catch (error: any) {
-      console.error('Error guardando estudiante:', error);
-      toast.error('Error al guardar la información del estudiante');
+      console.error('❌ Error guardando estudiante:', error);
+      toast.error(error.message || 'Error al guardar la información del estudiante');
     }
   };
   
