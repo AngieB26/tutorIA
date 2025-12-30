@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,109 +6,91 @@ datasource db {
   provider = "postgresql"
 }
 
-// Modelo para Estudiantes
 model Estudiante {
-  id                   String  @id @default(uuid())
+  id                   String                    @id @default(uuid())
   nombre               String
   grado                String
   seccion              String
   edad                 Int?
   fechaNacimiento      String?
-  fotoPerfil           String? @db.Text
-  // Campos de contacto
+  fotoPerfil           String?
   contactoTelefono     String?
   contactoEmail        String?
   contactoNombre       String?
-  // Campos de tutor
   tutorNombre          String?
   tutorTelefono        String?
   tutorEmail           String?
-  // Campos de apoderado
   apoderadoNombre      String?
   apoderadoParentesco  String?
   apoderadoTelefono    String?
   apoderadoTelefonoAlt String?
   apoderadoEmail       String?
-  apoderadoDireccion   String? @db.Text
-  // Estadísticas de asistencia
-  asistencias          Int?    @default(0)
-  ausencias            Int?    @default(0)
-  tardanzas            Int?    @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relaciones
-  incidencias         Incidencia[]              @relation("EstudianteIncidencias")
-  notas               Nota[]                    @relation("EstudianteNotas")
-  asistenciasRegistro RegistroAsistenciaEntry[] @relation("EstudianteAsistencias")
+  apoderadoDireccion   String?
+  asistencias          Int?                      @default(0)
+  ausencias            Int?                      @default(0)
+  tardanzas            Int?                      @default(0)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  incidencias          Incidencia[]              @relation("EstudianteIncidencias")
+  notas                Nota[]                    @relation("EstudianteNotas")
+  asistenciasRegistro  RegistroAsistenciaEntry[] @relation("EstudianteAsistencias")
 
   @@index([grado, seccion])
   @@index([nombre])
 }
 
-// Modelo para Tutores/Profesores
 model Tutor {
-  id       String  @id @default(uuid())
-  nombre   String
-  email    String?
-  telefono String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relaciones
-  asignaciones TutorGradoSeccion[]
-  incidencias  Incidencia[]
+  id           String              @id @default(uuid())
+  nombre       String
+  email        String?
+  telefono     String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
   clases       Clase[]
+  incidencias  Incidencia[]
+  asignaciones TutorGradoSeccion[]
 
   @@index([nombre])
 }
 
-// Modelo para asignación de tutores a grados/secciones
 model TutorGradoSeccion {
-  id      String @id @default(uuid())
-  grado   String
-  seccion String
-  tutorId String
-  tutor   Tutor  @relation(fields: [tutorId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(uuid())
+  grado     String
+  seccion   String
+  tutorId   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
 
   @@unique([grado, seccion])
   @@index([grado, seccion])
   @@index([tutorId])
 }
 
-// Modelo para Incidencias
 model Incidencia {
   id              String      @id @default(uuid())
   studentName     String
   estudianteId    String?
-  estudiante      Estudiante? @relation("EstudianteIncidencias", fields: [estudianteId], references: [id])
-  tipo            String // TipoIncidencia: 'ausencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo' | 'asistencia'
-  subtipo         String? // SubtipoConducta | SubtipoPositivo
-  gravedad        String // 'grave' | 'moderada' | 'leve'
-  descripcion     String      @db.Text
-  fecha           String // YYYY-MM-DD
+  tipo            String
+  subtipo         String?
+  gravedad        String
+  descripcion     String
+  fecha           String
   profesor        String
   profesorId      String?
-  tutor           Tutor?      @relation(fields: [profesorId], references: [id])
   tutorNombre     String?
   lugar           String?
   timestamp       BigInt
-  derivacion      String? // TipoDerivacion
+  derivacion      String?
   resuelta        Boolean     @default(false)
   fechaResolucion String?
   resueltaPor     String?
-  estado          String      @default("Pendiente") // EstadoIncidencia
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Historial de estados (JSON almacenado como texto)
-  historialEstado String? @db.Text // JSON array de EstadoIncidenciaHistorial[]
+  estado          String      @default("Pendiente")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  historialEstado String?
+  estudiante      Estudiante? @relation("EstudianteIncidencias", fields: [estudianteId], references: [id])
+  tutor           Tutor?      @relation(fields: [profesorId], references: [id])
 
   @@index([studentName])
   @@index([estudianteId])
@@ -122,21 +101,19 @@ model Incidencia {
   @@index([profesorId])
 }
 
-// Modelo para Notas
 model Nota {
   id           String      @id @default(uuid())
   studentName  String
   estudianteId String?
-  estudiante   Estudiante? @relation("EstudianteNotas", fields: [estudianteId], references: [id])
   materia      String
   nota         Float
-  fecha        String // YYYY-MM-DD
+  fecha        String
   profesor     String
-  comentario   String?     @db.Text
-  estado       String? // 'pendiente' | 'normal' | 'resuelta'
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  comentario   String?
+  estado       String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  estudiante   Estudiante? @relation("EstudianteNotas", fields: [estudianteId], references: [id])
 
   @@index([studentName])
   @@index([estudianteId])
@@ -144,47 +121,38 @@ model Nota {
   @@index([materia])
 }
 
-// Modelo para Clases
 model Clase {
-  id         String  @id @default(uuid())
-  nombre     String
-  grado      String
-  seccion    String
-  profesor   String
-  profesorId String?
-  tutor      Tutor?  @relation(fields: [profesorId], references: [id])
-  // Días de la semana (JSON array almacenado como texto)
-  dias       String  @db.Text // JSON array de DiaSemana[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relaciones
+  id                  String                    @id @default(uuid())
+  nombre              String
+  grado               String
+  seccion             String
+  profesor            String
+  profesorId          String?
+  dias                String                    @db.Text
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  tutor               Tutor?                    @relation(fields: [profesorId], references: [id])
   registrosAsistencia RegistroAsistenciaClase[]
 
   @@index([grado, seccion])
   @@index([profesorId])
 }
 
-// Modelo para Registros de Asistencia
 model RegistroAsistenciaClase {
-  id        String  @id @default(uuid())
-  fecha     String // YYYY-MM-DD
-  dia       String // DiaSemana
+  id        String                    @id @default(uuid())
+  fecha     String
+  dia       String
   claseId   String
-  clase     Clase   @relation(fields: [claseId], references: [id], onDelete: Cascade)
   grado     String
   seccion   String
   profesor  String
   periodo   Int
   lugar     String?
   timestamp BigInt
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Entries de asistencia por estudiante
-  entries RegistroAsistenciaEntry[]
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+  clase     Clase                     @relation(fields: [claseId], references: [id], onDelete: Cascade)
+  entries   RegistroAsistenciaEntry[]
 
   @@unique([fecha, claseId, periodo])
   @@index([fecha])
@@ -192,31 +160,27 @@ model RegistroAsistenciaClase {
   @@index([grado, seccion])
 }
 
-// Modelo para entries individuales de asistencia
 model RegistroAsistenciaEntry {
   id                   String                  @id @default(uuid())
   registroAsistenciaId String
-  registroAsistencia   RegistroAsistenciaClase @relation(fields: [registroAsistenciaId], references: [id], onDelete: Cascade)
   studentName          String
   estudianteId         String?
+  estado               String
+  createdAt            DateTime                @default(now())
   estudiante           Estudiante?             @relation("EstudianteAsistencias", fields: [estudianteId], references: [id])
-  estado               String // EstadoAsistencia: 'presente' | 'tardanza' | 'ausente'
-
-  createdAt DateTime @default(now())
+  registroAsistencia   RegistroAsistenciaClase @relation(fields: [registroAsistenciaId], references: [id], onDelete: Cascade)
 
   @@unique([registroAsistenciaId, studentName])
   @@index([studentName])
   @@index([estudianteId])
 }
 
-// Modelo para Grados
 model Grado {
   id        String   @id @default(uuid())
   nombre    String   @unique
   createdAt DateTime @default(now())
 }
 
-// Modelo para Secciones
 model Seccion {
   id        String   @id @default(uuid())
   nombre    String   @unique
