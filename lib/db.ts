@@ -2399,3 +2399,115 @@ export async function saveSecciones(secciones: string[]): Promise<void> {
   }
 }
 
+// ============================================
+// FUNCIONES PARA ESTUDIANTES ATENDIDOS
+// ============================================
+
+export interface EstudianteAtendido {
+  nombre: string;
+  fecha: string; // Fecha en formato YYYY-MM-DD
+  profesor: string;
+}
+
+export async function getEstudiantesAtendidos(): Promise<EstudianteAtendido[]> {
+  try {
+    const atendidos = await prisma.estudianteAtendido.findMany({
+      orderBy: { fecha: 'desc' }
+    });
+    
+    return atendidos.map(a => ({
+      nombre: a.nombre,
+      fecha: a.fecha,
+      profesor: a.profesor
+    }));
+  } catch (error) {
+    console.error('Error obteniendo estudiantes atendidos:', error);
+    return [];
+  }
+}
+
+export async function marcarEstudianteAtendido(nombre: string, fecha: string, profesor: string): Promise<void> {
+  try {
+    // Buscar el estudiante por nombre para obtener el ID
+    const estudiante = await prisma.estudiante.findFirst({
+      where: {
+        OR: [
+          { nombres: { contains: nombre.split(' ')[0], mode: 'insensitive' } },
+          { apellidos: { contains: nombre.split(' ').slice(-1)[0], mode: 'insensitive' } }
+        ]
+      }
+    });
+
+    // Eliminar registros antiguos del mismo estudiante y profesor (mantener solo el más reciente)
+    await prisma.estudianteAtendido.deleteMany({
+      where: {
+        nombre: nombre,
+        profesor: profesor
+      }
+    });
+
+    // Agregar el nuevo registro
+    await prisma.estudianteAtendido.create({
+      data: {
+        nombre: nombre,
+        estudianteId: estudiante?.id,
+        fecha: fecha,
+        profesor: profesor
+      }
+    });
+
+    console.log('✅ Estudiante marcado como atendido:', { nombre, fecha, profesor });
+  } catch (error) {
+    console.error('Error marcando estudiante como atendido:', error);
+    throw error;
+  }
+}
+
+export async function esEstudianteAtendido(nombre: string, profesor: string, fecha?: string): Promise<boolean> {
+  try {
+    const where: any = {
+      nombre: nombre,
+      profesor: profesor
+    };
+    
+    if (fecha) {
+      where.fecha = fecha;
+    }
+
+    const atendido = await prisma.estudianteAtendido.findFirst({
+      where
+    });
+
+    return !!atendido;
+  } catch (error) {
+    console.error('Error verificando si estudiante está atendido:', error);
+    return false;
+  }
+}
+
+export async function getEstudiantesAtendidosByProfesor(profesor: string, fecha?: string): Promise<EstudianteAtendido[]> {
+  try {
+    const where: any = {
+      profesor: profesor
+    };
+    
+    if (fecha) {
+      where.fecha = fecha;
+    }
+
+    const atendidos = await prisma.estudianteAtendido.findMany({
+      where,
+      orderBy: { fecha: 'desc' }
+    });
+
+    return atendidos.map(a => ({
+      nombre: a.nombre,
+      fecha: a.fecha,
+      profesor: a.profesor
+    }));
+  } catch (error) {
+    console.error('Error obteniendo estudiantes atendidos por profesor:', error);
+    return [];
+  }
+}
+

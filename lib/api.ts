@@ -506,3 +506,44 @@ export async function saveSecciones(secciones: string[]): Promise<void> {
   }
 }
 
+// ============================================
+// ESTUDIANTES ATENDIDOS
+// ============================================
+
+export async function getEstudiantesAtendidos(): Promise<any[]> {
+  const res = await fetch('/api/estudiantes-atendidos');
+  if (!res.ok) throw new Error('Error al obtener estudiantes atendidos');
+  return res.json();
+}
+
+export async function marcarEstudianteAtendido(nombre: string, fecha: string, profesor: string): Promise<void> {
+  const res = await fetch('/api/estudiantes-atendidos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, fecha, profesor }),
+  });
+  if (!res.ok) throw new Error('Error al marcar estudiante como atendido');
+}
+
+export async function esEstudianteAtendido(nombre: string, profesor: string, fecha?: string): Promise<boolean> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('nombre', nombre);
+  queryParams.append('profesor', profesor);
+  if (fecha) queryParams.append('fecha', fecha);
+  
+  const res = await fetch(`/api/estudiantes-atendidos/verificar?${queryParams.toString()}`);
+  if (!res.ok) return false;
+  const data = await res.json();
+  return data.atendido || false;
+}
+
+export async function getEstudiantesAtendidosByProfesor(profesor: string, fecha?: string): Promise<any[]> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('profesor', profesor);
+  if (fecha) queryParams.append('fecha', fecha);
+  
+  const res = await fetch(`/api/estudiantes-atendidos?${queryParams.toString()}`);
+  if (!res.ok) throw new Error('Error al obtener estudiantes atendidos por profesor');
+  return res.json();
+}
+

@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
-import { fetchIncidencias, fetchEstudiantes, fetchTutores, fetchAsistenciaClases } from '@/lib/api';
+import { fetchIncidencias, fetchEstudiantes, fetchTutores, fetchAsistenciaClases, getEstudiantesAtendidos } from '@/lib/api';
 
 export function Navbar() {
   const router = useRouter();
@@ -105,10 +105,9 @@ export function Navbar() {
             tardanzas: conteo.tardanzas
           })));
           
-          // Obtener estudiantes atendidos hoy desde localStorage (esto sigue siendo local)
+          // Obtener estudiantes atendidos hoy desde la base de datos
           const hoy = new Date().toISOString().split('T')[0];
-          const estudiantesAtendidosStr = localStorage.getItem('tutoria_estudiantes_atendidos');
-          const estudiantesAtendidos = estudiantesAtendidosStr ? JSON.parse(estudiantesAtendidosStr) : [];
+          const estudiantesAtendidos = await getEstudiantesAtendidos();
           const estudiantesAtendidosHoy = new Set(
             estudiantesAtendidos
               .filter((e: any) => e.fecha === hoy)
@@ -196,10 +195,9 @@ export function Navbar() {
           });
         });
         
-        // Obtener estudiantes atendidos hoy desde localStorage (esto sigue siendo local)
+        // Obtener estudiantes atendidos hoy desde la base de datos
         const hoy = new Date().toISOString().split('T')[0];
-        const estudiantesAtendidosStr = localStorage.getItem('tutoria_estudiantes_atendidos');
-        const estudiantesAtendidos = estudiantesAtendidosStr ? JSON.parse(estudiantesAtendidosStr) : [];
+        const estudiantesAtendidos = await getEstudiantesAtendidos();
         const estudiantesAtendidosHoy = new Set(
           estudiantesAtendidos
             .filter((e: any) => e.fecha === hoy)

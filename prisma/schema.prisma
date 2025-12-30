@@ -35,6 +35,7 @@ model Estudiante {
   incidencias          Incidencia[]              @relation("EstudianteIncidencias")
   notas                Nota[]                    @relation("EstudianteNotas")
   asistenciasRegistro  RegistroAsistenciaEntry[] @relation("EstudianteAsistencias")
+  atendidos            EstudianteAtendido[]      @relation("EstudianteAtendidos")
 
   @@index([grado, seccion])
   @@index([nombres, apellidos])
@@ -186,4 +187,20 @@ model Seccion {
   id        String   @id @default(uuid())
   nombre    String   @unique
   createdAt DateTime @default(now())
+}
+
+model EstudianteAtendido {
+  id        String   @id @default(uuid())
+  nombre    String
+  estudianteId String?
+  fecha     String
+  profesor  String
+  createdAt DateTime @default(now())
+  estudiante Estudiante? @relation("EstudianteAtendidos", fields: [estudianteId], references: [id])
+
+  @@unique([nombre, profesor, fecha])
+  @@index([nombre])
+  @@index([estudianteId])
+  @@index([fecha])
+  @@index([profesor])
 }

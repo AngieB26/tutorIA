@@ -6,9 +6,6 @@
 
 import { useState, useEffect } from 'react';
 import {
-  marcarEstudianteAtendido,
-} from '@/lib/storage';
-import {
   fetchTutores,
   fetchEstudiantes,
   fetchClases,
@@ -16,6 +13,7 @@ import {
   findRegistroAsistencia,
   getGrados,
   getSecciones,
+  marcarEstudianteAtendido,
 } from '@/lib/api';
 
 import {
