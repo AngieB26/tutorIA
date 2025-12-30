@@ -4351,8 +4351,13 @@ export default function DirectorPage() {
                                             ...estudianteCompleto,
                                             ...estudianteEditForm,
                                             // Preservar nombres y apellidos si no se están editando
-                                            nombres: estudianteEditForm.nombres ?? estudianteCompleto.nombres,
-                                            apellidos: estudianteEditForm.apellidos ?? estudianteCompleto.apellidos,
+                                            // Asegurar que siempre tengan un valor (no pueden ser vacíos)
+                                            nombres: (estudianteEditForm.nombres && estudianteEditForm.nombres.trim()) 
+                                              ? estudianteEditForm.nombres.trim() 
+                                              : (estudianteCompleto.nombres || ''),
+                                            apellidos: (estudianteEditForm.apellidos && estudianteEditForm.apellidos.trim()) 
+                                              ? estudianteEditForm.apellidos.trim() 
+                                              : (estudianteCompleto.apellidos || ''),
                                             // Preservar contacto si existe
                                             contacto: estudianteEditForm.contacto ? {
                                               ...estudianteCompleto.contacto,
