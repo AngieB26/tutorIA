@@ -5063,7 +5063,7 @@ export default function DirectorPage() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '' });
+                      setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '', dias: [] });
                       setMostrarFormularioCurso(true);
                     }}
                     className="gap-1"
