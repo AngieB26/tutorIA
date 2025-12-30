@@ -5354,6 +5354,51 @@ export default function DirectorPage() {
           )}
         </div>
       )}
+
+      {/* Diálogo de confirmación para eliminar grados/secciones */}
+      {mostrarConfirmacion && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="text-lg text-gray-900">
+                Confirmar eliminación
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 mb-4">
+                ¿Estás seguro de eliminar {confirmacionTipo === 'grado' ? 'el grado' : 'la sección'} <strong>"{confirmacionNombre}"</strong>?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setMostrarConfirmacion(false);
+                    setConfirmacionTipo(null);
+                    setConfirmacionNombre('');
+                    setConfirmacionCallback(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (confirmacionCallback) {
+                      await confirmacionCallback();
+                    }
+                    setMostrarConfirmacion(false);
+                    setConfirmacionTipo(null);
+                    setConfirmacionNombre('');
+                    setConfirmacionCallback(null);
+                  }}
+                >
+                  Eliminar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
