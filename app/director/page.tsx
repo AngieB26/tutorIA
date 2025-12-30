@@ -2398,7 +2398,8 @@ export default function DirectorPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-sm font-semibold">Estudiante</TableHead>
+                      <TableHead className="text-sm font-semibold">Nombres</TableHead>
+                      <TableHead className="text-sm font-semibold">Apellidos</TableHead>
                       <TableHead className="text-sm font-semibold">Grado</TableHead>
                       <TableHead className="text-sm font-semibold">Sección</TableHead>
                       <TableHead className="text-sm font-semibold">Total Incidencias</TableHead>
@@ -2408,10 +2409,29 @@ export default function DirectorPage() {
                   </TableHeader>
                   <TableBody>
                     {listaEstudiantes
-                      .filter(e => (!filtroGrado || e.grado === filtroGrado) && (!filtroSeccion || e.seccion === filtroSeccion) && (!busquedaEstudiante || e.nombre.toLowerCase().includes(busquedaEstudiante.toLowerCase())))
-                      .map((estudiante) => (
+                      .filter(e => {
+                        const estudianteCompleto = estudiantesInfo.find(est => est.nombre === e.nombre);
+                        const nombreCompleto = e.nombre.toLowerCase();
+                        const nombres = estudianteCompleto?.nombres?.toLowerCase() || '';
+                        const apellidos = estudianteCompleto?.apellidos?.toLowerCase() || '';
+                        return (!filtroGrado || e.grado === filtroGrado) && 
+                               (!filtroSeccion || e.seccion === filtroSeccion) && 
+                               (!busquedaEstudiante || 
+                                 nombreCompleto.includes(busquedaEstudiante.toLowerCase()) ||
+                                 nombres.includes(busquedaEstudiante.toLowerCase()) ||
+                                 apellidos.includes(busquedaEstudiante.toLowerCase())
+                               );
+                      })
+                      .map((estudiante) => {
+                        // Buscar el estudiante completo en estudiantesInfo para obtener nombres y apellidos
+                        const estudianteCompleto = estudiantesInfo.find(e => e.nombre === estudiante.nombre);
+                        const nombres = estudianteCompleto?.nombres || estudiante.nombre?.split(' ').slice(0, -1).join(' ') || '-';
+                        const apellidos = estudianteCompleto?.apellidos || estudiante.nombre?.split(' ').slice(-1).join(' ') || '-';
+                        
+                        return (
                         <TableRow key={estudiante.nombre} className="hover:bg-gray-50">
-                          <TableCell className="font-medium text-gray-900">{estudiante.nombre}</TableCell>
+                          <TableCell className="font-medium text-gray-900">{nombres}</TableCell>
+                          <TableCell className="font-medium text-gray-900">{apellidos}</TableCell>
                           <TableCell className="text-gray-900">{estudiante.grado || '-'}</TableCell>
                           <TableCell className="text-gray-900">{estudiante.seccion || '-'}</TableCell>
                           <TableCell>
@@ -2431,7 +2451,8 @@ export default function DirectorPage() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                   </TableBody>
                 </Table>
               </div>
@@ -4134,17 +4155,22 @@ export default function DirectorPage() {
               {/* Lista de estudiantes actuales */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Estudiantes Registrados ({estudiantesInfo.filter(e => 
-                      (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
-                      (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
-                      (!busquedaAdminEstudiante || e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
+                  Estudiantes Registrados (                    {estudiantesInfo.filter(e => 
+                          (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
+                          (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
+                          (!busquedaAdminEstudiante || 
+                            e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()) ||
+                            (e.nombres && e.nombres.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase())) ||
+                            (e.apellidos && e.apellidos.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
+                          )
                     ).length})
                 </h3>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-sm font-semibold">Nombre</TableHead>
+                        <TableHead className="text-sm font-semibold">Nombres</TableHead>
+                        <TableHead className="text-sm font-semibold">Apellidos</TableHead>
                         <TableHead className="text-sm font-semibold">Grado</TableHead>
                         <TableHead className="text-sm font-semibold">Sección</TableHead>
                         <TableHead className="text-sm font-semibold">Edad</TableHead>
@@ -4157,7 +4183,11 @@ export default function DirectorPage() {
                       {estudiantesInfo.filter(e => 
                           (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
                           (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
-                          (!busquedaAdminEstudiante || e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
+                          (!busquedaAdminEstudiante || 
+                            e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()) ||
+                            (e.nombres && e.nombres.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase())) ||
+                            (e.apellidos && e.apellidos.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
+                          )
                         ).map((estudiante) => {
                           const estaEditando = estudianteEditandoAdmin === estudiante.nombre;
                           const formData = estaEditando ? estudianteEditForm : estudiante;
@@ -4167,12 +4197,35 @@ export default function DirectorPage() {
                               <TableCell className="font-medium text-gray-900">
                                 {estaEditando ? (
                                   <Input
-                                    value={formData.nombre || ''}
-                                    onChange={(e) => setEstudianteEditForm({...formData, nombre: e.target.value})}
+                                    value={formData.nombres || ''}
+                                    onChange={(e) => {
+                                      const nombres = e.target.value;
+                                      const apellidos = formData.apellidos || '';
+                                      const nombreCompleto = nombres && apellidos ? `${nombres} ${apellidos}`.trim() : nombres || apellidos || formData.nombre || '';
+                                      setEstudianteEditForm({...formData, nombres, nombre: nombreCompleto});
+                                    }}
                                     className="w-full h-8 text-sm"
+                                    placeholder="Nombres"
                                   />
                                 ) : (
-                                  estudiante.nombre
+                                  estudiante.nombres || estudiante.nombre?.split(' ').slice(0, -1).join(' ') || '-'
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium text-gray-900">
+                                {estaEditando ? (
+                                  <Input
+                                    value={formData.apellidos || ''}
+                                    onChange={(e) => {
+                                      const apellidos = e.target.value;
+                                      const nombres = formData.nombres || '';
+                                      const nombreCompleto = nombres && apellidos ? `${nombres} ${apellidos}`.trim() : nombres || apellidos || formData.nombre || '';
+                                      setEstudianteEditForm({...formData, apellidos, nombre: nombreCompleto});
+                                    }}
+                                    className="w-full h-8 text-sm"
+                                    placeholder="Apellidos"
+                                  />
+                                ) : (
+                                  estudiante.apellidos || estudiante.nombre?.split(' ').slice(-1).join(' ') || '-'
                                 )}
                               </TableCell>
                               <TableCell className="text-gray-900">
