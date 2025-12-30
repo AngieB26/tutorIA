@@ -1533,19 +1533,42 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
           });
           console.log(`📊 Total incidencias con estudianteId no null: ${todasIncidencias.length}`);
           
-          // Filtrar manualmente
+          // Filtrar manualmente con múltiples comparaciones
           incidencias = todasIncidencias.filter(inc => {
-            const coincide = inc.estudianteId === estudianteIdFinal || 
-                           inc.estudianteId?.trim() === estudianteIdFinal.trim() ||
+            if (!inc.estudianteId) return false;
+            
+            const incId = String(inc.estudianteId).trim();
+            const buscadoId = String(estudianteIdFinal).trim();
+            
+            const coincide = incId === buscadoId || 
+                           incId.toLowerCase() === buscadoId.toLowerCase() ||
+                           inc.estudianteId === estudianteIdFinal ||
                            inc.estudianteId === estudianteIdFinal.trim() ||
-                           inc.estudianteId?.trim() === estudianteIdFinal;
+                           inc.estudianteId?.trim() === estudianteIdFinal ||
+                           inc.estudianteId?.trim() === estudianteIdFinal.trim();
+            
             if (coincide) {
               console.log(`✅ Incidencia encontrada por filtro manual:`, {
                 id: inc.id,
                 studentName: inc.studentName,
                 estudianteId: inc.estudianteId,
-                buscado: estudianteIdFinal
+                estudianteIdTrimmed: incId,
+                buscado: estudianteIdFinal,
+                buscadoTrimmed: buscadoId,
+                coincideExacto: incId === buscadoId,
+                coincideCaseInsensitive: incId.toLowerCase() === buscadoId.toLowerCase()
               });
+            } else {
+              // Log solo las primeras 3 que no coinciden para debugging
+              if (todasIncidencias.indexOf(inc) < 3) {
+                console.log(`❌ No coincide:`, {
+                  incId: inc.estudianteId,
+                  incIdTrimmed: incId,
+                  buscado: estudianteIdFinal,
+                  buscadoTrimmed: buscadoId,
+                  igualdadExacta: incId === buscadoId
+                });
+              }
             }
             return coincide;
           });
