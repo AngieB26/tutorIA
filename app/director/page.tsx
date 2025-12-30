@@ -498,24 +498,51 @@ export default function DirectorPage() {
       // Handler para ver el perfil de un estudiante
       const handleVerPerfil = async (nombre: string, estudianteId?: string) => {
         setActiveTab('estudiantes');
-        // Si tenemos el ID, usarlo; si no, buscar por nombre para obtener el ID
+        let idFinal = estudianteId;
+        let nombreFinal = nombre;
+        
+        // Si tenemos el ID, usarlo directamente (más confiable)
         if (estudianteId) {
+          console.log('📝 Usando ID del estudiante para ver perfil:', estudianteId);
           setSelectedStudentId(estudianteId);
           setSelectedStudentName(nombre);
+          idFinal = estudianteId;
+          nombreFinal = nombre;
         } else {
           // Buscar el estudiante por nombre para obtener su ID
+          console.log('🔍 Buscando estudiante por nombre:', nombre);
           const estudiante = await fetchEstudiante(nombre);
           if (estudiante?.id) {
+            console.log('✅ Estudiante encontrado por nombre, ID:', estudiante.id);
             setSelectedStudentId(estudiante.id);
             setSelectedStudentName(estudiante.nombre);
+            idFinal = estudiante.id;
+            nombreFinal = estudiante.nombre;
           } else {
-            setSelectedStudentId(null);
-            setSelectedStudentName(nombre);
+            console.warn('⚠️ Estudiante no encontrado por nombre:', nombre);
+            // Intentar buscar en estudiantesInfo local
+            const estudianteLocal = estudiantesInfo.find(e => e.nombre === nombre);
+            if (estudianteLocal?.id) {
+              console.log('✅ Estudiante encontrado en lista local, ID:', estudianteLocal.id);
+              setSelectedStudentId(estudianteLocal.id);
+              setSelectedStudentName(estudianteLocal.nombre);
+              idFinal = estudianteLocal.id;
+              nombreFinal = estudianteLocal.nombre;
+            } else {
+              setSelectedStudentId(null);
+              setSelectedStudentName(nombre);
+            }
           }
         }
         try {
-          const incidencias = await getIncidenciasCompletasByStudent(nombre);
-          setIncidenciasEstudiante(incidencias);
+          // Usar el ID si está disponible, si no usar el nombre
+          if (idFinal) {
+            const incidencias = await getIncidenciasCompletasByStudent(idFinal);
+            setIncidenciasEstudiante(incidencias);
+          } else {
+            const incidencias = await getIncidenciasCompletasByStudent(nombreFinal);
+            setIncidenciasEstudiante(incidencias);
+          }
         } catch (error) {
           console.error('Error cargando incidencias del estudiante:', error);
           setIncidenciasEstudiante([]);
