@@ -4737,6 +4737,27 @@ export default function DirectorPage() {
                                             const estudiantesConNuevasReferencias = estudiantesActualizados.map(est => ({ ...est }));
                                             
                                             // Actualizar el estado con los datos frescos de la base de datos
+                                            // Primero actualizar directamente el estado local con los datos que acabamos de guardar
+                                            // Esto asegura una actualización inmediata mientras se recargan los datos
+                                            setEstudiantesInfo(prev => {
+                                              // Encontrar el índice del estudiante que se actualizó
+                                              const index = prev.findIndex((e: any) => 
+                                                (e.id === estudianteId) || 
+                                                (e.nombres === estudianteActualizado.nombres && e.apellidos === estudianteActualizado.apellidos)
+                                              );
+                                              
+                                              if (index !== -1) {
+                                                // Actualizar el estudiante en su posición
+                                                const nuevos = [...prev];
+                                                nuevos[index] = { ...estudianteActualizado };
+                                                return nuevos;
+                                              }
+                                              
+                                              // Si no se encuentra, retornar el estado anterior (se actualizará con la recarga)
+                                              return prev;
+                                            });
+                                            
+                                            // Luego actualizar con los datos recargados de la base de datos para asegurar consistencia
                                             // Usar una función de actualización para asegurar que React detecte el cambio
                                             setEstudiantesInfo(() => estudiantesConNuevasReferencias);
                                             
