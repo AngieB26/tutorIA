@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "reordenar-columnas": "tsx scripts/ejecutar-reordenar.ts",
+    "crear-tablas-faltantes": "tsx scripts/crear-tablas-faltantes.ts",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
