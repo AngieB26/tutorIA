@@ -4450,7 +4450,8 @@ export default function DirectorPage() {
                           const identificadorEstudiante = estudiante.id || estudiante.nombre;
                           // Verificar explícitamente si este estudiante está en modo edición
                           // También verificar si el formulario está cerrado (estudianteEditandoAdmin es null)
-                          const estaEditando = estudianteEditandoAdmin !== null && estudianteEditandoAdmin === identificadorEstudiante;
+                          // IMPORTANTE: Si estudianteEditandoAdmin es null, el formulario está cerrado
+                          const estaEditando = estudianteEditandoAdmin !== null && estudianteEditandoAdmin !== undefined && estudianteEditandoAdmin === identificadorEstudiante;
                           const formData = estaEditando ? estudianteEditForm : estudiante;
                           
                           // Usar ID como key si está disponible, si no usar nombre (para mejor rendimiento de React)
