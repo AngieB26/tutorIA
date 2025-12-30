@@ -3856,7 +3856,7 @@ export default function DirectorPage() {
                           const maxValue = Math.max(...Object.values(stats.porTipo).map(Number), 1);
                           const tipos = [
                             { key: 'conducta', label: 'Conducta', color: 'bg-red-600' },
-                    { key: 'ausencia', label: 'Asistencia', color: 'bg-orange-500' },
+                    { key: 'asistencia', label: 'Asistencia', color: 'bg-orange-500' },
                     { key: 'academica', label: 'Académica', color: 'bg-blue-600' },
                             { key: 'positivo', label: 'Positivos', color: 'bg-green-600' },
                           ];
@@ -3966,10 +3966,10 @@ export default function DirectorPage() {
                     }
                   });
                   
-                  const tipos = ['conducta', 'ausencia', 'academica', 'positivo'];
+                  const tipos = ['conducta', 'asistencia', 'academica', 'positivo'];
                   const tiposLabels: Record<string, string> = {
                     conducta: 'Conducta',
-                    ausencia: 'Asistencia',
+                    asistencia: 'Asistencia',
                     academica: 'Académica',
                     positivo: 'Positivos'
                   };
