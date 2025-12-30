@@ -4410,11 +4410,10 @@ export default function DirectorPage() {
                                             }
                                             
                                             setRefreshKey(prev => prev + 1);
-                                            setEstudianteEditandoAdmin(null);
-                                            setEstudianteEditForm({});
-                                            setEstudianteNombreOriginal(null);
-                                            toast.success('Estudiante actualizado exitosamente');
-                                          }
+                                          setEstudianteEditandoAdmin(null);
+                                          setEstudianteEditForm({});
+                                          setEstudianteNombreOriginal(null);
+                                          toast.success('Estudiante actualizado exitosamente');
                                         }}
                                       >
                                         Guardar
