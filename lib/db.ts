@@ -176,40 +176,68 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
       const nombreCompletoNuevo = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
       const nombreCambio = nombreOriginal && nombreOriginal !== nombreCompletoNuevo;
       
-      // Crear objeto de datos que solo incluya los campos que están presentes (no undefined)
-      // Esto preserva los valores existentes para campos que no se están editando
+      // Crear objeto de datos que preserve TODOS los valores existentes
+      // Solo actualizar campos que están explícitamente presentes en el objeto estudiante
+      // Esto garantiza que NUNCA se elimine información existente
       const dataToUpdate: any = {
         nombres: estudiante.nombres.trim(),
         apellidos: estudiante.apellidos.trim(),
-        grado: estudiante.grado ?? existente.grado,
-        seccion: estudiante.seccion ?? existente.seccion,
+        // Preservar valores existentes si no se están editando
+        grado: estudiante.grado !== undefined ? estudiante.grado : existente.grado,
+        seccion: estudiante.seccion !== undefined ? estudiante.seccion : existente.seccion,
+        edad: estudiante.edad !== undefined ? (estudiante.edad ?? null) : existente.edad,
+        fechaNacimiento: estudiante.fechaNacimiento !== undefined ? (estudiante.fechaNacimiento ?? null) : existente.fechaNacimiento,
+        fotoPerfil: estudiante.fotoPerfil !== undefined ? (estudiante.fotoPerfil ?? null) : existente.fotoPerfil,
+        // Preservar contacto existente si no se está editando
+        contactoTelefono: estudiante.contacto !== undefined 
+          ? (estudiante.contacto?.telefono ?? null) 
+          : existente.contactoTelefono,
+        contactoEmail: estudiante.contacto !== undefined 
+          ? (estudiante.contacto?.email ?? null) 
+          : existente.contactoEmail,
+        contactoNombre: estudiante.contacto !== undefined 
+          ? (estudiante.contacto?.nombre ?? null) 
+          : existente.contactoNombre,
+        // Preservar tutor existente si no se está editando
+        tutorNombre: estudiante.tutor !== undefined 
+          ? (estudiante.tutor?.nombre ?? estudiante.contacto?.tutor ?? null) 
+          : existente.tutorNombre,
+        tutorTelefono: estudiante.tutor !== undefined 
+          ? (estudiante.tutor?.telefono ?? null) 
+          : existente.tutorTelefono,
+        tutorEmail: estudiante.tutor !== undefined 
+          ? (estudiante.tutor?.email ?? null) 
+          : existente.tutorEmail,
+        // Preservar apoderado existente si no se está editando
+        apoderadoNombre: estudiante.apoderado !== undefined 
+          ? (estudiante.apoderado?.nombre ?? null) 
+          : existente.apoderadoNombre,
+        apoderadoParentesco: estudiante.apoderado !== undefined 
+          ? (estudiante.apoderado?.parentesco ?? null) 
+          : existente.apoderadoParentesco,
+        apoderadoTelefono: estudiante.apoderado !== undefined 
+          ? (estudiante.apoderado?.telefono ?? null) 
+          : existente.apoderadoTelefono,
+        apoderadoTelefonoAlt: estudiante.apoderado !== undefined 
+          ? (estudiante.apoderado?.telefonoAlternativo ?? null) 
+          : existente.apoderadoTelefonoAlt,
+        apoderadoEmail: estudiante.apoderado !== undefined 
+          ? (estudiante.apoderado?.email ?? null) 
+          : existente.apoderadoEmail,
+        apoderadoDireccion: estudiante.apoderado !== undefined 
+          ? (estudiante.apoderado?.direccion ?? null) 
+          : existente.apoderadoDireccion,
+        // Preservar estadísticas de asistencia existentes si no se están editando
+        asistencias: estudiante.asistencias !== undefined 
+          ? (estudiante.asistencias ?? null) 
+          : existente.asistencias,
+        ausencias: estudiante.ausencias !== undefined 
+          ? (estudiante.ausencias ?? null) 
+          : existente.ausencias,
+        tardanzas: estudiante.tardanzas !== undefined 
+          ? (estudiante.tardanzas ?? null) 
+          : existente.tardanzas,
       };
-      
-      // Solo actualizar campos que están presentes en el objeto estudiante
-      if (estudiante.edad !== undefined) dataToUpdate.edad = estudiante.edad ?? null;
-      if (estudiante.fechaNacimiento !== undefined) dataToUpdate.fechaNacimiento = estudiante.fechaNacimiento ?? null;
-      if (estudiante.fotoPerfil !== undefined) dataToUpdate.fotoPerfil = estudiante.fotoPerfil ?? null;
-      if (estudiante.contacto !== undefined) {
-        dataToUpdate.contactoTelefono = estudiante.contacto?.telefono ?? null;
-        dataToUpdate.contactoEmail = estudiante.contacto?.email ?? null;
-        dataToUpdate.contactoNombre = estudiante.contacto?.nombre ?? null;
-      }
-      if (estudiante.tutor !== undefined) {
-        dataToUpdate.tutorNombre = estudiante.tutor?.nombre ?? estudiante.contacto?.tutor ?? null;
-        dataToUpdate.tutorTelefono = estudiante.tutor?.telefono ?? null;
-        dataToUpdate.tutorEmail = estudiante.tutor?.email ?? null;
-      }
-      if (estudiante.apoderado !== undefined) {
-        dataToUpdate.apoderadoNombre = estudiante.apoderado?.nombre ?? null;
-        dataToUpdate.apoderadoParentesco = estudiante.apoderado?.parentesco ?? null;
-        dataToUpdate.apoderadoTelefono = estudiante.apoderado?.telefono ?? null;
-        dataToUpdate.apoderadoTelefonoAlt = estudiante.apoderado?.telefonoAlternativo ?? null;
-        dataToUpdate.apoderadoEmail = estudiante.apoderado?.email ?? null;
-        dataToUpdate.apoderadoDireccion = estudiante.apoderado?.direccion ?? null;
-      }
-      if (estudiante.asistencias !== undefined) dataToUpdate.asistencias = estudiante.asistencias ?? null;
-      if (estudiante.ausencias !== undefined) dataToUpdate.ausencias = estudiante.ausencias ?? null;
-      if (estudiante.tardanzas !== undefined) dataToUpdate.tardanzas = estudiante.tardanzas ?? null;
       
       // Actualizar el estudiante
       await prisma.estudiante.update({

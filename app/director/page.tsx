@@ -4336,22 +4336,43 @@ export default function DirectorPage() {
                                         size="sm"
                                         variant="default"
                                         onClick={async () => {
-                                          const estudiantes = [...estudiantesInfo];
                                           const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
-                                          const idx = estudiantes.findIndex(e => e.nombre === nombreOriginal);
-                                          if (idx >= 0) {
-                                            // Asegurar que nombres y apellidos se guarden correctamente en la base de datos
-                                            const estudianteActualizado = {
-                                              ...estudiantes[idx], 
-                                              ...estudianteEditForm,
-                                              nombres: estudianteEditForm.nombres || null,
-                                              apellidos: estudianteEditForm.apellidos || null,
-                                            } as EstudianteInfo;
-                                            estudiantes[idx] = estudianteActualizado;
-                                            
-                                            // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
-                                            // Esto actualiza todos los campos (nombre, nombres, apellidos, grado, sección, edad, contacto, etc.)
-                                            await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+                                          
+                                          // Obtener el estudiante completo desde la base de datos para preservar todos los campos
+                                          const estudianteCompleto = await fetchEstudiante(nombreOriginal);
+                                          if (!estudianteCompleto) {
+                                            toast.error('No se pudo cargar la información del estudiante');
+                                            return;
+                                          }
+
+                                          // Fusionar la información editada con la información completa existente
+                                          // Esto asegura que no se pierdan campos que no se están editando
+                                          const estudianteActualizado: EstudianteInfo = {
+                                            ...estudianteCompleto,
+                                            ...estudianteEditForm,
+                                            // Preservar nombres y apellidos si no se están editando
+                                            nombres: estudianteEditForm.nombres ?? estudianteCompleto.nombres,
+                                            apellidos: estudianteEditForm.apellidos ?? estudianteCompleto.apellidos,
+                                            // Preservar contacto si existe
+                                            contacto: estudianteEditForm.contacto ? {
+                                              ...estudianteCompleto.contacto,
+                                              ...estudianteEditForm.contacto
+                                            } : estudianteCompleto.contacto,
+                                            // Preservar tutor si existe
+                                            tutor: estudianteEditForm.tutor ? {
+                                              ...estudianteCompleto.tutor,
+                                              ...estudianteEditForm.tutor
+                                            } : estudianteCompleto.tutor,
+                                            // Preservar apoderado si existe
+                                            apoderado: estudianteEditForm.apoderado ? {
+                                              ...estudianteCompleto.apoderado,
+                                              ...estudianteEditForm.apoderado
+                                            } : estudianteCompleto.apoderado,
+                                          };
+                                          
+                                          // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
+                                          // Esto preserva todos los campos existentes y solo actualiza los editados
+                                          await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
                                             
                                             // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
                                             const estudiantesActualizados = await fetchEstudiantes();
