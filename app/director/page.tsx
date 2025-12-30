@@ -2670,10 +2670,11 @@ export default function DirectorPage() {
                                );
                       })
                       .map((estudiante) => {
-                        // Buscar el estudiante completo en estudiantesInfo para obtener nombres y apellidos
+                        // Buscar el estudiante completo en estudiantesInfo para obtener nombres, apellidos e ID
                         const estudianteCompleto = estudiantesInfo.find(e => e.nombre === estudiante.nombre);
                         const nombres = estudianteCompleto?.nombres || estudiante.nombre?.split(' ').slice(0, -1).join(' ') || '-';
                         const apellidos = estudianteCompleto?.apellidos || estudiante.nombre?.split(' ').slice(-1).join(' ') || '-';
+                        const estudianteId = estudianteCompleto?.id; // Obtener el ID del estudiante completo
                         
                         return (
                         <TableRow key={estudiante.nombre} className="hover:bg-gray-50">
@@ -2690,7 +2691,7 @@ export default function DirectorPage() {
                           <TableCell className="text-right">
                             <Button
                               size="sm"
-                              onClick={() => handleVerPerfil(estudiante.nombre)}
+                              onClick={() => handleVerPerfil(estudiante.nombre, estudianteId)}
                               className="gap-2"
                             >
                               <Eye className="h-4 w-4" />
