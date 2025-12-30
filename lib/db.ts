@@ -650,18 +650,66 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
 
     // Buscar estudianteId por nombres y apellidos
     let estudiante = null;
-    if (newIncidencia.studentName.includes(' ')) {
+    console.log(`🔍 Buscando estudiante para incidencia: "${newIncidencia.studentName}"`);
+    
+    if (newIncidencia.studentName && newIncidencia.studentName.trim()) {
       const partes = newIncidencia.studentName.trim().split(/\s+/);
       if (partes.length >= 2) {
         const apellidos = partes[partes.length - 1];
         const nombres = partes.slice(0, -1).join(' ');
+        console.log(`  - Nombres: "${nombres}", Apellidos: "${apellidos}"`);
+        
+        // Buscar con coincidencia exacta primero
         estudiante = await prisma.estudiante.findFirst({
           where: {
             nombres: nombres,
             apellidos: apellidos
           }
         });
+        
+        // Si no se encuentra con coincidencia exacta, buscar con contains (insensitive)
+        if (!estudiante) {
+          console.log(`  - No encontrado con coincidencia exacta, buscando con contains...`);
+          estudiante = await prisma.estudiante.findFirst({
+            where: {
+              nombres: { contains: nombres, mode: 'insensitive' },
+              apellidos: { contains: apellidos, mode: 'insensitive' }
+            }
+          });
+        }
+        
+        // Si aún no se encuentra, buscar solo por nombres o apellidos
+        if (!estudiante) {
+          console.log(`  - No encontrado con contains, buscando por nombres o apellidos...`);
+          estudiante = await prisma.estudiante.findFirst({
+            where: {
+              OR: [
+                { nombres: { contains: nombres, mode: 'insensitive' } },
+                { apellidos: { contains: apellidos, mode: 'insensitive' } },
+                { nombres: { contains: newIncidencia.studentName, mode: 'insensitive' } },
+                { apellidos: { contains: newIncidencia.studentName, mode: 'insensitive' } }
+              ]
+            }
+          });
+        }
+      } else {
+        // Si solo hay una parte, buscar en nombres o apellidos
+        console.log(`  - Solo una parte, buscando en nombres o apellidos: "${partes[0]}"`);
+        estudiante = await prisma.estudiante.findFirst({
+          where: {
+            OR: [
+              { nombres: { contains: partes[0], mode: 'insensitive' } },
+              { apellidos: { contains: partes[0], mode: 'insensitive' } }
+            ]
+          }
+        });
       }
+    }
+    
+    if (estudiante) {
+      console.log(`✅ Estudiante encontrado: ID=${estudiante.id}, Nombre completo: ${estudiante.nombres} ${estudiante.apellidos}`);
+    } else {
+      console.log(`⚠️ Estudiante NO encontrado para: "${newIncidencia.studentName}"`);
     }
     
     const estudianteId = estudiante?.id ?? null;

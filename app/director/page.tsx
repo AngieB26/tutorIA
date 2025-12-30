@@ -1034,7 +1034,7 @@ export default function DirectorPage() {
       }
     };
 
-    const handleIncidenciaRegistrada = (e: Event) => {
+    const handleIncidenciaRegistrada = async (e: Event) => {
       const customEvent = e as CustomEvent;
       console.log('🔔 Evento incidenciaRegistrada recibido:', customEvent.detail);
       const nuevaId = customEvent.detail?.id;
@@ -1050,6 +1050,21 @@ export default function DirectorPage() {
           // El useEffect que maneja fechaInicio/fechaFin se encargará de actualizar incidenciasGenerales
           // Solo necesitamos disparar un re-render
         }, 200);
+        
+        // Si estamos viendo el perfil de un estudiante, recargar sus incidencias
+        if (selectedStudentId || selectedStudentName) {
+          console.log('🔄 Recargando incidencias del estudiante en perfil...');
+          try {
+            const idParaBuscar = selectedStudentId || selectedStudentName;
+            if (idParaBuscar) {
+              const incidenciasActualizadas = await getIncidenciasCompletasByStudent(idParaBuscar);
+              console.log(`✅ Incidencias del estudiante actualizadas: ${incidenciasActualizadas.length} encontradas`);
+              setIncidenciasEstudiante(incidenciasActualizadas);
+            }
+          } catch (error) {
+            console.error('❌ Error recargando incidencias del estudiante:', error);
+          }
+        }
       } else {
         console.warn('⚠️ ID de incidencia inválido:', nuevaId);
       }
