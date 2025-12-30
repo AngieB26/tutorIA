@@ -649,6 +649,7 @@ export default function DirectorPage() {
     const loadClases = async () => {
       try {
         const clasesData = await fetchClases();
+        console.log('📚 Clases cargadas:', clasesData.length, clasesData.map(c => ({ nombre: c.nombre, dias: c.dias, diasType: typeof c.dias, diasIsArray: Array.isArray(c.dias) })));
         setClases(clasesData);
       } catch (error) {
         console.error('Error cargando clases:', error);
