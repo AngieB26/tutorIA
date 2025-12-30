@@ -2990,20 +2990,55 @@ export default function DirectorPage() {
             <CardContent>
               {/* Estadísticas del Estudiante */}
               {(() => {
+                // Debug: ver qué tipos tienen las incidencias
+                console.log('📊 Calculando estadísticas para:', incidenciasEstudiante.length, 'incidencias');
+                incidenciasEstudiante.forEach((inc, idx) => {
+                  console.log(`  Incidencia ${idx + 1}:`, {
+                    id: inc.id,
+                    tipo: inc.tipo,
+                    tipoTipo: typeof inc.tipo,
+                    gravedad: inc.gravedad,
+                    gravedadTipo: typeof inc.gravedad
+                  });
+                });
+                
                 const stats = {
                   total: incidenciasEstudiante.length,
                   porTipo: {
-                    ausencia: incidenciasEstudiante.filter(i => i.tipo === 'ausencia').length,
-                    conducta: incidenciasEstudiante.filter(i => i.tipo === 'conducta').length,
-                    academica: incidenciasEstudiante.filter(i => i.tipo === 'academica').length,
-                    positivo: incidenciasEstudiante.filter(i => i.tipo === 'positivo').length,
+                    ausencia: incidenciasEstudiante.filter(i => {
+                      const tipo = String(i.tipo || '').toLowerCase();
+                      return tipo === 'ausencia' || tipo === 'asistencia';
+                    }).length,
+                    conducta: incidenciasEstudiante.filter(i => {
+                      const tipo = String(i.tipo || '').toLowerCase();
+                      return tipo === 'conducta';
+                    }).length,
+                    academica: incidenciasEstudiante.filter(i => {
+                      const tipo = String(i.tipo || '').toLowerCase();
+                      return tipo === 'academica' || tipo === 'académica';
+                    }).length,
+                    positivo: incidenciasEstudiante.filter(i => {
+                      const tipo = String(i.tipo || '').toLowerCase();
+                      return tipo === 'positivo';
+                    }).length,
                   },
                   porGravedad: {
-                    grave: incidenciasEstudiante.filter(i => i.gravedad === 'grave').length,
-                    moderada: incidenciasEstudiante.filter(i => i.gravedad === 'moderada').length,
-                    leve: incidenciasEstudiante.filter(i => i.gravedad === 'leve').length,
+                    grave: incidenciasEstudiante.filter(i => {
+                      const gravedad = String(i.gravedad || '').toLowerCase();
+                      return gravedad === 'grave';
+                    }).length,
+                    moderada: incidenciasEstudiante.filter(i => {
+                      const gravedad = String(i.gravedad || '').toLowerCase();
+                      return gravedad === 'moderada';
+                    }).length,
+                    leve: incidenciasEstudiante.filter(i => {
+                      const gravedad = String(i.gravedad || '').toLowerCase();
+                      return gravedad === 'leve';
+                    }).length,
                   }
                 };
+                
+                console.log('📊 Estadísticas calculadas:', stats);
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
