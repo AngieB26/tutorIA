@@ -5173,7 +5173,7 @@ export default function DirectorPage() {
                             }
                             
                             try {
-                              addClase({
+                              await addClase({
                                 nombre: formularioCurso.nombre.trim(),
                                 grado: formularioCurso.grado,
                                 seccion: formularioCurso.seccion,
@@ -5181,6 +5181,9 @@ export default function DirectorPage() {
                                 dias: [],
                                 periodos: []
                               });
+                              // Recargar las clases directamente
+                              const clasesActualizadas = await fetchClases();
+                              setClases(clasesActualizadas);
                               setRefreshKey(prev => prev + 1);
                               setMostrarFormularioCurso(false);
                               setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '' });
@@ -5302,6 +5305,8 @@ export default function DirectorPage() {
                                   if (idx >= 0) {
                                     todasLasClases[idx].profesor = nuevoProfesor;
                                     await saveClases(todasLasClases);
+                                    // Actualizar el estado directamente
+                                    setClases(todasLasClases);
                                     setRefreshKey(prev => prev + 1);
                                     toast.success('Profesor actualizado exitosamente');
                                   }
@@ -5324,7 +5329,10 @@ export default function DirectorPage() {
                                 onClick={async () => {
                                   if (confirm(`¿Estás seguro de eliminar la asignación de ${clase.nombre} (${clase.grado} ${clase.seccion})?`)) {
                                     const todasLasClases = await fetchClases();
-                                    await saveClases(todasLasClases.filter(c => c.id !== clase.id));
+                                    const clasesActualizadas = todasLasClases.filter(c => c.id !== clase.id);
+                                    await saveClases(clasesActualizadas);
+                                    // Actualizar el estado directamente
+                                    setClases(clasesActualizadas);
                                     setRefreshKey(prev => prev + 1);
                                     toast.success('Asignación eliminada exitosamente');
                                   }
