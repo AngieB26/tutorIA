@@ -4591,33 +4591,52 @@ export default function DirectorPage() {
                                             console.log('📝 Formulario editado:', estudianteEditForm);
 
                                             // Fusionar la información editada con la información completa existente
-                                            // Esto asegura que no se pierdan campos que no se están editando
+                                            // IMPORTANTE: Usar los valores del formulario si están presentes, de lo contrario usar los valores existentes
                                             const estudianteActualizado: EstudianteInfo = {
                                               ...estudianteCompleto,
-                                              ...estudianteEditForm,
-                                              // Preservar nombres y apellidos si no se están editando
-                                              // Asegurar que siempre tengan un valor (no pueden ser vacíos)
+                                              // Usar nombres y apellidos del formulario si están presentes y no están vacíos
                                               nombres: (estudianteEditForm.nombres && estudianteEditForm.nombres.trim()) 
                                                 ? estudianteEditForm.nombres.trim() 
                                                 : (estudianteCompleto.nombres || ''),
                                               apellidos: (estudianteEditForm.apellidos && estudianteEditForm.apellidos.trim()) 
                                                 ? estudianteEditForm.apellidos.trim() 
                                                 : (estudianteCompleto.apellidos || ''),
-                                              // Preservar contacto si existe
-                                              contacto: estudianteEditForm.contacto ? {
+                                              // Usar grado del formulario si está presente, de lo contrario el existente
+                                              grado: estudianteEditForm.grado !== undefined && estudianteEditForm.grado !== null && estudianteEditForm.grado !== ''
+                                                ? estudianteEditForm.grado
+                                                : estudianteCompleto.grado,
+                                              // Usar sección del formulario si está presente, de lo contrario la existente
+                                              seccion: estudianteEditForm.seccion !== undefined && estudianteEditForm.seccion !== null && estudianteEditForm.seccion !== ''
+                                                ? estudianteEditForm.seccion
+                                                : estudianteCompleto.seccion,
+                                              // Usar edad del formulario si está presente, de lo contrario la existente
+                                              edad: estudianteEditForm.edad !== undefined && estudianteEditForm.edad !== null
+                                                ? estudianteEditForm.edad
+                                                : estudianteCompleto.edad,
+                                              // Fusionar contacto: usar valores del formulario si están presentes
+                                              contacto: {
                                                 ...estudianteCompleto.contacto,
-                                                ...estudianteEditForm.contacto
-                                              } : estudianteCompleto.contacto,
-                                              // Preservar tutor si existe
+                                                ...(estudianteEditForm.contacto || {}),
+                                                // Si el formulario tiene contacto, usar esos valores (incluso si son vacíos)
+                                                telefono: estudianteEditForm.contacto?.telefono !== undefined
+                                                  ? estudianteEditForm.contacto.telefono
+                                                  : estudianteCompleto.contacto?.telefono,
+                                                email: estudianteEditForm.contacto?.email !== undefined
+                                                  ? estudianteEditForm.contacto.email
+                                                  : estudianteCompleto.contacto?.email,
+                                              },
+                                              // Preservar tutor si no se está editando
                                               tutor: estudianteEditForm.tutor ? {
                                                 ...estudianteCompleto.tutor,
                                                 ...estudianteEditForm.tutor
                                               } : estudianteCompleto.tutor,
-                                              // Preservar apoderado si existe
+                                              // Preservar apoderado si no se está editando
                                               apoderado: estudianteEditForm.apoderado ? {
                                                 ...estudianteCompleto.apoderado,
                                                 ...estudianteEditForm.apoderado
                                               } : estudianteCompleto.apoderado,
+                                              // Asegurar que el ID esté presente
+                                              id: estudianteId || estudianteCompleto.id,
                                             };
                                             
                                             // Validar que nombres y apellidos estén presentes y no estén vacíos antes de guardar
@@ -4643,16 +4662,17 @@ export default function DirectorPage() {
                                           
                                             // Cerrar el formulario de edición INMEDIATAMENTE para que la UI se actualice
                                             // Esto debe hacerse ANTES de cualquier otra operación asíncrona
-                                            setEstudianteEditandoAdmin(null);
-                                            setEstudianteEditForm({});
-                                            setEstudianteNombreOriginal(null);
+                                            // Usar una función de actualización para asegurar que el estado se actualice correctamente
+                                            setEstudianteEditandoAdmin(() => null);
+                                            setEstudianteEditForm(() => ({}));
+                                            setEstudianteNombreOriginal(() => null);
                                           
                                             // Mostrar toast de éxito inmediatamente
                                             toast.success('Estudiante actualizado exitosamente');
                                             
-                                            // Forzar un re-render inmediato para que React detecte el cambio
-                                            // Usar requestAnimationFrame para asegurar que el cambio se refleje en el siguiente frame
-                                            await new Promise(resolve => requestAnimationFrame(resolve));
+                                            // Forzar un re-render inmediato usando setTimeout con 0 para el siguiente tick
+                                            // Esto asegura que React procese el cambio de estado antes de continuar
+                                            await new Promise(resolve => setTimeout(resolve, 0));
                                           
                                             // Esperar un momento para que la base de datos se actualice completamente
                                             await new Promise(resolve => setTimeout(resolve, 300));

@@ -242,21 +242,29 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, estudianteI
       const dataToUpdate: any = {
         nombres: estudiante.nombres.trim(),
         apellidos: estudiante.apellidos.trim(),
-        // Preservar valores existentes si no se están editando
-        grado: estudiante.grado !== undefined ? estudiante.grado : existente.grado,
-        seccion: estudiante.seccion !== undefined ? estudiante.seccion : existente.seccion,
-        edad: estudiante.edad !== undefined ? (estudiante.edad ?? null) : existente.edad,
+        // Actualizar grado si está presente y no está vacío, de lo contrario preservar el existente
+        grado: (estudiante.grado !== undefined && estudiante.grado !== null && estudiante.grado !== '') 
+          ? estudiante.grado 
+          : existente.grado,
+        // Actualizar sección si está presente y no está vacía, de lo contrario preservar la existente
+        seccion: (estudiante.seccion !== undefined && estudiante.seccion !== null && estudiante.seccion !== '') 
+          ? estudiante.seccion 
+          : existente.seccion,
+        // Actualizar edad si está presente, de lo contrario preservar la existente
+        edad: estudiante.edad !== undefined && estudiante.edad !== null
+          ? estudiante.edad 
+          : existente.edad,
         fechaNacimiento: estudiante.fechaNacimiento !== undefined ? (estudiante.fechaNacimiento ?? null) : existente.fechaNacimiento,
         fotoPerfil: estudiante.fotoPerfil !== undefined ? (estudiante.fotoPerfil ?? null) : existente.fotoPerfil,
-        // Preservar contacto existente si no se está editando
+        // Actualizar contacto si está presente en el objeto estudiante
         contactoTelefono: estudiante.contacto !== undefined 
-          ? (estudiante.contacto?.telefono ?? null) 
+          ? (estudiante.contacto?.telefono !== undefined ? estudiante.contacto.telefono : existente.contactoTelefono)
           : existente.contactoTelefono,
         contactoEmail: estudiante.contacto !== undefined 
-          ? (estudiante.contacto?.email ?? null) 
+          ? (estudiante.contacto?.email !== undefined ? estudiante.contacto.email : existente.contactoEmail)
           : existente.contactoEmail,
         contactoNombre: estudiante.contacto !== undefined 
-          ? (estudiante.contacto?.nombre ?? null) 
+          ? (estudiante.contacto?.nombre !== undefined ? estudiante.contacto.nombre : existente.contactoNombre)
           : existente.contactoNombre,
         // Preservar tutor existente si no se está editando
         tutorNombre: estudiante.tutor !== undefined 
