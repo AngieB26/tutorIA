@@ -781,6 +781,7 @@ export default function DirectorPage() {
   const [filtroAdminSeccion, setFiltroAdminSeccion] = useState('');
   const [busquedaAdminEstudiante, setBusquedaAdminEstudiante] = useState('');
   const [estudianteEditandoAdmin, setEstudianteEditandoAdmin] = useState<string | null>(null);
+  const [formularioCerradoKey, setFormularioCerradoKey] = useState(0); // Key para forzar re-render
   const [estudianteEditForm, setEstudianteEditForm] = useState<Partial<EstudianteInfo>>({});
   const [estudianteNombreOriginal, setEstudianteNombreOriginal] = useState<string | null>(null);
   
@@ -4430,7 +4431,8 @@ export default function DirectorPage() {
                           const formData = estaEditando ? estudianteEditForm : estudiante;
                           
                           // Usar ID como key si está disponible, si no usar nombre (para mejor rendimiento de React)
-                          const rowKey = estudiante.id || estudiante.nombre;
+                          // Incluir formularioCerradoKey para forzar re-render cuando se cierra el formulario
+                          const rowKey = `${estudiante.id || estudiante.nombre}-${formularioCerradoKey}`;
                           
                           return (
                             <TableRow key={rowKey}>
@@ -4679,18 +4681,11 @@ export default function DirectorPage() {
                                             console.log('🔄 Cerrando formulario de edición...');
                                             console.log('📝 ID del estudiante que se estaba editando:', estudianteEditandoAdmin);
                                             
-                                            // Limpiar el estado de edición de forma explícita
+                                            // Limpiar el estado de edición de forma explícita y forzar re-render
                                             setEstudianteEditandoAdmin(null);
                                             setEstudianteEditForm({});
                                             setEstudianteNombreOriginal(null);
-                                            
-                                            // Forzar un re-render inmediato para que React procese el cambio
-                                            await new Promise(resolve => {
-                                              // Usar requestAnimationFrame para asegurar que el cambio se refleje en el siguiente frame
-                                              requestAnimationFrame(() => {
-                                                setTimeout(resolve, 0);
-                                              });
-                                            });
+                                            setFormularioCerradoKey(prev => prev + 1); // Forzar re-render de la tabla
                                             
                                             console.log('✅ Formulario cerrado');
                                           
