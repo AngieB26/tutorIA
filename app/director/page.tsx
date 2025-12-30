@@ -1224,6 +1224,7 @@ export default function DirectorPage() {
       if (!estudianteCompleto) {
         console.error('❌ No se encontró el estudiante completo');
         toast.error('No se pudo cargar la información del estudiante');
+        setGuardandoEstudiante(false);
         return;
       }
       console.log('✅ Estudiante completo encontrado:', estudianteCompleto);
@@ -1267,6 +1268,7 @@ export default function DirectorPage() {
           apellidos: estudianteActualizado.apellidos
         });
         toast.error('Los campos nombres y apellidos son requeridos y no pueden estar vacíos');
+        setGuardandoEstudiante(false);
         return;
       }
 
@@ -1284,8 +1286,15 @@ export default function DirectorPage() {
       // Actualizar el estudiante usando saveEstudianteInfo con nombreOriginal
       // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
       console.log('💾 Guardando estudiante en base de datos...');
-      await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
-      console.log('✅ Estudiante guardado exitosamente en la base de datos');
+      try {
+        await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+        console.log('✅ Estudiante guardado exitosamente en la base de datos');
+      } catch (error: any) {
+        console.error('❌ Error al guardar en la base de datos:', error);
+        toast.error(error.message || 'Error al guardar el estudiante en la base de datos');
+        setGuardandoEstudiante(false);
+        return;
+      }
 
       // Recargar estudiantes desde la base de datos para reflejar cambios
       console.log('🔄 Recargando estudiantes desde la base de datos...');
@@ -1322,6 +1331,7 @@ export default function DirectorPage() {
         estudianteRecargado = await fetchEstudiante(nombreOriginal);
         if (!estudianteRecargado) {
           toast.error('Error al recargar la información del estudiante. Por favor, recarga la página.');
+          setGuardandoEstudiante(false);
           return;
         }
       }
