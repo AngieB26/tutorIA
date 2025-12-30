@@ -4303,18 +4303,26 @@ export default function DirectorPage() {
                                           const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
                                           const idx = estudiantes.findIndex(e => e.nombre === nombreOriginal);
                                           if (idx >= 0) {
-                                            const estudianteActualizado = {...estudiantes[idx], ...estudianteEditForm} as EstudianteInfo;
+                                            // Asegurar que nombres y apellidos se guarden correctamente en la base de datos
+                                            const estudianteActualizado = {
+                                              ...estudiantes[idx], 
+                                              ...estudianteEditForm,
+                                              nombres: estudianteEditForm.nombres || null,
+                                              apellidos: estudianteEditForm.apellidos || null,
+                                            } as EstudianteInfo;
                                             estudiantes[idx] = estudianteActualizado;
                                             
                                             // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
-                                            // Esto actualiza todos los campos (nombre, grado, sección, edad, contacto, etc.)
+                                            // Esto actualiza todos los campos (nombre, nombres, apellidos, grado, sección, edad, contacto, etc.)
                                             await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
                                             
-                                            setEstudiantesInfo(estudiantes);
+                                            // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
+                                            const estudiantesActualizados = await fetchEstudiantes();
+                                            setEstudiantesInfo(estudiantesActualizados);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
                                             const lista = await getListaEstudiantes();
-                                            const info = estudiantes;
+                                            const info = estudiantesActualizados;
                                             const nombresUnicos = Array.from(new Set([
                                               ...info.map((i: any) => i.nombre),
                                               ...lista.map((e: any) => e.nombre)
@@ -4369,8 +4377,20 @@ export default function DirectorPage() {
                                         onClick={() => {
                                           setEstudianteEditandoAdmin(estudiante.nombre);
                                           setEstudianteNombreOriginal(estudiante.nombre);
-                                          setEstudianteEditForm(estudiante);
-                                          setEstudianteEditForm({...estudiante});
+                                          // Si no tiene nombres y apellidos separados, intentar separarlos del nombre
+                                          let nombres = estudiante.nombres;
+                                          let apellidos = estudiante.apellidos;
+                                          if (!nombres && !apellidos && estudiante.nombre) {
+                                            const partes = estudiante.nombre.trim().split(/\s+/);
+                                            if (partes.length > 1) {
+                                              apellidos = partes[partes.length - 1];
+                                              nombres = partes.slice(0, -1).join(' ');
+                                            } else {
+                                              nombres = estudiante.nombre;
+                                              apellidos = '';
+                                            }
+                                          }
+                                          setEstudianteEditForm({...estudiante, nombres, apellidos});
                                         }}
                                       >
                                         <Edit2 className="h-4 w-4" />
