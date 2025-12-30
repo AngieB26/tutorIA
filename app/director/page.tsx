@@ -1195,17 +1195,26 @@ export default function DirectorPage() {
   };
   const handleGuardar = async () => {
     try {
+      console.log('🔄 Iniciando guardado desde Información del Estudiante...');
+      
       if (!infoEdit || !selectedStudent) {
+        console.error('❌ Faltan datos:', { infoEdit, selectedStudent });
         toast.error('No hay información para guardar');
         return;
       }
 
+      console.log('📝 Datos a guardar:', infoEdit);
+      console.log('📝 Estudiante seleccionado:', selectedStudent);
+
       // Obtener el estudiante completo desde la base de datos para preservar todos los campos
+      console.log('🔍 Buscando estudiante completo...');
       const estudianteCompleto = await fetchEstudiante(selectedStudent);
       if (!estudianteCompleto) {
+        console.error('❌ No se encontró el estudiante completo');
         toast.error('No se pudo cargar la información del estudiante');
         return;
       }
+      console.log('✅ Estudiante completo encontrado:', estudianteCompleto);
 
       // Fusionar la información editada con la información completa existente
       // Esto asegura que no se pierdan campos que no se están editando
@@ -1213,8 +1222,13 @@ export default function DirectorPage() {
         ...estudianteCompleto,
         ...infoEdit,
         // Preservar nombres y apellidos si no se están editando
-        nombres: infoEdit.nombres ?? estudianteCompleto.nombres,
-        apellidos: infoEdit.apellidos ?? estudianteCompleto.apellidos,
+        // Asegurar que siempre tengan un valor (no pueden ser vacíos)
+        nombres: (infoEdit.nombres && infoEdit.nombres.trim()) 
+          ? infoEdit.nombres.trim() 
+          : (estudianteCompleto.nombres || ''),
+        apellidos: (infoEdit.apellidos && infoEdit.apellidos.trim()) 
+          ? infoEdit.apellidos.trim() 
+          : (estudianteCompleto.apellidos || ''),
         // Preservar contacto si existe
         contacto: infoEdit.contacto ? {
           ...estudianteCompleto.contacto,
@@ -1232,12 +1246,26 @@ export default function DirectorPage() {
         } : estudianteCompleto.apoderado,
       };
 
+      // Validar que nombres y apellidos estén presentes y no estén vacíos
+      console.log('✅ Estudiante actualizado preparado:', estudianteActualizado);
+      if (!estudianteActualizado.nombres || !estudianteActualizado.nombres.trim() || 
+          !estudianteActualizado.apellidos || !estudianteActualizado.apellidos.trim()) {
+        console.error('❌ Faltan nombres o apellidos:', {
+          nombres: estudianteActualizado.nombres,
+          apellidos: estudianteActualizado.apellidos
+        });
+        toast.error('Los campos nombres y apellidos son requeridos y no pueden estar vacíos');
+        return;
+      }
+
       // Usar el nombre original (selectedStudent) para actualizar el registro existente
       const nombreOriginal = selectedStudent;
       
       // Actualizar el estudiante usando saveEstudianteInfo con nombreOriginal
       // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
+      console.log('💾 Guardando estudiante en base de datos...');
       await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+      console.log('✅ Estudiante guardado exitosamente en la base de datos');
 
       // Recargar estudiantes desde la base de datos para reflejar cambios
       const estudiantesActualizados = await fetchEstudiantes();
