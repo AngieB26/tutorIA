@@ -4774,7 +4774,16 @@ export default function DirectorPage() {
                                             }
                                             
                                             // Forzar actualización del refreshKey para recargar todos los datos
+                                            // Esto asegura que cualquier componente que dependa de refreshKey se actualice
                                             setRefreshKey(prev => prev + 1);
+                                            
+                                            // Forzar un re-render adicional después de un breve delay para asegurar que todo se actualice
+                                            setTimeout(() => {
+                                              setEstudiantesInfo(prev => {
+                                                // Crear una nueva referencia del array para forzar re-render
+                                                return [...prev];
+                                              });
+                                            }, 100);
                                           } catch (error: any) {
                                             console.error('❌ Error guardando estudiante:', error);
                                             // Asegurar que el formulario se cierre incluso si hay un error
