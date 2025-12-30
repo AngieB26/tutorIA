@@ -4536,19 +4536,45 @@ export default function DirectorPage() {
                                         onClick={async () => {
                                           try {
                                             console.log('🔄 Iniciando guardado de estudiante...');
-                                            const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
-                                            console.log('📝 Nombre original:', nombreOriginal);
-                                            console.log('📝 Formulario editado:', estudianteEditForm);
-                                          
-                                            // Obtener el estudiante completo desde la base de datos para preservar todos los campos
-                                            console.log('🔍 Buscando estudiante completo...');
-                                            const estudianteCompleto = await fetchEstudiante(nombreOriginal);
+                                            // Usar el ID del estudiante si está disponible, si no, buscar por nombre
+                                            let estudianteCompleto = null;
+                                            let estudianteId: string | undefined = undefined;
+                                            
+                                            if (estudiante.id) {
+                                              // Si tenemos el ID, usarlo directamente (más confiable)
+                                              estudianteId = estudiante.id;
+                                              console.log('📝 Usando ID del estudiante:', estudianteId);
+                                              estudianteCompleto = await fetchEstudianteById(estudianteId);
+                                            } else {
+                                              // Fallback: buscar por nombre
+                                              const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
+                                              console.log('📝 Buscando por nombre:', nombreOriginal);
+                                              estudianteCompleto = await fetchEstudiante(nombreOriginal);
+                                              if (estudianteCompleto?.id) {
+                                                estudianteId = estudianteCompleto.id;
+                                              }
+                                            }
+                                            
                                             if (!estudianteCompleto) {
                                               console.error('❌ No se encontró el estudiante completo');
                                               toast.error('No se pudo cargar la información del estudiante');
                                               return;
                                             }
+                                            
+                                            // Asegurar que tenemos el ID
+                                            if (!estudianteId && estudianteCompleto.id) {
+                                              estudianteId = estudianteCompleto.id;
+                                            }
+                                            
+                                            if (!estudianteId) {
+                                              console.error('❌ No se pudo obtener el ID del estudiante');
+                                              toast.error('Error: No se pudo identificar al estudiante');
+                                              return;
+                                            }
+                                            
                                             console.log('✅ Estudiante completo encontrado:', estudianteCompleto);
+                                            console.log('📝 ID del estudiante:', estudianteId);
+                                            console.log('📝 Formulario editado:', estudianteEditForm);
 
                                             // Fusionar la información editada con la información completa existente
                                             // Esto asegura que no se pierdan campos que no se están editando
@@ -4592,10 +4618,10 @@ export default function DirectorPage() {
                                               return;
                                             }
                                             
-                                            // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
+                                            // Usar saveEstudianteInfo con estudianteId para asegurar que actualizamos el registro correcto
                                             // Esto preserva todos los campos existentes y solo actualiza los editados
-                                            console.log('💾 Guardando estudiante en base de datos...');
-                                            await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+                                            console.log('💾 Guardando estudiante en base de datos con ID:', estudianteId);
+                                            await saveEstudianteInfo(estudianteActualizado, estudianteId);
                                             console.log('✅ Estudiante guardado exitosamente');
                                           
                                             // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
