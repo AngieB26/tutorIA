@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
     const fechaInicio = searchParams.get('fechaInicio');
     const fechaFin = searchParams.get('fechaFin');
     const gravedad = searchParams.get('gravedad') as 'grave' | 'moderada' | 'leve' | 'todas' | null;
-    const tipo = searchParams.get('tipo') as 'ausencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo' | 'todas' | null;
+    const tipoParam = searchParams.get('tipo');
+    // Convertir 'ausencia' a 'asistencia' por compatibilidad
+    const tipo = tipoParam === 'ausencia' ? 'asistencia' : (tipoParam as 'asistencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo' | 'todas' | null);
     const tipoDerivacion = searchParams.get('tipoDerivacion');
     const completas = searchParams.get('completas') === 'true';
 
