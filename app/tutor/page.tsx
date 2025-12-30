@@ -602,52 +602,6 @@ export default function TutorPage() {
     );
   }
 
-  // Estados para resumen de datos
-  const [resumenData, setResumenData] = useState<any>(null);
-
-  // Cargar resumen de datos cuando cambia la sección
-  useEffect(() => {
-    const loadResumenData = async () => {
-      if (!seccionSeleccionada || !esTutorDeLaSeccion) {
-        setResumenData(null);
-        return;
-      }
-
-      const totalEstudiantes = estudiantesFiltrados.length;
-      
-      // Calcular asistencia promedio
-      const registrosAsistencia = await getAsistenciaClasesByFilters({
-        grado: seccionSeleccionada.grado,
-        seccion: seccionSeleccionada.seccion
-      });
-      
-      let totalAsistencias = 0;
-      let totalRegistros = 0;
-      registrosAsistencia.forEach(reg => {
-        Object.values(reg.entries).forEach(estado => {
-          totalRegistros++;
-          if (estado === 'presente') totalAsistencias++;
-        });
-      });
-      const asistenciaPromedio = totalRegistros > 0 ? Math.round((totalAsistencias / totalRegistros) * 100) : 0;
-
-      // Calcular incidencias activas (pendientes o en revisión)
-      const incidencias = await fetchIncidencias();
-      const incidenciasActivas = incidencias.filter(inc => {
-        const estudiante = estudiantesFiltrados.find(e => e.nombre === inc.studentName);
-        return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
-      }).length;
-
-      setResumenData({
-        totalEstudiantes,
-        asistenciaPromedio,
-        incidenciasActivas
-      });
-    };
-
-    loadResumenData();
-  }, [seccionSeleccionada, esTutorDeLaSeccion, estudiantesFiltrados.length]);
-
   // Vista de Estudiantes de una Sección
   if (viewMode === 'lista' && seccionSeleccionada) {
 
