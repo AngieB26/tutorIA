@@ -1358,35 +1358,66 @@ export async function marcarIncidenciaResuelta(
   }
 }
 
-export async function getIncidenciasCompletasByStudent(studentName: string): Promise<Incidencia[]> {
+export async function getIncidenciasCompletasByStudent(studentNameOrId: string): Promise<Incidencia[]> {
   try {
-    // Primero, buscar el estudiante por nombre para obtener su ID
-    const estudiante = await prisma.estudiante.findFirst({
-      where: {
-        OR: [
-          // Buscar por nombre completo (construido desde nombres y apellidos)
-          {
-            nombres: {
-              contains: studentName.split(' ')[0] || ''
-            },
-            apellidos: {
-              contains: studentName.split(' ').slice(1).join(' ') || ''
-            }
-          }
-        ]
+    // Detectar si el parámetro es un ID (UUID) o un nombre
+    // Los UUIDs tienen el formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 caracteres con guiones)
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentNameOrId);
+    
+    let estudiante = null;
+    
+    if (isUUID) {
+      // Si es un ID, buscar directamente por ID
+      console.log(`🔍 Buscando estudiante por ID: "${studentNameOrId}"`);
+      estudiante = await prisma.estudiante.findUnique({
+        where: { id: studentNameOrId }
+      });
+      if (estudiante) {
+        console.log(`✅ Estudiante encontrado por ID: ${estudiante.id}`);
       }
-    });
+    } else {
+      // Si es un nombre, buscar por nombre
+      console.log(`🔍 Buscando estudiante por nombre: "${studentNameOrId}"`);
+      estudiante = await prisma.estudiante.findFirst({
+        where: {
+          OR: [
+            // Buscar por nombre completo (construido desde nombres y apellidos)
+            {
+              nombres: {
+                contains: studentNameOrId.split(' ')[0] || ''
+              },
+              apellidos: {
+                contains: studentNameOrId.split(' ').slice(1).join(' ') || ''
+              }
+            }
+          ]
+        }
+      });
+      if (estudiante) {
+        console.log(`✅ Estudiante encontrado por nombre (ID: ${estudiante.id})`);
+      }
+    }
 
     // Buscar incidencias por estudianteId (más confiable) o por studentName
+    const whereClause: any = {};
+    
+    if (estudiante) {
+      // Si encontramos el estudiante, buscar por ID (más confiable)
+      whereClause.estudianteId = estudiante.id;
+    } else if (isUUID) {
+      // Si es un ID pero no encontramos el estudiante, buscar por estudianteId directamente
+      whereClause.estudianteId = studentNameOrId;
+    } else {
+      // Si es un nombre y no encontramos el estudiante, buscar por nombre
+      whereClause.studentName = studentNameOrId;
+    }
+    
     const incidencias = await prisma.incidencia.findMany({
-      where: {
-        OR: [
-          estudiante ? { estudianteId: estudiante.id } : undefined,
-          { studentName: studentName }
-        ].filter(Boolean) as any
-      },
+      where: whereClause,
       orderBy: { timestamp: 'desc' }
     });
+    
+    console.log(`📊 Encontradas ${incidencias.length} incidencias para el estudiante`);
 
     // Mapear a formato Incidencia
     return incidencias.map(inc => ({
