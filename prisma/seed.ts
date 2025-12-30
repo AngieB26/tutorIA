@@ -246,11 +246,11 @@ async function seed() {
     console.log('📖 Creando clases...');
     const posiblesDias: DiaSemana[] = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
     const clasesSeed: Omit<Clase, 'id'>[] = [
-      { nombre: 'Matemáticas', grado: '3ro', seccion: 'A', profesor: 'Prof. López', dias: posiblesDias, periodos: [1, 3] },
-      { nombre: 'Ciencias', grado: '2do', seccion: 'A', profesor: 'Prof. Fernández', dias: posiblesDias, periodos: [2, 4] },
-      { nombre: 'Lengua', grado: '1ro', seccion: 'A', profesor: 'Prof. García', dias: posiblesDias, periodos: [1, 5] },
-      { nombre: 'Historia', grado: '4to', seccion: 'A', profesor: 'Prof. Torres', dias: posiblesDias, periodos: [2, 6] },
-      { nombre: 'Arte', grado: '5to', seccion: 'A', profesor: 'Prof. Ramírez', dias: posiblesDias, periodos: [3, 7] },
+      { nombre: 'Matemáticas', grado: '3ro', seccion: 'A', profesor: 'Prof. López', dias: posiblesDias },
+      { nombre: 'Ciencias', grado: '2do', seccion: 'A', profesor: 'Prof. Fernández', dias: posiblesDias },
+      { nombre: 'Lengua', grado: '1ro', seccion: 'A', profesor: 'Prof. García', dias: posiblesDias },
+      { nombre: 'Historia', grado: '4to', seccion: 'A', profesor: 'Prof. Torres', dias: posiblesDias },
+      { nombre: 'Arte', grado: '5to', seccion: 'A', profesor: 'Prof. Ramírez', dias: posiblesDias },
     ];
     for (const clase of clasesSeed) {
       await addClase(clase);
