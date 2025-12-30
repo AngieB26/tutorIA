@@ -1570,10 +1570,25 @@ export default function DirectorPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                {/* Nombre */}
+                {/* Nombres */}
                 <div className="flex items-center gap-3">
-                  <label className="w-40 text-sm font-semibold text-gray-700">Nombre *</label>
-                  <Select value={mapeoEstudiantes['nombre'] || 'none'} onValueChange={(value) => setMapeoEstudiantes({...mapeoEstudiantes, nombre: value === 'none' ? '' : value})}>
+                  <label className="w-40 text-sm font-semibold text-gray-700">Nombres *</label>
+                  <Select value={mapeoEstudiantes['nombres'] || 'none'} onValueChange={(value) => setMapeoEstudiantes({...mapeoEstudiantes, nombres: value === 'none' ? '' : value})}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecciona una columna" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- Ninguna --</SelectItem>
+                      {columnasExcelEstudiantes.map(col => (
+                        <SelectItem key={col} value={col}>{col}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Apellidos */}
+                <div className="flex items-center gap-3">
+                  <label className="w-40 text-sm font-semibold text-gray-700">Apellidos *</label>
+                  <Select value={mapeoEstudiantes['apellidos'] || 'none'} onValueChange={(value) => setMapeoEstudiantes({...mapeoEstudiantes, apellidos: value === 'none' ? '' : value})}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Selecciona una columna" />
                     </SelectTrigger>
@@ -1771,26 +1786,33 @@ export default function DirectorPage() {
                   Cancelar
                 </Button>
                 <Button onClick={async () => {
-                  if (!mapeoEstudiantes['nombre'] || mapeoEstudiantes['nombre'] === 'none' || 
+                  if ((!mapeoEstudiantes['nombres'] || mapeoEstudiantes['nombres'] === 'none') || 
+                      (!mapeoEstudiantes['apellidos'] || mapeoEstudiantes['apellidos'] === 'none') ||
                       !mapeoEstudiantes['grado'] || mapeoEstudiantes['grado'] === 'none' || 
                       !mapeoEstudiantes['seccion'] || mapeoEstudiantes['seccion'] === 'none') {
-                    toast.error('Debes mapear los campos obligatorios: Nombre, Grado y Sección');
+                    toast.error('Debes mapear los campos obligatorios: Nombres, Apellidos, Grado y Sección');
                     return;
                   }
                   
                   try {
                     toast.loading('Importando estudiantes...', { id: 'import-estudiantes' });
                     const estudiantesImportados: EstudianteInfo[] = datosExcelEstudiantes.map((row: any, idx: number) => {
-                      const nombre = mapeoEstudiantes['nombre'] && mapeoEstudiantes['nombre'] !== 'none' && row[mapeoEstudiantes['nombre']] ? String(row[mapeoEstudiantes['nombre']]).trim() : '';
+                      const nombres = mapeoEstudiantes['nombres'] && mapeoEstudiantes['nombres'] !== 'none' && row[mapeoEstudiantes['nombres']] ? String(row[mapeoEstudiantes['nombres']]).trim() : '';
+                      const apellidos = mapeoEstudiantes['apellidos'] && mapeoEstudiantes['apellidos'] !== 'none' && row[mapeoEstudiantes['apellidos']] ? String(row[mapeoEstudiantes['apellidos']]).trim() : '';
                       const grado = mapeoEstudiantes['grado'] && mapeoEstudiantes['grado'] !== 'none' && row[mapeoEstudiantes['grado']] ? String(row[mapeoEstudiantes['grado']]).trim() : '';
                       const seccion = mapeoEstudiantes['seccion'] && mapeoEstudiantes['seccion'] !== 'none' && row[mapeoEstudiantes['seccion']] ? String(row[mapeoEstudiantes['seccion']]).trim() : '';
                       
-                      if (!nombre || !grado || !seccion) {
-                        throw new Error(`Fila ${idx + 2}: Faltan datos obligatorios (Nombre, Grado, Sección)`);
+                      if (!nombres || !apellidos || !grado || !seccion) {
+                        throw new Error(`Fila ${idx + 2}: Faltan datos obligatorios (Nombres, Apellidos, Grado, Sección)`);
                       }
                       
+                      // Combinar nombres y apellidos para el campo nombre (compatibilidad)
+                      const nombreCompleto = `${nombres} ${apellidos}`.trim();
+                      
                       return {
-                        nombre,
+                        nombre: nombreCompleto,
+                        nombres,
+                        apellidos,
                         grado,
                         seccion,
                         edad: mapeoEstudiantes['edad'] && mapeoEstudiantes['edad'] !== 'none' && row[mapeoEstudiantes['edad']] ? parseInt(String(row[mapeoEstudiantes['edad']])) : undefined,
@@ -3999,8 +4021,10 @@ export default function DirectorPage() {
                       const mapeoInicial: Record<string, string> = {};
                       columnas.forEach(col => {
                         const colLower = col.toLowerCase().trim();
-                        if (colLower.includes('nombre') && !colLower.includes('apoderado') && !colLower.includes('tutor') && !mapeoInicial['nombre']) {
-                          mapeoInicial['nombre'] = col;
+                        if ((colLower.includes('nombre') || colLower.includes('nombres')) && !colLower.includes('apellido') && !colLower.includes('apoderado') && !colLower.includes('tutor') && !mapeoInicial['nombres']) {
+                          mapeoInicial['nombres'] = col;
+                        } else if ((colLower.includes('apellido') || colLower.includes('apellidos')) && !mapeoInicial['apellidos']) {
+                          mapeoInicial['apellidos'] = col;
                         } else if ((colLower.includes('grado') || colLower.includes('grade')) && !mapeoInicial['grado']) {
                           mapeoInicial['grado'] = col;
                         } else if ((colLower.includes('seccion') || colLower.includes('sección') || colLower.includes('section')) && !mapeoInicial['seccion']) {

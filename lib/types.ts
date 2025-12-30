@@ -45,6 +45,8 @@ export interface Nota {
 
 export interface EstudianteInfo {
   nombre: string;
+  nombres?: string;
+  apellidos?: string;
   grado: string;
   seccion: string;
   edad?: number;

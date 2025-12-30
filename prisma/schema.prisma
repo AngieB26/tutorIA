@@ -9,6 +9,8 @@ datasource db {
 model Estudiante {
   id                   String                    @id @default(uuid())
   nombre               String
+  nombres              String?
+  apellidos            String?
   grado                String
   seccion              String
   edad                 Int?
@@ -128,7 +130,7 @@ model Clase {
   seccion             String
   profesor            String
   profesorId          String?
-  dias                String                    @db.Text
+  dias                String
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
   tutor               Tutor?                    @relation(fields: [profesorId], references: [id])

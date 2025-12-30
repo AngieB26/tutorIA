@@ -57,6 +57,8 @@ export async function getEstudiantesInfo(): Promise<EstudianteInfo[]> {
         email: est.apoderadoEmail ?? undefined,
         direccion: est.apoderadoDireccion ?? undefined,
       },
+      nombres: (est as any).nombres ?? undefined,
+      apellidos: (est as any).apellidos ?? undefined,
       asistencias: est.asistencias ?? undefined,
       ausencias: est.ausencias ?? undefined,
       tardanzas: est.tardanzas ?? undefined,
@@ -101,6 +103,8 @@ export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo 
         email: estudiante.apoderadoEmail ?? undefined,
         direccion: estudiante.apoderadoDireccion ?? undefined,
       },
+      nombres: (estudiante as any).nombres ?? undefined,
+      apellidos: (estudiante as any).apellidos ?? undefined,
       asistencias: estudiante.asistencias ?? undefined,
       ausencias: estudiante.ausencias ?? undefined,
       tardanzas: estudiante.tardanzas ?? undefined,
@@ -121,8 +125,20 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
       where: { nombre: nombreBusqueda }
     });
 
+    // Si se proporcionan nombres y apellidos por separado, combinarlos en nombre
+    // Si no se proporciona nombre pero sí nombres y apellidos, combinarlos
+    let nombreCompleto = estudiante.nombre;
+    if ((!nombreCompleto || nombreCompleto.trim() === '') && estudiante.nombres && estudiante.apellidos) {
+      nombreCompleto = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
+    } else if (estudiante.nombres && estudiante.apellidos) {
+      // Si ya hay nombre pero también hay nombres y apellidos, usar los separados para actualizar
+      nombreCompleto = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
+    }
+
     const data = {
-      nombre: estudiante.nombre,
+      nombre: nombreCompleto,
+      nombres: estudiante.nombres ?? null,
+      apellidos: estudiante.apellidos ?? null,
       grado: estudiante.grado,
       seccion: estudiante.seccion,
       edad: estudiante.edad ?? null,
