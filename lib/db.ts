@@ -361,8 +361,7 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, estudianteI
       });
       
       // También actualizar por nombre anterior por si acaso hay notas sin estudianteId
-      // Construir el nombre anterior desde el estudiante existente
-      const nombreAnterior = `${existente.nombres} ${existente.apellidos}`.trim();
+      // nombreAnterior ya está definido arriba (línea 318)
       if (nombreAnterior && nombreAnterior !== nombreCompletoNuevo) {
         await prisma.nota.updateMany({
           where: {
