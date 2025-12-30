@@ -1207,6 +1207,11 @@ export default function DirectorPage() {
       // Esto asegura que se actualice el registro existente en lugar de crear uno nuevo
       await saveEstudianteInfo(infoEdit, nombreOriginal);
 
+      // Recargar estudiantes desde la base de datos para reflejar cambios
+      const estudiantesActualizados = await fetchEstudiantes();
+      setEstudiantesInfo(estudiantesActualizados);
+      setRefreshKey(prev => prev + 1);
+
       // Si el nombre cambió, actualizar el estado y recargar datos
       if (infoEdit.nombre && infoEdit.nombre !== nombreOriginal) {
         // Actualizar el estado y recargar incidencias y notas con el nuevo nombre
@@ -4319,6 +4324,9 @@ export default function DirectorPage() {
                                             // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
                                             const estudiantesActualizados = await fetchEstudiantes();
                                             setEstudiantesInfo(estudiantesActualizados);
+                                            
+                                            // Forzar actualización del refreshKey para recargar todos los datos
+                                            setRefreshKey(prev => prev + 1);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
                                             const lista = await getListaEstudiantes();
