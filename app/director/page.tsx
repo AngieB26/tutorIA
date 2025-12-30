@@ -4424,8 +4424,9 @@ export default function DirectorPage() {
                             (e.apellidos && e.apellidos.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
                           )
                         ).map((estudiante) => {
-                          // Usar ID para identificar qué estudiante está en edición
-                          const estaEditando = estudianteEditandoAdmin === (estudiante.id || estudiante.nombre);
+                          // Usar ID para identificar qué estudiante está en edición (priorizar ID sobre nombre)
+                          const identificadorEstudiante = estudiante.id || estudiante.nombre;
+                          const estaEditando = estudianteEditandoAdmin === identificadorEstudiante;
                           const formData = estaEditando ? estudianteEditForm : estudiante;
                           
                           // Usar ID como key si está disponible, si no usar nombre (para mejor rendimiento de React)
@@ -4637,13 +4638,19 @@ export default function DirectorPage() {
                                             await saveEstudianteInfo(estudianteActualizado, estudianteId);
                                             console.log('✅ Estudiante guardado exitosamente');
                                           
-                                            // Cerrar el formulario de edición primero para evitar conflictos
+                                            // Guardar el ID del estudiante que se está editando antes de cerrar el formulario
+                                            const estudianteEditadoId = estudianteId;
+                                          
+                                            // Cerrar el formulario de edición INMEDIATAMENTE para que la UI se actualice
                                             setEstudianteEditandoAdmin(null);
                                             setEstudianteEditForm({});
                                             setEstudianteNombreOriginal(null);
                                           
+                                            // Mostrar toast de éxito inmediatamente
+                                            toast.success('Estudiante actualizado exitosamente');
+                                          
                                             // Esperar un momento para que la base de datos se actualice completamente
-                                            await new Promise(resolve => setTimeout(resolve, 200));
+                                            await new Promise(resolve => setTimeout(resolve, 300));
                                           
                                             // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
                                             console.log('🔄 Recargando estudiantes desde la base de datos...');
@@ -4678,7 +4685,7 @@ export default function DirectorPage() {
                                             setListaEstudiantes(listaFinal);
                                             
                                             // Si el estudiante está seleccionado, actualizar también su información
-                                            if (selectedStudentId && estudianteId === selectedStudentId) {
+                                            if (selectedStudentId && estudianteEditadoId === selectedStudentId) {
                                               console.log('🔄 Actualizando información del estudiante seleccionado...');
                                               const estudianteActualizadoInfo = await fetchEstudianteById(selectedStudentId);
                                               if (estudianteActualizadoInfo) {
@@ -4692,8 +4699,6 @@ export default function DirectorPage() {
                                             
                                             // Forzar actualización del refreshKey para recargar todos los datos
                                             setRefreshKey(prev => prev + 1);
-                                            
-                                            toast.success('Estudiante actualizado exitosamente');
                                           } catch (error: any) {
                                             console.error('❌ Error guardando estudiante:', error);
                                             toast.error(error.message || 'Error al guardar el estudiante');
