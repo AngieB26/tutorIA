@@ -222,7 +222,7 @@ export default function TutorPage() {
       ...formData,
       grado: estudiante.grado,
       estudiante: estudiante.nombre,
-      tipo: 'ausencia',
+      tipo: 'asistencia',
     });
   };
 
@@ -532,12 +532,12 @@ export default function TutorPage() {
 
         // Separar incidencias positivas y negativas
         const incidenciasNegativas = incidenciasRecientes.filter(inc => 
-          inc.tipo === 'ausencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
+          inc.tipo === 'asistencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
         );
         const incidenciasPositivas = incidenciasRecientes.filter(inc => inc.tipo === 'positivo');
         
         const incidenciasGraves = incidenciasNegativas.filter(inc => inc.gravedad === 'grave');
-        const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'ausencia').length;
+        const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'asistencia').length;
         const totalIncidenciasNegativas = incidenciasNegativas.length;
         const totalIncidenciasPositivas = incidenciasPositivas.length;
 
@@ -876,14 +876,14 @@ export default function TutorPage() {
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-900">Tipo de Incidencia</label>
                 <Select
-                  value="ausencia"
+                  value="asistencia"
                   disabled
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Ausencia" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ausencia">Ausencia</SelectItem>
+                    <SelectItem value="asistencia">Ausencia</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -904,7 +904,7 @@ export default function TutorPage() {
                       <SelectValue placeholder="Selecciona un tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ausencia">Ausencia</SelectItem>
+                      <SelectItem value="asistencia">Ausencia</SelectItem>
                       <SelectItem value="conducta">Conducta Negativa</SelectItem>
                       <SelectItem value="academica">Académica</SelectItem>
                       <SelectItem value="positivo">Comportamiento Positivo</SelectItem>
