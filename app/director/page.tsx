@@ -4680,12 +4680,22 @@ export default function DirectorPage() {
                                             // Esto debe hacerse ANTES de cualquier otra operación asíncrona
                                             console.log('🔄 Cerrando formulario de edición...');
                                             console.log('📝 ID del estudiante que se estaba editando:', estudianteEditandoAdmin);
+                                            console.log('📝 ID del estudiante guardado:', estudianteId);
                                             
                                             // Limpiar el estado de edición de forma explícita y forzar re-render
+                                            // Hacer esto de forma síncrona y múltiple para asegurar que funcione
                                             setEstudianteEditandoAdmin(null);
                                             setEstudianteEditForm({});
                                             setEstudianteNombreOriginal(null);
-                                            setFormularioCerradoKey(prev => prev + 1); // Forzar re-render de la tabla
+                                            
+                                            // Forzar re-render de la tabla incrementando la key
+                                            setFormularioCerradoKey(prev => prev + 1);
+                                            
+                                            // Hacer una segunda llamada para asegurar que el estado se actualice
+                                            setTimeout(() => {
+                                              setEstudianteEditandoAdmin(null);
+                                              setFormularioCerradoKey(prev => prev + 1);
+                                            }, 0);
                                             
                                             console.log('✅ Formulario cerrado');
                                           
