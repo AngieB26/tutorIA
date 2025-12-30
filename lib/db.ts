@@ -1322,10 +1322,63 @@ export async function marcarIncidenciaResuelta(
 }
 
 export async function getIncidenciasCompletasByStudent(studentName: string): Promise<Incidencia[]> {
-  const incidencias = await getIncidencias();
-  return incidencias
-    .filter(inc => inc.studentName === studentName)
-    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  try {
+    // Primero, buscar el estudiante por nombre para obtener su ID
+    const estudiante = await prisma.estudiante.findFirst({
+      where: {
+        OR: [
+          // Buscar por nombre completo (construido desde nombres y apellidos)
+          {
+            nombres: {
+              contains: studentName.split(' ')[0] || ''
+            },
+            apellidos: {
+              contains: studentName.split(' ').slice(1).join(' ') || ''
+            }
+          }
+        ]
+      }
+    });
+
+    // Buscar incidencias por estudianteId (más confiable) o por studentName
+    const incidencias = await prisma.incidencia.findMany({
+      where: {
+        OR: [
+          estudiante ? { estudianteId: estudiante.id } : undefined,
+          { studentName: studentName }
+        ].filter(Boolean) as any
+      },
+      orderBy: { timestamp: 'desc' }
+    });
+
+    // Mapear a formato Incidencia
+    return incidencias.map(inc => ({
+      id: inc.id,
+      studentName: inc.studentName,
+      tipo: inc.tipo as any,
+      subtipo: inc.subtipo as any,
+      gravedad: inc.gravedad as any,
+      descripcion: inc.descripcion,
+      fecha: inc.fecha.toISOString().split('T')[0],
+      timestamp: inc.timestamp?.getTime(),
+      profesor: inc.profesor,
+      tutor: inc.tutorNombre || undefined,
+      lugar: inc.lugar || undefined,
+      derivacion: inc.derivacion as any,
+      resuelta: inc.resuelta || false,
+      fechaResolucion: inc.fechaResolucion?.toISOString().split('T')[0],
+      resueltaPor: inc.resueltaPor || undefined,
+      estado: inc.estado as any,
+      historialEstado: (inc.historialEstado as any) || [],
+    })).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  } catch (error) {
+    console.error('Error obteniendo incidencias completas del estudiante:', error);
+    // Fallback: buscar solo por nombre
+    const incidencias = await getIncidencias();
+    return incidencias
+      .filter(inc => inc.studentName === studentName)
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  }
 }
 
 export async function getListaEstudiantes(): Promise<Array<{ nombre: string; totalIncidencias: number; ultimaIncidencia: string }>> {

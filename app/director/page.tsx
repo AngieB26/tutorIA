@@ -1338,9 +1338,23 @@ export default function DirectorPage() {
       
       console.log('✅ Estudiante recargado:', estudianteRecargado);
       
+      // Esperar un momento adicional para asegurar que las incidencias se actualizaron en la BD
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Recargar incidencias con el nuevo nombre (siempre, para asegurar que estén actualizadas)
       console.log(`🔄 Recargando incidencias con nombre: "${nombreCompletoNuevo}"`);
-      const nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
+      let nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
+      
+      // Si no se encontraron incidencias con el nombre nuevo, intentar con el nombre original
+      // (por si acaso las incidencias aún no se actualizaron)
+      if (nuevasIncidencias.length === 0 && nombreCompletoNuevo !== nombreOriginal) {
+        console.log(`⚠️ No se encontraron incidencias con el nombre nuevo, intentando con el nombre original: "${nombreOriginal}"`);
+        nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreOriginal);
+        if (nuevasIncidencias.length > 0) {
+          console.log(`✅ Se encontraron ${nuevasIncidencias.length} incidencias con el nombre original`);
+        }
+      }
+      
       setIncidenciasEstudiante(nuevasIncidencias);
       console.log(`✅ ${nuevasIncidencias.length} incidencias recargadas`);
       
