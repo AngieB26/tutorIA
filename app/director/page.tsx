@@ -4424,7 +4424,8 @@ export default function DirectorPage() {
                             (e.apellidos && e.apellidos.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
                           )
                         ).map((estudiante) => {
-                          const estaEditando = estudianteEditandoAdmin === estudiante.nombre;
+                          // Usar ID para identificar qué estudiante está en edición
+                          const estaEditando = estudianteEditandoAdmin === (estudiante.id || estudiante.nombre);
                           const formData = estaEditando ? estudianteEditForm : estudiante;
                           
                           // Usar ID como key si está disponible, si no usar nombre (para mejor rendimiento de React)
@@ -4649,8 +4650,9 @@ export default function DirectorPage() {
                                             const estudiantesActualizados = await fetchEstudiantes();
                                             console.log('✅ Estudiantes recargados:', estudiantesActualizados.length);
                                             
+                                            // Crear una nueva referencia del array para forzar el re-render
                                             // Actualizar el estado con los datos frescos de la base de datos
-                                            setEstudiantesInfo(estudiantesActualizados);
+                                            setEstudiantesInfo([...estudiantesActualizados]);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
                                             const lista = await getListaEstudiantes();
@@ -4714,7 +4716,8 @@ export default function DirectorPage() {
                                         size="sm"
                                         variant="outline"
                                         onClick={() => {
-                                          setEstudianteEditandoAdmin(estudiante.nombre);
+                                          // Usar ID si está disponible, si no usar nombre (para compatibilidad)
+                                          setEstudianteEditandoAdmin(estudiante.id || estudiante.nombre);
                                           setEstudianteNombreOriginal(estudiante.nombre);
                                           // Si no tiene nombres y apellidos separados, intentar separarlos del nombre
                                           let nombres = estudiante.nombres;
