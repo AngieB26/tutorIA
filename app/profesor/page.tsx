@@ -547,7 +547,13 @@ export default function ProfesorPage() {
                   <Combobox
                     options={profesores}
                     value={profesor}
-                    onChange={setProfesor}
+                    onChange={(value) => {
+                      setProfesor(value);
+                      // Limpiar grado, sección y curso cuando cambia el profesor
+                      setGrado('');
+                      setSeccion('');
+                      setCurso('');
+                    }}
                     placeholder="Buscar o seleccionar profesor"
                   />
                 </div>
