@@ -235,7 +235,6 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, estudianteI
     if (existente) {
       // Construir nombre completo para comparación
       const nombreCompletoNuevo = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
-      const nombreCambio = nombreOriginal && nombreOriginal !== nombreCompletoNuevo;
       
       // Crear objeto de datos que preserve TODOS los valores existentes
       // Solo actualizar campos que están explícitamente presentes en el objeto estudiante
