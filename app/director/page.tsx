@@ -20,6 +20,7 @@ import {
   marcarIncidenciaResuelta,
   fetchNotas,
   fetchEstudiante,
+  fetchEstudianteById,
   fetchEstudiantes,
   saveEstudiantes,
   saveEstudiantesInfo,
@@ -432,14 +433,14 @@ export default function DirectorPage() {
   };
   // Handler para generar análisis con IA en perfil de estudiante
   const handleGenerateReport = async () => {
-    if (!selectedStudent || incidenciasEstudiante.length === 0) return;
+    if (!selectedStudentId || !selectedStudentName || incidenciasEstudiante.length === 0) return;
     setGeneratingReport(true);
     setReporte(null);
     try {
       const res = await fetch('/api/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incidencias: incidenciasEstudiante, estudiante: selectedStudent })
+        body: JSON.stringify({ incidencias: incidenciasEstudiante, estudiante: selectedStudentName })
       });
       if (!res.ok) throw new Error('Error al generar el reporte');
       const data = await res.json();
@@ -494,9 +495,23 @@ export default function DirectorPage() {
           }
         };
       // Handler para ver el perfil de un estudiante
-      const handleVerPerfil = async (nombre: string) => {
+      const handleVerPerfil = async (nombre: string, estudianteId?: string) => {
         setActiveTab('estudiantes');
-        setSelectedStudent(nombre);
+        // Si tenemos el ID, usarlo; si no, buscar por nombre para obtener el ID
+        if (estudianteId) {
+          setSelectedStudentId(estudianteId);
+          setSelectedStudentName(nombre);
+        } else {
+          // Buscar el estudiante por nombre para obtener su ID
+          const estudiante = await fetchEstudiante(nombre);
+          if (estudiante?.id) {
+            setSelectedStudentId(estudiante.id);
+            setSelectedStudentName(estudiante.nombre);
+          } else {
+            setSelectedStudentId(null);
+            setSelectedStudentName(nombre);
+          }
+        }
         try {
           const incidencias = await getIncidenciasCompletasByStudent(nombre);
           setIncidenciasEstudiante(incidencias);
@@ -1182,7 +1197,7 @@ export default function DirectorPage() {
       }
     };
     loadEstudianteInfo();
-  }, [selectedStudent, refreshKey, guardandoEstudiante]);
+  }, [selectedStudentId, refreshKey, guardandoEstudiante]);
 
   // --- HANDLERS DE EDICIÓN ---
   const handleInputChange = (e: any) => {
@@ -1689,7 +1704,8 @@ export default function DirectorPage() {
         <button
           onClick={() => {
             setActiveTab('estudiantes');
-            setSelectedStudent(null);
+            setSelectedStudentId(null);
+            setSelectedStudentName(null);
             setReporte(null);
             setFiltroGrado('');
             setFiltroSeccion('');
@@ -2528,7 +2544,7 @@ export default function DirectorPage() {
       )}
 
       {/* Lista de Estudiantes Tab */}
-      {activeTab === 'estudiantes' && !selectedStudent && (
+      {activeTab === 'estudiantes' && !selectedStudentId && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900">
@@ -2675,7 +2691,7 @@ export default function DirectorPage() {
       )}
 
       {/* Perfil del Estudiante */}
-      {activeTab === 'estudiantes' && selectedStudent && (
+      {activeTab === 'estudiantes' && selectedStudentId && selectedStudentName && (
         <div className="space-y-6">
           {/* Información del Estudiante editable */}
           {infoEdit && (
@@ -2857,7 +2873,8 @@ export default function DirectorPage() {
                     <>
                       <Button size="sm" onClick={handleGuardar}>Guardar</Button>
                       <Button size="sm" variant="outline" onClick={async () => {
-                        const original = await fetchEstudiante(selectedStudent || '');
+                        if (!selectedStudentId) return;
+                        const original = await fetchEstudianteById(selectedStudentId);
                         if (original) {
                           setInfoEdit({
                             ...original,
@@ -2887,7 +2904,7 @@ export default function DirectorPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900">
                     <User className="h-5 w-5 text-primary" />
-                    Perfil de {selectedStudent}
+                    Perfil de {selectedStudentName}
                   </CardTitle>
                   <CardDescription className="text-sm text-gray-900 mt-1">
                     {incidenciasEstudiante.length} {incidenciasEstudiante.length === 1 ? 'incidencia registrada' : 'incidencias registradas'}
@@ -4609,10 +4626,13 @@ export default function DirectorPage() {
                                             setListaEstudiantes(listaFinal);
                                             
                                             // Si el estudiante está seleccionado, actualizar también su información
-                                            if (selectedStudent === estudiante.nombre) {
-                                              const estudianteActualizadoInfo = await fetchEstudiante(estudiante.nombre);
+                                            if (selectedStudentId && estudiante.id === selectedStudentId) {
+                                              const estudianteActualizadoInfo = await fetchEstudianteById(selectedStudentId);
                                               if (estudianteActualizadoInfo) {
                                                 setInfoEdit(estudianteActualizadoInfo);
+                                                if (estudianteActualizadoInfo.nombre) {
+                                                  setSelectedStudentName(estudianteActualizadoInfo.nombre);
+                                                }
                                               }
                                             }
                                             

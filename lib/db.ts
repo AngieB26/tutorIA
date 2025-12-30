@@ -381,10 +381,10 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, estudianteI
       });
       
       // También actualizar por nombre anterior por si acaso hay registros sin estudianteId
-      if (nombreOriginal && nombreOriginal !== nombreCompletoNuevo) {
+      if (nombreCambio && nombreAnterior !== nombreCompletoNuevo) {
         await prisma.registroAsistenciaEntry.updateMany({
           where: {
-            studentName: nombreOriginal,
+            studentName: nombreAnterior,
             estudianteId: null
           },
           data: {
