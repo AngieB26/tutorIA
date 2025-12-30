@@ -292,10 +292,9 @@ export default function TutorPage() {
       const todasIncidencias = await Promise.all(
         estudiantesFiltrados.map(est => fetchIncidencias({ studentName: est.nombre }))
       );
-      const incidenciasActivas = todasIncidencias.flat().filter(inc => {
-        const estudiante = estudiantesFiltrados.find(e => e.nombre === inc.studentName);
-        return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
-      });
+      const incidenciasActivas = todasIncidencias.flat().filter(inc => 
+        inc.estado === 'Pendiente' || inc.estado === 'En revisión'
+      );
 
       setResumenData({
         totalEstudiantes,
