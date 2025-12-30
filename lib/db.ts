@@ -743,7 +743,15 @@ export async function saveClases(clases: Clase[]): Promise<void> {
   try {
     await prisma.clase.deleteMany({});
 
+    // Pre-cargar todos los tutores para mejorar rendimiento
+    const todosTutores = await prisma.tutor.findMany();
+    const mapTutorId = new Map<string, string>();
+    todosTutores.forEach(tutor => mapTutorId.set(tutor.nombre, tutor.id));
+
     for (const clase of clases) {
+      // Buscar profesorId por nombre
+      const profesorId = mapTutorId.get(clase.profesor) ?? null;
+
       await prisma.clase.create({
         data: {
           id: clase.id,
@@ -751,8 +759,9 @@ export async function saveClases(clases: Clase[]): Promise<void> {
           grado: clase.grado,
           seccion: clase.seccion,
           profesor: clase.profesor,
+          profesorId: profesorId,
           dias: JSON.stringify(clase.dias),
-          periodos: JSON.stringify(clase.periodos),
+          periodos: JSON.stringify(clase.periodos || []),
         },
       });
     }
@@ -769,6 +778,12 @@ export async function addClase(clase: Omit<Clase, 'id'>): Promise<Clase> {
       id: Date.now().toString() + Math.random().toString(36).slice(2, 7),
     };
 
+    // Buscar profesorId por nombre
+    const tutor = await prisma.tutor.findFirst({
+      where: { nombre: newClase.profesor }
+    });
+    const profesorId = tutor?.id ?? null;
+
     await prisma.clase.create({
       data: {
         id: newClase.id,
@@ -776,8 +791,9 @@ export async function addClase(clase: Omit<Clase, 'id'>): Promise<Clase> {
         grado: newClase.grado,
         seccion: newClase.seccion,
         profesor: newClase.profesor,
+        profesorId: profesorId,
         dias: JSON.stringify(newClase.dias),
-        periodos: JSON.stringify(newClase.periodos),
+        periodos: JSON.stringify(newClase.periodos || []),
       },
     });
 
