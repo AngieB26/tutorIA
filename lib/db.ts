@@ -1164,7 +1164,22 @@ export async function saveAsistenciaClases(registros: RegistroAsistenciaClase[])
     await prisma.registroAsistenciaEntry.deleteMany({});
     await prisma.registroAsistenciaClase.deleteMany({});
 
+    // Pre-cargar todos los estudiantes para buscar IDs (una sola vez para todos los registros)
+    const todosEstudiantes = await prisma.estudiante.findMany();
+    const mapEstudianteId = new Map<string, string>();
+    todosEstudiantes.forEach(est => mapEstudianteId.set(est.nombre, est.id));
+
     for (const reg of registros) {
+      // Preparar entries con estudianteId
+      const entriesData = Object.entries(reg.entries || {}).map(([studentName, estado]) => {
+        const estudianteId = mapEstudianteId.get(studentName) ?? null;
+        return {
+          studentName,
+          estudianteId,
+          estado,
+        };
+      });
+
       const registroCreado = await prisma.registroAsistenciaClase.create({
         data: {
           id: reg.id,
@@ -1178,10 +1193,7 @@ export async function saveAsistenciaClases(registros: RegistroAsistenciaClase[])
           lugar: reg.lugar ?? null,
           timestamp: BigInt(reg.timestamp),
           entries: {
-            create: Object.entries(reg.entries || {}).map(([studentName, estado]) => ({
-              studentName,
-              estado,
-            })),
+            create: entriesData,
           },
         },
       });
@@ -1208,6 +1220,21 @@ export async function addRegistroAsistenciaClase(
     const registroId = existente?.id || Date.now().toString() + Math.random().toString(36).slice(2, 7);
     const timestamp = Date.now();
 
+    // Pre-cargar todos los estudiantes para buscar IDs
+    const todosEstudiantes = await prisma.estudiante.findMany();
+    const mapEstudianteId = new Map<string, string>();
+    todosEstudiantes.forEach(est => mapEstudianteId.set(est.nombre, est.id));
+
+    // Preparar entries con estudianteId
+    const entriesData = Object.entries(rec.entries || {}).map(([studentName, estado]) => {
+      const estudianteId = mapEstudianteId.get(studentName) ?? null;
+      return {
+        studentName,
+        estudianteId,
+        estado,
+      };
+    });
+
     if (existente) {
       // Eliminar entries existentes
       await prisma.registroAsistenciaEntry.deleteMany({
@@ -1221,10 +1248,7 @@ export async function addRegistroAsistenciaClase(
           lugar: rec.lugar ?? null,
           timestamp: BigInt(timestamp),
           entries: {
-            create: Object.entries(rec.entries || {}).map(([studentName, estado]) => ({
-              studentName,
-              estado,
-            })),
+            create: entriesData,
           },
         },
       });
@@ -1243,10 +1267,7 @@ export async function addRegistroAsistenciaClase(
           lugar: rec.lugar ?? null,
           timestamp: BigInt(timestamp),
           entries: {
-            create: Object.entries(rec.entries || {}).map(([studentName, estado]) => ({
-              studentName,
-              estado,
-            })),
+            create: entriesData,
           },
         },
       });
