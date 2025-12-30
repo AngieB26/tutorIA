@@ -4670,10 +4670,14 @@ export default function DirectorPage() {
                             }
                             
                             // Si no tiene estudiantes, mostrar el diálogo de confirmación
-                            if (!window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
+                            console.log('📋 No hay estudiantes, mostrando diálogo de confirmación...');
+                            const confirmar = window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`);
+                            console.log('📋 Resultado del diálogo:', confirmar);
+                            if (!confirmar) {
                               console.log('❌ Usuario canceló');
                               return;
                             }
+                            console.log('✅ Usuario confirmó');
                             
                             try {
                               console.log('✅ Usuario confirmó eliminación');
@@ -4830,10 +4834,14 @@ export default function DirectorPage() {
                             }
                             
                             // Si no tiene estudiantes, mostrar el diálogo de confirmación
-                            if (!window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
+                            console.log('📋 No hay estudiantes, mostrando diálogo de confirmación...');
+                            const confirmar = window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`);
+                            console.log('📋 Resultado del diálogo:', confirmar);
+                            if (!confirmar) {
                               console.log('❌ Usuario canceló');
                               return;
                             }
+                            console.log('✅ Usuario confirmó');
                             
                             try {
                               console.log('✅ Usuario confirmó eliminación');
