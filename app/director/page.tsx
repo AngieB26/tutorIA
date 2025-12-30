@@ -1128,9 +1128,17 @@ export default function DirectorPage() {
   const [editando, setEditando] = useState(false);
   const [infoEdit, setInfoEdit] = useState<any>(null);
   const [fotoPreview, setFotoPreview] = useState('');
+  const [guardandoEstudiante, setGuardandoEstudiante] = useState(false);
 
   // Sincronizar infoEdit y fotoPreview cuando cambia el estudiante seleccionado o refreshKey
+  // PERO solo si no estamos guardando (para evitar interferencias)
   useEffect(() => {
+    // No recargar si estamos en proceso de guardado
+    if (guardandoEstudiante) {
+      console.log('⏸️ Guardado en progreso, omitiendo recarga automática');
+      return;
+    }
+    
     const loadEstudianteInfo = async () => {
       if (selectedStudent) {
         try {
@@ -1167,7 +1175,7 @@ export default function DirectorPage() {
       }
     };
     loadEstudianteInfo();
-  }, [selectedStudent, refreshKey]);
+  }, [selectedStudent, refreshKey, guardandoEstudiante]);
 
   // --- HANDLERS DE EDICIÓN ---
   const handleInputChange = (e: any) => {
@@ -1197,9 +1205,13 @@ export default function DirectorPage() {
     try {
       console.log('🔄 Iniciando guardado desde Información del Estudiante...');
       
+      // Activar bandera para evitar que el useEffect interfiera
+      setGuardandoEstudiante(true);
+      
       if (!infoEdit || !selectedStudent) {
         console.error('❌ Faltan datos:', { infoEdit, selectedStudent });
         toast.error('No hay información para guardar');
+        setGuardandoEstudiante(false);
         return;
       }
 
@@ -1369,9 +1381,15 @@ export default function DirectorPage() {
       
       toast.success('Información actualizada exitosamente en la base de datos');
       console.log('✅ Guardado completado exitosamente');
+      
+      // Desactivar bandera después de un momento para permitir que el useEffect funcione de nuevo
+      setTimeout(() => {
+        setGuardandoEstudiante(false);
+      }, 500);
     } catch (error: any) {
       console.error('❌ Error guardando estudiante:', error);
       toast.error(error.message || 'Error al guardar la información del estudiante');
+      setGuardandoEstudiante(false);
     }
   };
   
