@@ -371,7 +371,7 @@ export function Navbar() {
     }
   };
 
-  const handleRegistrarIncidencia = (nombreEstudiante: string) => {
+  const handleRegistrarIncidencia = async (nombreEstudiante: string) => {
     // Encontrar los datos del estudiante con problemas
     const estudianteProblema = estudiantesConProblemas.find(e => e.nombre === nombreEstudiante);
     
