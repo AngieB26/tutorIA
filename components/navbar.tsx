@@ -23,7 +23,6 @@ export function Navbar() {
     total: number;
     estudiante: any;
   }>>([]);
-  const [profesorActual, setProfesorActual] = useState<string>('');
   
   // Estados para notificaciones del director
   const [incidenciasVistas, setIncidenciasVistas] = useState<Set<string>>(new Set());
@@ -56,9 +55,6 @@ export function Navbar() {
             tutores: tutores.length
           });
           
-          // Obtener el profesor actual desde localStorage o el primer profesor disponible
-          const profesorGuardado = localStorage.getItem('profesor_actual') || tutores[0]?.nombre || '';
-          setProfesorActual(profesorGuardado);
           
           // Contar ausencias y tardanzas por estudiante (de TODOS los profesores)
           const conteoPorEstudiante: Record<string, { ausencias: number; tardanzas: number; estudiante: any }> = {};
@@ -152,10 +148,6 @@ export function Navbar() {
           fetchTutores()
         ]);
         
-        const profesorGuardado = localStorage.getItem('profesor_actual') || tutores[0]?.nombre || '';
-        if (profesorGuardado !== profesorActual) {
-          setProfesorActual(profesorGuardado);
-        }
         
         // Contar ausencias y tardanzas por estudiante (de TODOS los profesores)
         const conteoPorEstudiante: Record<string, { ausencias: number; tardanzas: number; estudiante: any }> = {};
@@ -246,7 +238,7 @@ export function Navbar() {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('asistenciaActualizada', handleAsistenciaActualizada);
     };
-  }, [isProfesor, profesorActual]);
+  }, [isProfesor]);
 
   // Cargar notificaciones del director cuando estemos en la página del director
   useEffect(() => {

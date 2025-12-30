@@ -159,12 +159,6 @@ export default function ProfesorPage() {
     loadData();
   }, []);
 
-  // Guardar profesor seleccionado en localStorage (tanto de asistencia como de incidencia)
-  useEffect(() => {
-    if (profesor) {
-      localStorage.setItem('profesor_actual', profesor);
-    }
-  }, [profesor]);
 
   // Escuchar evento para abrir incidencia desde notificación del navbar
   useEffect(() => {
@@ -250,12 +244,6 @@ export default function ProfesorPage() {
   // Estado para mensaje de confirmación de incidencia
   const [incidenciaConfirm, setIncidenciaConfirm] = useState(false);
 
-  // Guardar profesor de incidencia en localStorage también (después de declarar incProfesor)
-  useEffect(() => {
-    if (incProfesor) {
-      localStorage.setItem('profesor_actual', incProfesor);
-    }
-  }, [incProfesor]);
 
   // Filtrar clases del profesor seleccionado
   const clasesDelProfesor = profesor 
@@ -360,15 +348,14 @@ export default function ProfesorPage() {
         if (typeof window !== 'undefined') {
           try {
             const hoy = new Date().toISOString().split('T')[0];
-            // Usar el profesor de la incidencia (que debería coincidir con profesor_actual)
+            // Usar el profesor de la incidencia
             const profesorParaMarcar = inc.profesor;
             if (profesorParaMarcar) {
               marcarEstudianteAtendido(inc.estudiante, hoy, profesorParaMarcar);
               console.log('✅ Estudiante marcado como atendido en notificaciones:', {
                 estudiante: inc.estudiante,
                 profesor: profesorParaMarcar,
-                fecha: hoy,
-                profesorActual: localStorage.getItem('profesor_actual')
+                fecha: hoy
               });
               
               // Disparar evento para actualizar notificaciones en el navbar
