@@ -5208,6 +5208,7 @@ export default function DirectorPage() {
                             }
                             
                             try {
+                              console.log('📝 Intentando crear clase:', formularioCurso);
                               await addClase({
                                 nombre: formularioCurso.nombre.trim(),
                                 grado: formularioCurso.grado,
@@ -5215,6 +5216,7 @@ export default function DirectorPage() {
                                 profesor: formularioCurso.profesor,
                                 dias: formularioCurso.dias
                               });
+                              console.log('✅ Clase creada exitosamente');
                               // Recargar las clases directamente
                               const clasesActualizadas = await fetchClases();
                               setClases(clasesActualizadas);
@@ -5223,7 +5225,8 @@ export default function DirectorPage() {
                               setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '', dias: [] });
                               toast.success('Asignación creada exitosamente');
                             } catch (error) {
-                              toast.error('Error al crear la asignación');
+                              console.error('❌ Error al crear la asignación:', error);
+                              toast.error(`Error al crear la asignación: ${error instanceof Error ? error.message : 'Error desconocido'}`);
                             }
                           }}
                         >
