@@ -2572,18 +2572,28 @@ export default function DirectorPage() {
                         <User className="w-10 h-10" />
                       </div>
                     )}
-                    {/* Nombre del estudiante */}
+                    {/* Nombres y Apellidos del estudiante */}
                     {editando ? (
-                      <Input
-                        className="mt-1 text-base font-semibold text-gray-900 text-center"
-                        name="nombre"
-                        value={infoEdit.nombre || ''}
-                        onChange={handleInputChange}
-                        placeholder="Nombre del estudiante"
-                        autoComplete="off"
-                      />
+                      <div className="mt-1 w-full flex flex-col gap-2">
+                        <Input
+                          className="text-base font-semibold text-gray-900 text-center"
+                          name="nombres"
+                          value={infoEdit.nombres || ''}
+                          onChange={handleInputChange}
+                          placeholder="Nombres"
+                          autoComplete="off"
+                        />
+                        <Input
+                          className="text-base font-semibold text-gray-900 text-center"
+                          name="apellidos"
+                          value={infoEdit.apellidos || ''}
+                          onChange={handleInputChange}
+                          placeholder="Apellidos"
+                          autoComplete="off"
+                        />
+                      </div>
                     ) : (
-                      <span className="mt-1 text-base font-semibold text-gray-900">{infoEdit.nombre || '-'}</span>
+                      <span className="mt-1 text-base font-semibold text-gray-900">{infoEdit.nombre || (infoEdit.nombres && infoEdit.apellidos ? `${infoEdit.nombres} ${infoEdit.apellidos}` : '-')}</span>
                     )}
                     {!editando && fotoPreview && (
                       <Button size="sm" variant="outline" className="mt-1" onClick={() => setEditando(true)}>Cambiar foto</Button>

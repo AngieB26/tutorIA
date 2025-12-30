@@ -102,6 +102,8 @@ export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo 
 
     return {
       nombre: nombreCompleto,
+      nombres: estudiante.nombres, // Incluir nombres separado
+      apellidos: estudiante.apellidos, // Incluir apellidos separado
       grado: estudiante.grado,
       seccion: estudiante.seccion,
       edad: estudiante.edad ?? undefined,
