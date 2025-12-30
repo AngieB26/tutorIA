@@ -4768,6 +4768,13 @@ export default function DirectorPage() {
                                               return prev;
                                             });
                                             
+                                            // Cerrar el formulario ANTES de actualizar la lista para asegurar que se cierre
+                                            flushSync(() => {
+                                              setEstudianteEditandoAdmin(null);
+                                              setEstudianteEditForm({});
+                                              setEstudianteNombreOriginal(null);
+                                            });
+                                            
                                             // Luego actualizar con los datos recargados de la base de datos para asegurar consistencia
                                             // Usar una función de actualización para asegurar que React detecte el cambio
                                             setEstudiantesInfo(() => estudiantesConNuevasReferencias);
