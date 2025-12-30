@@ -537,14 +537,19 @@ export default function DirectorPage() {
         try {
           // Usar el ID si está disponible, si no usar el nombre
           if (idFinal) {
+            console.log(`🔍 Buscando incidencias para estudiante ID: ${idFinal}, nombre: ${nombreFinal}`);
             const incidencias = await getIncidenciasCompletasByStudent(idFinal);
+            console.log(`📊 Incidencias recibidas del API: ${incidencias.length}`);
+            console.log(`📋 Detalles de incidencias:`, incidencias);
             setIncidenciasEstudiante(incidencias);
           } else {
+            console.log(`🔍 Buscando incidencias para estudiante nombre: ${nombreFinal}`);
             const incidencias = await getIncidenciasCompletasByStudent(nombreFinal);
+            console.log(`📊 Incidencias recibidas del API: ${incidencias.length}`);
             setIncidenciasEstudiante(incidencias);
           }
         } catch (error) {
-          console.error('Error cargando incidencias del estudiante:', error);
+          console.error('❌ Error cargando incidencias del estudiante:', error);
           setIncidenciasEstudiante([]);
         }
         setReporte(null);

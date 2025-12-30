@@ -1501,9 +1501,24 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
         const nombreCompletoEstudiante = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
         condiciones.push({ studentName: nombreCompletoEstudiante });
         // Buscar por variaciones del nombre (solo nombres, solo apellidos, etc.)
-        condiciones.push({ studentName: { contains: estudiante.nombres, mode: 'insensitive' } });
-        condiciones.push({ studentName: { contains: estudiante.apellidos, mode: 'insensitive' } });
-        console.log(`🔍 Buscando incidencias por estudianteId: ${estudiante.id} y por variaciones del nombre`);
+        if (estudiante.nombres) {
+          condiciones.push({ studentName: { contains: estudiante.nombres, mode: 'insensitive' } });
+        }
+        if (estudiante.apellidos) {
+          condiciones.push({ studentName: { contains: estudiante.apellidos, mode: 'insensitive' } });
+        }
+        // También buscar por el nombre original que se pasó (por si hay diferencias)
+        if (!isUUID && studentNameOrId !== nombreCompletoEstudiante) {
+          condiciones.push({ studentName: studentNameOrId });
+          const partesOriginal = studentNameOrId.trim().split(/\s+/);
+          partesOriginal.forEach(parte => {
+            if (parte.length > 2) {
+              condiciones.push({ studentName: { contains: parte, mode: 'insensitive' } });
+            }
+          });
+        }
+        console.log(`🔍 Buscando incidencias por estudianteId: ${estudiante.id}, nombre completo: "${nombreCompletoEstudiante}"`);
+        console.log(`🔍 Total de condiciones de búsqueda: ${condiciones.length}`);
       } else if (isUUID) {
         // Si es un ID pero no encontramos el estudiante, buscar por estudianteId directamente
         condiciones.push({ estudianteId: studentNameOrId });
@@ -1539,6 +1554,21 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
       incidencias = Array.from(incidenciasUnicas.values());
       
       console.log(`📊 Encontradas ${incidencias.length} incidencias para el estudiante`);
+      if (incidencias.length > 0) {
+        console.log(`📋 Primeras incidencias encontradas:`, incidencias.slice(0, 3).map(inc => ({
+          id: inc.id,
+          studentName: inc.studentName,
+          estudianteId: inc.estudianteId
+        })));
+      } else {
+        console.log(`⚠️ No se encontraron incidencias. Verificando todas las incidencias en BD...`);
+        const todasIncidencias = await prisma.incidencia.findMany({ take: 10 });
+        console.log(`📋 Primeras 10 incidencias en BD:`, todasIncidencias.map(inc => ({
+          id: inc.id,
+          studentName: inc.studentName,
+          estudianteId: inc.estudianteId
+        })));
+      }
     } catch (error) {
       console.error(`❌ Error buscando incidencias:`, error);
       throw error;
