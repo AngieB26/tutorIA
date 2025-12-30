@@ -4427,8 +4427,11 @@ export default function DirectorPage() {
                           const estaEditando = estudianteEditandoAdmin === estudiante.nombre;
                           const formData = estaEditando ? estudianteEditForm : estudiante;
                           
+                          // Usar ID como key si está disponible, si no usar nombre (para mejor rendimiento de React)
+                          const rowKey = estudiante.id || estudiante.nombre;
+                          
                           return (
-                            <TableRow key={estudiante.nombre}>
+                            <TableRow key={rowKey}>
                               <TableCell className="font-medium text-gray-900">
                                 {estaEditando ? (
                                   <Input
