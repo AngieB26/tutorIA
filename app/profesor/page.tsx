@@ -275,19 +275,33 @@ export default function ProfesorPage() {
     }
   }, [incProfesor]);
 
-  // Filtrar secciones disponibles según el grado seleccionado (solo las que tienen clases registradas)
-  const seccionesDisponibles = Array.from(
-    new Set(clases.filter(c => c.grado === grado).map(c => c.seccion))
-  ).filter(s => secciones.includes(s)); // Solo mostrar secciones que están en la BD
+  // Filtrar clases del profesor seleccionado
+  const clasesDelProfesor = profesor 
+    ? clases.filter(c => c.profesor === profesor)
+    : [];
 
-  // Filtrar cursos disponibles según el grado y sección seleccionados
-  const cursos = Array.from(
-    new Set(
-      clases
-        .filter(c => c.grado === grado && c.seccion === seccion)
-        .map(c => c.nombre)
-    )
-  );
+  // Filtrar grados disponibles según las clases del profesor
+  const gradosDisponibles = profesor
+    ? Array.from(new Set(clasesDelProfesor.map(c => c.grado))).filter(g => grados.includes(g))
+    : [];
+
+  // Filtrar secciones disponibles según el profesor y grado seleccionado
+  const seccionesDisponibles = profesor && grado
+    ? Array.from(
+        new Set(clasesDelProfesor.filter(c => c.grado === grado).map(c => c.seccion))
+      ).filter(s => secciones.includes(s))
+    : [];
+
+  // Filtrar cursos disponibles según el profesor, grado y sección seleccionados
+  const cursos = profesor && grado && seccion
+    ? Array.from(
+        new Set(
+          clasesDelProfesor
+            .filter(c => c.grado === grado && c.seccion === seccion)
+            .map(c => c.nombre)
+        )
+      )
+    : [];
 
   const estudiantesClase = estudiantes.filter(
     e => e.grado === grado && e.seccion === seccion
@@ -552,7 +566,7 @@ export default function ProfesorPage() {
                       <SelectValue placeholder="Selecciona el grado" />
                     </SelectTrigger>
                     <SelectContent>
-                      {grados.map(g => (
+                      {gradosDisponibles.map(g => (
                         <SelectItem key={g} value={g}>{g}</SelectItem>
                       ))}
                     </SelectContent>
