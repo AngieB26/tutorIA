@@ -250,54 +250,94 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
         data: dataToUpdate,
       });
 
-      // Si el nombre cambió, actualizar todas las incidencias, notas y registros relacionados
-      if (nombreCambio && nombreOriginal) {
-        console.log(`🔄 Actualizando registros relacionados: ${nombreOriginal} → ${nombreCompletoNuevo}`);
-        
-        // Actualizar incidencias que tienen el nombre anterior
+      // SIEMPRE actualizar las incidencias, notas y registros relacionados para mantener la consistencia
+      // Esto asegura que las relaciones se mantengan incluso si el nombre cambió
+      console.log(`🔄 Actualizando registros relacionados para estudiante ID: ${existente.id}`);
+      console.log(`   Nombre anterior: ${nombreOriginal || 'N/A'}`);
+      console.log(`   Nombre nuevo: ${nombreCompletoNuevo}`);
+      
+      // Actualizar TODAS las incidencias relacionadas con este estudiante (por estudianteId)
+      // Esto preserva todas las incidencias independientemente del nombre
+      const incidenciasActualizadas = await prisma.incidencia.updateMany({
+        where: {
+          estudianteId: existente.id
+        },
+        data: {
+          studentName: nombreCompletoNuevo,
+          estudianteId: existente.id, // Asegurar que la relación se mantenga
+        },
+      });
+      
+      // También actualizar por nombre anterior por si acaso hay incidencias sin estudianteId
+      if (nombreOriginal && nombreOriginal !== nombreCompletoNuevo) {
         await prisma.incidencia.updateMany({
           where: {
-            OR: [
-              { studentName: nombreOriginal },
-              { estudianteId: existente.id }
-            ]
+            studentName: nombreOriginal,
+            estudianteId: null // Solo las que no tienen estudianteId asignado
           },
           data: {
             studentName: nombreCompletoNuevo,
-            estudianteId: existente.id, // Asegurar que la relación se mantenga
+            estudianteId: existente.id, // Asignar el estudianteId
           },
         });
+      }
+      
+      console.log(`✅ ${incidenciasActualizadas.count} incidencias actualizadas`);
 
-        // Actualizar notas que tienen el nombre anterior
+      // Actualizar TODAS las notas relacionadas con este estudiante (por estudianteId)
+      const notasActualizadas = await prisma.nota.updateMany({
+        where: {
+          estudianteId: existente.id
+        },
+        data: {
+          studentName: nombreCompletoNuevo,
+          estudianteId: existente.id, // Asegurar que la relación se mantenga
+        },
+      });
+      
+      // También actualizar por nombre anterior por si acaso hay notas sin estudianteId
+      if (nombreOriginal && nombreOriginal !== nombreCompletoNuevo) {
         await prisma.nota.updateMany({
           where: {
-            OR: [
-              { studentName: nombreOriginal },
-              { estudianteId: existente.id }
-            ]
+            studentName: nombreOriginal,
+            estudianteId: null
           },
           data: {
             studentName: nombreCompletoNuevo,
-            estudianteId: existente.id, // Asegurar que la relación se mantenga
+            estudianteId: existente.id,
           },
         });
+      }
+      
+      console.log(`✅ ${notasActualizadas.count} notas actualizadas`);
 
-        // Actualizar registros de asistencia que tienen el nombre anterior
+      // Actualizar TODOS los registros de asistencia relacionados con este estudiante (por estudianteId)
+      const asistenciasActualizadas = await prisma.registroAsistenciaEntry.updateMany({
+        where: {
+          estudianteId: existente.id
+        },
+        data: {
+          studentName: nombreCompletoNuevo,
+          estudianteId: existente.id, // Asegurar que la relación se mantenga
+        },
+      });
+      
+      // También actualizar por nombre anterior por si acaso hay registros sin estudianteId
+      if (nombreOriginal && nombreOriginal !== nombreCompletoNuevo) {
         await prisma.registroAsistenciaEntry.updateMany({
           where: {
-            OR: [
-              { studentName: nombreOriginal },
-              { estudianteId: existente.id }
-            ]
+            studentName: nombreOriginal,
+            estudianteId: null
           },
           data: {
             studentName: nombreCompletoNuevo,
-            estudianteId: existente.id, // Asegurar que la relación se mantenga
+            estudianteId: existente.id,
           },
         });
-
-        console.log(`✅ Registros relacionados actualizados para ${nombreCompletoNuevo}`);
       }
+      
+      console.log(`✅ ${asistenciasActualizadas.count} registros de asistencia actualizados`);
+      console.log(`✅ Todos los registros relacionados actualizados para ${nombreCompletoNuevo}`);
     } else {
       await prisma.estudiante.create({
         data,
