@@ -291,7 +291,7 @@ export async function POST() {
       { nombre: 'Ciencias', grado: '2do', seccion: 'A', profesor: 'Prof. Fernández', dias: posiblesDias },
       { nombre: 'Lengua', grado: '1ro', seccion: 'A', profesor: 'Prof. García', dias: posiblesDias },
       { nombre: 'Historia', grado: '4to', seccion: 'A', profesor: 'Prof. Torres', dias: posiblesDias },
-      { nombre: 'Arte', grado: '5to', seccion: 'A', profesor: 'Prof. Ramírez', dias: posiblesDias, periodos: [3, 7] },
+      { nombre: 'Arte', grado: '5to', seccion: 'A', profesor: 'Prof. Ramírez', dias: posiblesDias },
     ];
     console.log('💾 Guardando clases...');
     console.log('💾 Guardando clases...');
