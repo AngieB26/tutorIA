@@ -8,7 +8,6 @@ datasource db {
 
 model Estudiante {
   id                   String                    @id @default(uuid())
-  nombre               String?                   // Campo calculado para compatibilidad
   nombres              String                    // Campo principal
   apellidos            String                    // Campo principal
   grado                String
@@ -38,7 +37,6 @@ model Estudiante {
   asistenciasRegistro  RegistroAsistenciaEntry[] @relation("EstudianteAsistencias")
 
   @@index([grado, seccion])
-  @@index([nombre])
   @@index([nombres, apellidos])
 }
 
