@@ -4352,44 +4352,45 @@ export default function DirectorPage() {
                                             }
                                             console.log('✅ Estudiante completo encontrado:', estudianteCompleto);
 
-                                          // Fusionar la información editada con la información completa existente
-                                          // Esto asegura que no se pierdan campos que no se están editando
-                                          const estudianteActualizado: EstudianteInfo = {
-                                            ...estudianteCompleto,
-                                            ...estudianteEditForm,
-                                            // Preservar nombres y apellidos si no se están editando
-                                            // Asegurar que siempre tengan un valor (no pueden ser vacíos)
-                                            nombres: (estudianteEditForm.nombres && estudianteEditForm.nombres.trim()) 
-                                              ? estudianteEditForm.nombres.trim() 
-                                              : (estudianteCompleto.nombres || ''),
-                                            apellidos: (estudianteEditForm.apellidos && estudianteEditForm.apellidos.trim()) 
-                                              ? estudianteEditForm.apellidos.trim() 
-                                              : (estudianteCompleto.apellidos || ''),
-                                            // Preservar contacto si existe
-                                            contacto: estudianteEditForm.contacto ? {
-                                              ...estudianteCompleto.contacto,
-                                              ...estudianteEditForm.contacto
-                                            } : estudianteCompleto.contacto,
-                                            // Preservar tutor si existe
-                                            tutor: estudianteEditForm.tutor ? {
-                                              ...estudianteCompleto.tutor,
-                                              ...estudianteEditForm.tutor
-                                            } : estudianteCompleto.tutor,
-                                            // Preservar apoderado si existe
-                                            apoderado: estudianteEditForm.apoderado ? {
-                                              ...estudianteCompleto.apoderado,
-                                              ...estudianteEditForm.apoderado
-                                            } : estudianteCompleto.apoderado,
-                                          };
-                                          
-                                            // Validar que nombres y apellidos estén presentes antes de guardar
+                                            // Fusionar la información editada con la información completa existente
+                                            // Esto asegura que no se pierdan campos que no se están editando
+                                            const estudianteActualizado: EstudianteInfo = {
+                                              ...estudianteCompleto,
+                                              ...estudianteEditForm,
+                                              // Preservar nombres y apellidos si no se están editando
+                                              // Asegurar que siempre tengan un valor (no pueden ser vacíos)
+                                              nombres: (estudianteEditForm.nombres && estudianteEditForm.nombres.trim()) 
+                                                ? estudianteEditForm.nombres.trim() 
+                                                : (estudianteCompleto.nombres || ''),
+                                              apellidos: (estudianteEditForm.apellidos && estudianteEditForm.apellidos.trim()) 
+                                                ? estudianteEditForm.apellidos.trim() 
+                                                : (estudianteCompleto.apellidos || ''),
+                                              // Preservar contacto si existe
+                                              contacto: estudianteEditForm.contacto ? {
+                                                ...estudianteCompleto.contacto,
+                                                ...estudianteEditForm.contacto
+                                              } : estudianteCompleto.contacto,
+                                              // Preservar tutor si existe
+                                              tutor: estudianteEditForm.tutor ? {
+                                                ...estudianteCompleto.tutor,
+                                                ...estudianteEditForm.tutor
+                                              } : estudianteCompleto.tutor,
+                                              // Preservar apoderado si existe
+                                              apoderado: estudianteEditForm.apoderado ? {
+                                                ...estudianteCompleto.apoderado,
+                                                ...estudianteEditForm.apoderado
+                                              } : estudianteCompleto.apoderado,
+                                            };
+                                            
+                                            // Validar que nombres y apellidos estén presentes y no estén vacíos antes de guardar
                                             console.log('✅ Estudiante actualizado preparado:', estudianteActualizado);
-                                            if (!estudianteActualizado.nombres || !estudianteActualizado.apellidos) {
+                                            if (!estudianteActualizado.nombres || !estudianteActualizado.nombres.trim() || 
+                                                !estudianteActualizado.apellidos || !estudianteActualizado.apellidos.trim()) {
                                               console.error('❌ Faltan nombres o apellidos:', {
                                                 nombres: estudianteActualizado.nombres,
                                                 apellidos: estudianteActualizado.apellidos
                                               });
-                                              toast.error('Los campos nombres y apellidos son requeridos');
+                                              toast.error('Los campos nombres y apellidos son requeridos y no pueden estar vacíos');
                                               return;
                                             }
                                             
@@ -4399,16 +4400,16 @@ export default function DirectorPage() {
                                             await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
                                             console.log('✅ Estudiante guardado exitosamente');
                                           
-                                          // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
-                                          const estudiantesActualizados = await fetchEstudiantes();
-                                          setEstudiantesInfo(estudiantesActualizados);
-                                          
-                                          // Forzar actualización del refreshKey para recargar todos los datos
-                                          setRefreshKey(prev => prev + 1);
-                                          
-                                          // Actualizar lista de estudiantes para reflejar cambios
-                                          const lista = await getListaEstudiantes();
-                                          const info = estudiantesActualizados;
+                                            // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
+                                            const estudiantesActualizados = await fetchEstudiantes();
+                                            setEstudiantesInfo(estudiantesActualizados);
+                                            
+                                            // Forzar actualización del refreshKey para recargar todos los datos
+                                            setRefreshKey(prev => prev + 1);
+                                            
+                                            // Actualizar lista de estudiantes para reflejar cambios
+                                            const lista = await getListaEstudiantes();
+                                            const info = estudiantesActualizados;
                                             const nombresUnicos = Array.from(new Set([
                                               ...info.map((i: any) => i.nombre),
                                               ...lista.map((e: any) => e.nombre)
@@ -4428,13 +4429,12 @@ export default function DirectorPage() {
                                             
                                             // Si el estudiante está seleccionado, actualizar también su información
                                             if (selectedStudent === estudiante.nombre) {
-                                              const estudianteActualizado = await fetchEstudiante(estudiante.nombre);
-                                              if (estudianteActualizado) {
-                                                setInfoEdit(estudianteActualizado);
+                                              const estudianteActualizadoInfo = await fetchEstudiante(estudiante.nombre);
+                                              if (estudianteActualizadoInfo) {
+                                                setInfoEdit(estudianteActualizadoInfo);
                                               }
                                             }
                                             
-                                            setRefreshKey(prev => prev + 1);
                                             setEstudianteEditandoAdmin(null);
                                             setEstudianteEditForm({});
                                             setEstudianteNombreOriginal(null);
