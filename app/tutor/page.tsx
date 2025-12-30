@@ -214,7 +214,7 @@ export default function TutorPage() {
     };
 
     loadResumenes();
-  }, [estudiantesFiltrados.length, esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion, iaResumenes]);
+  }, [estudiantesFiltrados.length, esTutorDeLaSeccion, seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '', iaResumenes]);
 
   // Cargar estudiantes con estado cuando cambia la sección seleccionada
   useEffect(() => {
@@ -257,7 +257,7 @@ export default function TutorPage() {
     };
 
     loadEstudiantesConEstado();
-  }, [seccionSeleccionada?.grado, seccionSeleccionada?.seccion, estudiantesFiltrados.length, esTutorDeLaSeccion]);
+  }, [seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '', estudiantesFiltrados.length, esTutorDeLaSeccion]);
 
   // Estados para resumen de datos
   const [resumenData, setResumenData] = useState<any>(null);
@@ -308,7 +308,7 @@ export default function TutorPage() {
     };
 
     loadResumenData();
-  }, [seccionSeleccionada?.grado, seccionSeleccionada?.seccion, estudiantesFiltrados.length, esTutorDeLaSeccion]);
+  }, [seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '', estudiantesFiltrados.length, esTutorDeLaSeccion]);
 
   const handleRegistrarAsistencia = (estudiante: EstudianteInfo) => {
     setSelectedStudent(estudiante);
