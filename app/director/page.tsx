@@ -4540,9 +4540,18 @@ export default function DirectorPage() {
                                             let estudianteCompleto = null;
                                             let estudianteId: string | undefined = undefined;
                                             
-                                            if (estudiante.id) {
-                                              // Si tenemos el ID, usarlo directamente (más confiable)
-                                              estudianteId = estudiante.id;
+                                            // Intentar obtener el ID del formulario de edición primero, luego del objeto estudiante
+                                            const idDelFormulario = estudianteEditForm.id;
+                                            const idDelEstudiante = estudiante.id;
+                                            
+                                            if (idDelFormulario) {
+                                              // Si tenemos el ID en el formulario, usarlo directamente (más confiable)
+                                              estudianteId = idDelFormulario;
+                                              console.log('📝 Usando ID del formulario:', estudianteId);
+                                              estudianteCompleto = await fetchEstudianteById(estudianteId);
+                                            } else if (idDelEstudiante) {
+                                              // Si tenemos el ID en el objeto estudiante, usarlo
+                                              estudianteId = idDelEstudiante;
                                               console.log('📝 Usando ID del estudiante:', estudianteId);
                                               estudianteCompleto = await fetchEstudianteById(estudianteId);
                                             } else {
@@ -4706,7 +4715,8 @@ export default function DirectorPage() {
                                               apellidos = '';
                                             }
                                           }
-                                          setEstudianteEditForm({...estudiante, nombres, apellidos});
+                                          // Asegurar que el ID esté incluido en el formulario de edición
+                                          setEstudianteEditForm({...estudiante, nombres, apellidos, id: estudiante.id});
                                         }}
                                       >
                                         <Edit2 className="h-4 w-4" />
