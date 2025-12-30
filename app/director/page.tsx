@@ -1230,33 +1230,92 @@ export default function DirectorPage() {
       console.log('✅ Estudiante completo encontrado:', estudianteCompleto);
 
       // Fusionar la información editada con la información completa existente
+      // IMPORTANTE: Solo incluir campos de infoEdit que tienen valores válidos (no undefined, null, o vacíos)
       // Esto asegura que no se pierdan campos que no se están editando
       const estudianteActualizado: EstudianteInfo = {
-        ...estudianteCompleto,
-        ...infoEdit,
-        // Preservar nombres y apellidos si no se están editando
-        // Asegurar que siempre tengan un valor (no pueden ser vacíos)
+        ...estudianteCompleto, // Empezar con todos los datos existentes
+        // Solo actualizar nombres si tiene un valor válido
         nombres: (infoEdit.nombres && infoEdit.nombres.trim()) 
           ? infoEdit.nombres.trim() 
-          : (estudianteCompleto.nombres || ''),
+          : estudianteCompleto.nombres,
+        // Solo actualizar apellidos si tiene un valor válido
         apellidos: (infoEdit.apellidos && infoEdit.apellidos.trim()) 
           ? infoEdit.apellidos.trim() 
-          : (estudianteCompleto.apellidos || ''),
-        // Preservar contacto si existe
-        contacto: infoEdit.contacto ? {
-          ...estudianteCompleto.contacto,
-          ...infoEdit.contacto
-        } : estudianteCompleto.contacto,
-        // Preservar tutor si existe
-        tutor: infoEdit.tutor ? {
-          ...estudianteCompleto.tutor,
-          ...infoEdit.tutor
-        } : estudianteCompleto.tutor,
-        // Preservar apoderado si existe
-        apoderado: infoEdit.apoderado ? {
-          ...estudianteCompleto.apoderado,
-          ...infoEdit.apoderado
-        } : estudianteCompleto.apoderado,
+          : estudianteCompleto.apellidos,
+        // Solo actualizar grado si tiene un valor válido
+        grado: (infoEdit.grado !== undefined && infoEdit.grado !== null && infoEdit.grado !== '') 
+          ? infoEdit.grado 
+          : estudianteCompleto.grado,
+        // Solo actualizar sección si tiene un valor válido
+        seccion: (infoEdit.seccion !== undefined && infoEdit.seccion !== null && infoEdit.seccion !== '') 
+          ? infoEdit.seccion 
+          : estudianteCompleto.seccion,
+        // Solo actualizar edad si tiene un valor válido
+        edad: (infoEdit.edad !== undefined && infoEdit.edad !== null) 
+          ? infoEdit.edad 
+          : estudianteCompleto.edad,
+        // Solo actualizar fechaNacimiento si tiene un valor válido
+        fechaNacimiento: (infoEdit.fechaNacimiento !== undefined && infoEdit.fechaNacimiento !== null && infoEdit.fechaNacimiento !== '') 
+          ? infoEdit.fechaNacimiento 
+          : estudianteCompleto.fechaNacimiento,
+        // Solo actualizar fotoPerfil si tiene un valor válido
+        fotoPerfil: (infoEdit.fotoPerfil !== undefined && infoEdit.fotoPerfil !== null && infoEdit.fotoPerfil !== '') 
+          ? infoEdit.fotoPerfil 
+          : estudianteCompleto.fotoPerfil,
+        // Preservar contacto: solo actualizar campos que tienen valores válidos
+        contacto: (() => {
+          if (!infoEdit.contacto) return estudianteCompleto.contacto;
+          const contactoEditado: any = { ...estudianteCompleto.contacto };
+          if (infoEdit.contacto.telefono !== undefined && infoEdit.contacto.telefono !== null && infoEdit.contacto.telefono !== '') {
+            contactoEditado.telefono = infoEdit.contacto.telefono;
+          }
+          if (infoEdit.contacto.email !== undefined && infoEdit.contacto.email !== null && infoEdit.contacto.email !== '') {
+            contactoEditado.email = infoEdit.contacto.email;
+          }
+          if (infoEdit.contacto.nombre !== undefined && infoEdit.contacto.nombre !== null && infoEdit.contacto.nombre !== '') {
+            contactoEditado.nombre = infoEdit.contacto.nombre;
+          }
+          return contactoEditado;
+        })(),
+        // Preservar tutor: solo actualizar campos que tienen valores válidos
+        tutor: (() => {
+          if (!infoEdit.tutor) return estudianteCompleto.tutor;
+          const tutorEditado: any = { ...estudianteCompleto.tutor };
+          if (infoEdit.tutor.nombre !== undefined && infoEdit.tutor.nombre !== null && infoEdit.tutor.nombre !== '') {
+            tutorEditado.nombre = infoEdit.tutor.nombre;
+          }
+          if (infoEdit.tutor.telefono !== undefined && infoEdit.tutor.telefono !== null && infoEdit.tutor.telefono !== '') {
+            tutorEditado.telefono = infoEdit.tutor.telefono;
+          }
+          if (infoEdit.tutor.email !== undefined && infoEdit.tutor.email !== null && infoEdit.tutor.email !== '') {
+            tutorEditado.email = infoEdit.tutor.email;
+          }
+          return tutorEditado;
+        })(),
+        // Preservar apoderado: solo actualizar campos que tienen valores válidos
+        apoderado: (() => {
+          if (!infoEdit.apoderado) return estudianteCompleto.apoderado;
+          const apoderadoEditado: any = { ...estudianteCompleto.apoderado };
+          if (infoEdit.apoderado.nombre !== undefined && infoEdit.apoderado.nombre !== null && infoEdit.apoderado.nombre !== '') {
+            apoderadoEditado.nombre = infoEdit.apoderado.nombre;
+          }
+          if (infoEdit.apoderado.parentesco !== undefined && infoEdit.apoderado.parentesco !== null && infoEdit.apoderado.parentesco !== '') {
+            apoderadoEditado.parentesco = infoEdit.apoderado.parentesco;
+          }
+          if (infoEdit.apoderado.telefono !== undefined && infoEdit.apoderado.telefono !== null && infoEdit.apoderado.telefono !== '') {
+            apoderadoEditado.telefono = infoEdit.apoderado.telefono;
+          }
+          if (infoEdit.apoderado.telefonoAlternativo !== undefined && infoEdit.apoderado.telefonoAlternativo !== null && infoEdit.apoderado.telefonoAlternativo !== '') {
+            apoderadoEditado.telefonoAlternativo = infoEdit.apoderado.telefonoAlternativo;
+          }
+          if (infoEdit.apoderado.email !== undefined && infoEdit.apoderado.email !== null && infoEdit.apoderado.email !== '') {
+            apoderadoEditado.email = infoEdit.apoderado.email;
+          }
+          if (infoEdit.apoderado.direccion !== undefined && infoEdit.apoderado.direccion !== null && infoEdit.apoderado.direccion !== '') {
+            apoderadoEditado.direccion = infoEdit.apoderado.direccion;
+          }
+          return apoderadoEditado;
+        })(),
       };
 
       // Validar que nombres y apellidos estén presentes y no estén vacíos
