@@ -4370,9 +4370,21 @@ export default function DirectorPage() {
                                             } : estudianteCompleto.apoderado,
                                           };
                                           
+                                          // Validar que nombres y apellidos estén presentes antes de guardar
+                                          if (!estudianteActualizado.nombres || !estudianteActualizado.apellidos) {
+                                            toast.error('Los campos nombres y apellidos son requeridos');
+                                            return;
+                                          }
+                                          
                                           // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
                                           // Esto preserva todos los campos existentes y solo actualiza los editados
-                                          await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+                                          try {
+                                            await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
+                                          } catch (error: any) {
+                                            console.error('Error guardando estudiante:', error);
+                                            toast.error(error.message || 'Error al guardar el estudiante');
+                                            return;
+                                          }
                                           
                                           // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
                                           const estudiantesActualizados = await fetchEstudiantes();
