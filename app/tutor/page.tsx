@@ -206,14 +206,33 @@ export default function TutorPage() {
               error: data.error 
             });
 
-            // Extraer el resumen de la respuesta
+            // Verificar si hay un error en la respuesta
+            if (data.error) {
+              console.error(`❌ Error en respuesta API para ${est.nombre}:`, data.error, data.resumen);
+              // No guardar mensajes de error como resumen, mostrar mensaje genérico
+              setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error de configuración: verifica la API key de Google AI.' }));
+              return;
+            }
+
+            // Extraer el resumen de la respuesta (solo si no hay error)
             let resumen = '';
             if (data.resumen && typeof data.resumen === 'string' && data.resumen.trim()) {
-              // Tomar solo la primera línea o las primeras 150 caracteres del resumen
-              const primeraLinea = data.resumen.split('\n')[0].trim();
-              resumen = primeraLinea.length > 150 
-                ? primeraLinea.substring(0, 150) + '...' 
-                : primeraLinea;
+              // Verificar que no sea un mensaje de error
+              const resumenLower = data.resumen.toLowerCase();
+              if (resumenLower.includes('error') && 
+                  (resumenLower.includes('autenticación') || 
+                   resumenLower.includes('api key') || 
+                   resumenLower.includes('configuración') ||
+                   resumenLower.includes('conectar'))) {
+                console.warn(`⚠️ El resumen parece ser un mensaje de error para ${est.nombre}`);
+                resumen = 'Error de configuración: verifica la API key de Google AI.';
+              } else {
+                // Tomar solo la primera línea o las primeras 150 caracteres del resumen
+                const primeraLinea = data.resumen.split('\n')[0].trim();
+                resumen = primeraLinea.length > 150 
+                  ? primeraLinea.substring(0, 150) + '...' 
+                  : primeraLinea;
+              }
             } else if (data.report && typeof data.report === 'string' && data.report.trim()) {
               // Fallback: usar el report completo si no hay resumen
               const primeraLinea = data.report.split('\n')[0].trim();
