@@ -280,27 +280,27 @@ export default function ProfesorPage() {
     ? clases.filter(c => c.profesor === profesor)
     : [];
 
-  // Filtrar grados disponibles según las clases del profesor
+  // Filtrar grados únicos disponibles según las clases del profesor
   const gradosDisponibles = profesor
-    ? Array.from(new Set(clasesDelProfesor.map(c => c.grado))).filter(g => grados.includes(g))
+    ? Array.from(new Set(clasesDelProfesor.map(c => c.grado))).sort()
     : [];
 
-  // Filtrar secciones disponibles según el profesor y grado seleccionado
+  // Filtrar secciones únicas disponibles según el profesor y grado seleccionado
   const seccionesDisponibles = profesor && grado
     ? Array.from(
         new Set(clasesDelProfesor.filter(c => c.grado === grado).map(c => c.seccion))
-      ).filter(s => secciones.includes(s))
+      ).sort()
     : [];
 
-  // Filtrar cursos disponibles según el profesor, grado y sección seleccionados
-  const cursos = profesor && grado && seccion
+  // Filtrar cursos únicos disponibles según el profesor, grado y sección seleccionados
+  const cursosDisponibles = profesor && grado && seccion
     ? Array.from(
         new Set(
           clasesDelProfesor
             .filter(c => c.grado === grado && c.seccion === seccion)
             .map(c => c.nombre)
         )
-      )
+      ).sort()
     : [];
 
   const estudiantesClase = estudiantes.filter(
@@ -608,7 +608,7 @@ export default function ProfesorPage() {
                       <SelectValue placeholder="Selecciona el curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cursos.map(c => (
+                      {cursosDisponibles.map(c => (
                         <SelectItem key={c} value={c}>{c}</SelectItem>
                       ))}
                     </SelectContent>
