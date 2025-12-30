@@ -1268,23 +1268,38 @@ export default function DirectorPage() {
       console.log('✅ Estudiante guardado exitosamente en la base de datos');
 
       // Recargar estudiantes desde la base de datos para reflejar cambios
+      console.log('🔄 Recargando estudiantes desde la base de datos...');
       const estudiantesActualizados = await fetchEstudiantes();
       setEstudiantesInfo(estudiantesActualizados);
       setRefreshKey(prev => prev + 1);
+      console.log('✅ Estudiantes recargados:', estudiantesActualizados.length);
 
+      // Construir el nuevo nombre completo para verificar si cambió
+      const nombreCompletoNuevo = `${estudianteActualizado.nombres} ${estudianteActualizado.apellidos}`.trim();
+      
       // Si el nombre cambió, actualizar el estado y recargar datos
-      if (infoEdit.nombre && infoEdit.nombre !== nombreOriginal) {
+      if (nombreCompletoNuevo !== nombreOriginal) {
+        console.log(`🔄 Nombre cambió: ${nombreOriginal} → ${nombreCompletoNuevo}`);
         // Actualizar el estado y recargar incidencias y notas con el nuevo nombre
-        setSelectedStudent(infoEdit.nombre);
-        const nuevasIncidencias = await getIncidenciasCompletasByStudent(infoEdit.nombre);
+        setSelectedStudent(nombreCompletoNuevo);
+        const nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
         setIncidenciasEstudiante(nuevasIncidencias);
         setReporte(null);
         setMostrarNotas(false);
+        
+        // Recargar la información del estudiante con el nuevo nombre
+        const estudianteRecargado = await fetchEstudiante(nombreCompletoNuevo);
+        if (estudianteRecargado) {
+          setInfoEdit(estudianteRecargado);
+          setFotoPreview(estudianteRecargado.fotoPerfil || '');
+        }
       } else {
-        // Si el nombre no cambió, solo recargar los datos del estudiante
-        const estudianteActualizado = await fetchEstudiante(infoEdit.nombre || nombreOriginal);
-        if (estudianteActualizado) {
-          setInfoEdit(estudianteActualizado);
+        console.log('✅ Nombre no cambió, recargando datos del estudiante...');
+        // Si el nombre no cambió, recargar los datos del estudiante desde la base de datos
+        const estudianteRecargado = await fetchEstudiante(nombreOriginal);
+        if (estudianteRecargado) {
+          setInfoEdit(estudianteRecargado);
+          setFotoPreview(estudianteRecargado.fotoPerfil || '');
         }
       }
       
@@ -1308,9 +1323,11 @@ export default function DirectorPage() {
         };
       });
       setListaEstudiantes(listaFinal);
+      console.log('✅ Lista de estudiantes actualizada');
       setRefreshKey(prev => prev + 1); // Forzar re-render en toda la página
       setEditando(false);
-      toast.success('Información del estudiante guardada exitosamente');
+      toast.success('Información actualizada exitosamente en la base de datos');
+      console.log('✅ Guardado completado exitosamente');
     } catch (error: any) {
       console.error('Error guardando estudiante:', error);
       toast.error('Error al guardar la información del estudiante');
