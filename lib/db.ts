@@ -1441,10 +1441,19 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
     })).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   } catch (error) {
     console.error('Error obteniendo incidencias completas del estudiante:', error);
-    // Fallback: buscar solo por nombre
+    // Fallback: buscar solo por nombre o ID
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentNameOrId);
     const incidencias = await getIncidencias();
     return incidencias
-      .filter(inc => inc.studentName === studentName)
+      .filter(inc => {
+        if (isUUID) {
+          // Si es un ID, buscar por estudianteId si está disponible
+          return (inc as any).estudianteId === studentNameOrId;
+        } else {
+          // Si es un nombre, buscar por studentName
+          return inc.studentName === studentNameOrId;
+        }
+      })
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   }
 }
