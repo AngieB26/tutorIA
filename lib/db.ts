@@ -1360,41 +1360,73 @@ export async function marcarIncidenciaResuelta(
 
 export async function getIncidenciasCompletasByStudent(studentNameOrId: string): Promise<Incidencia[]> {
   try {
+    console.log(`🔍 getIncidenciasCompletasByStudent llamado con: "${studentNameOrId}"`);
+    
     // Detectar si el parámetro es un ID (UUID) o un nombre
     // Los UUIDs tienen el formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 caracteres con guiones)
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentNameOrId);
+    console.log(`📋 Es UUID: ${isUUID}`);
     
     let estudiante = null;
     
     if (isUUID) {
       // Si es un ID, buscar directamente por ID
       console.log(`🔍 Buscando estudiante por ID: "${studentNameOrId}"`);
-      estudiante = await prisma.estudiante.findUnique({
-        where: { id: studentNameOrId }
-      });
-      if (estudiante) {
-        console.log(`✅ Estudiante encontrado por ID: ${estudiante.id}`);
+      try {
+        estudiante = await prisma.estudiante.findUnique({
+          where: { id: studentNameOrId }
+        });
+        if (estudiante) {
+          console.log(`✅ Estudiante encontrado por ID: ${estudiante.id}`);
+        } else {
+          console.log(`⚠️ Estudiante no encontrado por ID: "${studentNameOrId}"`);
+        }
+      } catch (error) {
+        console.error(`❌ Error buscando estudiante por ID:`, error);
+        throw error;
       }
     } else {
       // Si es un nombre, buscar por nombre
       console.log(`🔍 Buscando estudiante por nombre: "${studentNameOrId}"`);
-      estudiante = await prisma.estudiante.findFirst({
-        where: {
-          OR: [
-            // Buscar por nombre completo (construido desde nombres y apellidos)
-            {
-              nombres: {
-                contains: studentNameOrId.split(' ')[0] || ''
-              },
-              apellidos: {
-                contains: studentNameOrId.split(' ').slice(1).join(' ') || ''
-              }
-            }
-          ]
+      try {
+        const partes = studentNameOrId.trim().split(/\s+/);
+        const nombresSearch = partes.length > 0 ? partes[0] : '';
+        const apellidosSearch = partes.length > 1 ? partes.slice(1).join(' ') : '';
+        
+        const whereConditions: any[] = [];
+        if (nombresSearch) {
+          whereConditions.push({ nombres: { contains: nombresSearch, mode: 'insensitive' } });
         }
-      });
-      if (estudiante) {
-        console.log(`✅ Estudiante encontrado por nombre (ID: ${estudiante.id})`);
+        if (apellidosSearch) {
+          whereConditions.push({ apellidos: { contains: apellidosSearch, mode: 'insensitive' } });
+        }
+        
+        if (whereConditions.length === 0) {
+          // Si no hay condiciones, buscar por cualquier parte del nombre
+          estudiante = await prisma.estudiante.findFirst({
+            where: {
+              OR: [
+                { nombres: { contains: studentNameOrId, mode: 'insensitive' } },
+                { apellidos: { contains: studentNameOrId, mode: 'insensitive' } }
+              ]
+            }
+          });
+        } else {
+          estudiante = await prisma.estudiante.findFirst({
+            where: {
+              AND: whereConditions
+            }
+          });
+        }
+        
+        if (estudiante) {
+          console.log(`✅ Estudiante encontrado por nombre (ID: ${estudiante.id})`);
+        } else {
+          console.log(`⚠️ Estudiante no encontrado por nombre: "${studentNameOrId}"`);
+        }
+      } catch (error) {
+        console.error(`❌ Error buscando estudiante por nombre:`, error);
+        throw error;
       }
     }
 
@@ -1404,48 +1436,67 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
     if (estudiante) {
       // Si encontramos el estudiante, buscar por ID (más confiable)
       whereClause.estudianteId = estudiante.id;
+      console.log(`🔍 Buscando incidencias por estudianteId: ${estudiante.id}`);
     } else if (isUUID) {
       // Si es un ID pero no encontramos el estudiante, buscar por estudianteId directamente
       whereClause.estudianteId = studentNameOrId;
+      console.log(`🔍 Buscando incidencias por estudianteId (directo): ${studentNameOrId}`);
     } else {
       // Si es un nombre y no encontramos el estudiante, buscar por nombre
       whereClause.studentName = studentNameOrId;
+      console.log(`🔍 Buscando incidencias por studentName: "${studentNameOrId}"`);
     }
     
-    const incidencias = await prisma.incidencia.findMany({
-      where: whereClause,
-      orderBy: { timestamp: 'desc' }
-    });
-    
-    console.log(`📊 Encontradas ${incidencias.length} incidencias para el estudiante`);
+    let incidencias;
+    try {
+      incidencias = await prisma.incidencia.findMany({
+        where: whereClause,
+        orderBy: { timestamp: 'desc' }
+      });
+      console.log(`📊 Encontradas ${incidencias.length} incidencias para el estudiante`);
+    } catch (error) {
+      console.error(`❌ Error buscando incidencias:`, error);
+      throw error;
+    }
 
     // Mapear a formato Incidencia
-    return incidencias.map(inc => ({
-      id: inc.id,
-      studentName: inc.studentName,
-      tipo: inc.tipo as any,
-      subtipo: inc.subtipo as any,
-      gravedad: inc.gravedad as any,
-      descripcion: inc.descripcion,
-      fecha: inc.fecha.toISOString().split('T')[0],
-      timestamp: inc.timestamp?.getTime(),
-      profesor: inc.profesor,
-      tutor: inc.tutorNombre || undefined,
-      lugar: inc.lugar || undefined,
-      derivacion: inc.derivacion as any,
-      resuelta: inc.resuelta || false,
-      fechaResolucion: inc.fechaResolucion?.toISOString().split('T')[0],
-      resueltaPor: inc.resueltaPor || undefined,
-      estado: inc.estado as any,
-      historialEstado: (inc.historialEstado as any) || [],
-    })).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    try {
+      const incidenciasMapeadas = incidencias.map(inc => ({
+        id: inc.id,
+        studentName: inc.studentName || '',
+        tipo: inc.tipo as any,
+        subtipo: inc.subtipo as any,
+        gravedad: inc.gravedad as any,
+        descripcion: inc.descripcion || '',
+        fecha: inc.fecha.toISOString().split('T')[0],
+        timestamp: inc.timestamp?.getTime(),
+        profesor: inc.profesor || '',
+        tutor: inc.tutorNombre || undefined,
+        lugar: inc.lugar || undefined,
+        derivacion: inc.derivacion as any,
+        resuelta: inc.resuelta || false,
+        fechaResolucion: inc.fechaResolucion?.toISOString().split('T')[0],
+        resueltaPor: inc.resueltaPor || undefined,
+        estado: inc.estado as any,
+        historialEstado: (inc.historialEstado as any) || [],
+      })).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      
+      console.log(`✅ Retornando ${incidenciasMapeadas.length} incidencias mapeadas`);
+      return incidenciasMapeadas;
+    } catch (error) {
+      console.error(`❌ Error mapeando incidencias:`, error);
+      throw error;
+    }
   } catch (error) {
-    console.error('Error obteniendo incidencias completas del estudiante:', error);
-    // Fallback: buscar solo por nombre o ID
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentNameOrId);
-    const incidencias = await getIncidencias();
-    return incidencias
-      .filter(inc => {
+    console.error('❌ Error obteniendo incidencias completas del estudiante:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace available');
+    
+    // Fallback: buscar solo por nombre o ID usando getIncidencias
+    try {
+      console.log(`🔄 Intentando fallback para: "${studentNameOrId}"`);
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentNameOrId);
+      const incidencias = await getIncidencias();
+      const filtradas = incidencias.filter(inc => {
         if (isUUID) {
           // Si es un ID, buscar por estudianteId si está disponible
           return (inc as any).estudianteId === studentNameOrId;
@@ -1453,8 +1504,14 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
           // Si es un nombre, buscar por studentName
           return inc.studentName === studentNameOrId;
         }
-      })
-      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      });
+      console.log(`✅ Fallback: encontradas ${filtradas.length} incidencias`);
+      return filtradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    } catch (fallbackError) {
+      console.error('❌ Error en fallback:', fallbackError);
+      // Si el fallback también falla, retornar array vacío
+      return [];
+    }
   }
 }
 

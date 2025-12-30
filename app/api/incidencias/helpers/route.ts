@@ -24,15 +24,33 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === 'completas' && studentName) {
-      const incidencias = await getIncidenciasCompletasByStudent(studentName);
-      return NextResponse.json(incidencias);
+      try {
+        console.log(`📥 API: Obteniendo incidencias para: "${studentName}"`);
+        const incidencias = await getIncidenciasCompletasByStudent(studentName);
+        console.log(`✅ API: Retornando ${incidencias.length} incidencias`);
+        return NextResponse.json(incidencias);
+      } catch (error) {
+        console.error('❌ API: Error en getIncidenciasCompletasByStudent:', error);
+        console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+        return NextResponse.json(
+          { 
+            error: 'Error al obtener incidencias completas del estudiante',
+            details: error instanceof Error ? error.message : String(error)
+          },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({ error: 'Acción no válida' }, { status: 400 });
   } catch (error) {
-    console.error('Error en helpers de incidencias:', error);
+    console.error('❌ API: Error general en helpers de incidencias:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
-      { error: 'Error en helpers de incidencias' },
+      { 
+        error: 'Error en helpers de incidencias',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
