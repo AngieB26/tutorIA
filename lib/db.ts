@@ -1760,31 +1760,149 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
 
     // Mapear a formato Incidencia
     try {
-      const incidenciasMapeadas = incidencias.map(inc => ({
+      console.log(`🔄 Mapeando ${incidencias.length} incidencias a formato Incidencia...`);
+      const incidenciasMapeadas = incidencias.map((inc, index) => {
+        try {
+          // El campo fecha en la BD es String, no Date
+          let fechaFormateada = '';
+          if (inc.fecha) {
+            if (typeof inc.fecha === 'string') {
+              fechaFormateada = inc.fecha;
+            } else if (inc.fecha instanceof Date) {
+              fechaFormateada = inc.fecha.toISOString().split('T')[0];
+            } else {
+              fechaFormateada = String(inc.fecha);
+            }
+          }
+          
+          // El campo fechaResolucion también es String
+          let fechaResolucionFormateada: string | undefined = undefined;
+          if (inc.fechaResolucion) {
+            if (typeof inc.fechaResolucion === 'string') {
+              fechaResolucionFormateada = inc.fechaResolucion;
+            } else if (inc.fechaResolucion instanceof Date) {
+              fechaResolucionFormateada = inc.fechaResolucion.toISOString().split('T')[0];
+            }
+          }
+          
+          // El timestamp es BigInt, convertirlo a number
+          let timestampNumber: number | undefined = undefined;
+          if (inc.timestamp) {
+            if (typeof inc.timestamp === 'bigint') {
+              timestampNumber = Number(inc.timestamp);
+            } else if (typeof inc.timestamp === 'number') {
+              timestampNumber = inc.timestamp;
+            } else if (inc.timestamp instanceof Date) {
+              timestampNumber = inc.timestamp.getTime();
+            }
+          }
+          
+          // Parsear historialEstado si es string
+          let historialEstadoParsed: any[] = [];
+          if (inc.historialEstado) {
+            if (typeof inc.historialEstado === 'string') {
+              try {
+                historialEstadoParsed = JSON.parse(inc.historialEstado);
+              } catch {
+                historialEstadoParsed = [];
+              }
+            } else if (Array.isArray(inc.historialEstado)) {
+              historialEstadoParsed = inc.historialEstado;
+            }
+          }
+          
+          const incidenciaMapeada = {
+            id: inc.id,
+            studentName: inc.studentName || '',
+            tipo: inc.tipo as any,
+            subtipo: inc.subtipo as any,
+            gravedad: inc.gravedad as any,
+            descripcion: inc.descripcion || '',
+            fecha: fechaFormateada,
+            timestamp: timestampNumber,
+            profesor: inc.profesor || '',
+            tutor: inc.tutorNombre || undefined,
+            lugar: inc.lugar || undefined,
+            derivacion: inc.derivacion as any,
+            resuelta: inc.resuelta || false,
+            fechaResolucion: fechaResolucionFormateada,
+            resueltaPor: inc.resueltaPor || undefined,
+            estado: inc.estado as any,
+            historialEstado: historialEstadoParsed,
+          };
+          
+          if (index < 3) {
+            console.log(`📋 Incidencia ${index + 1} mapeada:`, {
+              id: incidenciaMapeada.id,
+              studentName: incidenciaMapeada.studentName,
+              fecha: incidenciaMapeada.fecha,
+              tipo: incidenciaMapeada.tipo
+            });
+          }
+          
+          return incidenciaMapeada;
+        } catch (mapError) {
+          console.error(`❌ Error mapeando incidencia ${inc.id}:`, mapError);
+          // Retornar un objeto básico para no romper todo
+          return {
+            id: inc.id,
+            studentName: inc.studentName || '',
+            tipo: inc.tipo as any,
+            subtipo: inc.subtipo as any,
+            gravedad: inc.gravedad as any,
+            descripcion: inc.descripcion || '',
+            fecha: typeof inc.fecha === 'string' ? inc.fecha : String(inc.fecha || ''),
+            timestamp: typeof inc.timestamp === 'bigint' ? Number(inc.timestamp) : (inc.timestamp as any),
+            profesor: inc.profesor || '',
+            tutor: inc.tutorNombre || undefined,
+            lugar: inc.lugar || undefined,
+            derivacion: inc.derivacion as any,
+            resuelta: inc.resuelta || false,
+            fechaResolucion: typeof inc.fechaResolucion === 'string' ? inc.fechaResolucion : undefined,
+            resueltaPor: inc.resueltaPor || undefined,
+            estado: inc.estado as any,
+            historialEstado: [],
+          };
+        }
+      }).filter(inc => inc !== null && inc !== undefined); // Filtrar cualquier null/undefined
+      
+      // Ordenar por fecha
+      const incidenciasOrdenadas = incidenciasMapeadas.sort((a, b) => {
+        try {
+          const fechaA = new Date(a.fecha).getTime();
+          const fechaB = new Date(b.fecha).getTime();
+          return fechaB - fechaA;
+        } catch {
+          return 0;
+        }
+      });
+      
+      console.log(`✅ Retornando ${incidenciasOrdenadas.length} incidencias mapeadas y ordenadas`);
+      return incidenciasOrdenadas;
+    } catch (error) {
+      console.error(`❌ Error mapeando incidencias:`, error);
+      console.error(`❌ Stack trace:`, error instanceof Error ? error.stack : 'No stack trace');
+      // En lugar de lanzar el error, retornar las incidencias sin mapear (formato básico)
+      console.log(`⚠️ Retornando incidencias sin mapear completo debido a error`);
+      return incidencias.map(inc => ({
         id: inc.id,
         studentName: inc.studentName || '',
         tipo: inc.tipo as any,
         subtipo: inc.subtipo as any,
         gravedad: inc.gravedad as any,
         descripcion: inc.descripcion || '',
-        fecha: inc.fecha.toISOString().split('T')[0],
-        timestamp: inc.timestamp?.getTime(),
+        fecha: typeof inc.fecha === 'string' ? inc.fecha : String(inc.fecha || ''),
+        timestamp: typeof inc.timestamp === 'bigint' ? Number(inc.timestamp) : (inc.timestamp as any),
         profesor: inc.profesor || '',
         tutor: inc.tutorNombre || undefined,
         lugar: inc.lugar || undefined,
         derivacion: inc.derivacion as any,
         resuelta: inc.resuelta || false,
-        fechaResolucion: inc.fechaResolucion?.toISOString().split('T')[0],
+        fechaResolucion: typeof inc.fechaResolucion === 'string' ? inc.fechaResolucion : undefined,
         resueltaPor: inc.resueltaPor || undefined,
         estado: inc.estado as any,
-        historialEstado: (inc.historialEstado as any) || [],
-      })).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-      
-      console.log(`✅ Retornando ${incidenciasMapeadas.length} incidencias mapeadas`);
-      return incidenciasMapeadas;
-    } catch (error) {
-      console.error(`❌ Error mapeando incidencias:`, error);
-      throw error;
+        historialEstado: [],
+      }));
     }
   } catch (error) {
     console.error('❌ Error obteniendo incidencias completas del estudiante:', error);
