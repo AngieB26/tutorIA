@@ -28,41 +28,49 @@ import {
 export async function getEstudiantesInfo(): Promise<EstudianteInfo[]> {
   try {
     const estudiantes = await prisma.estudiante.findMany({
-      orderBy: { nombre: 'asc' }
+      orderBy: [
+        { apellidos: 'asc' },
+        { nombres: 'asc' }
+      ]
     });
 
-    return estudiantes.map(est => ({
-      nombre: est.nombre,
-      grado: est.grado,
-      seccion: est.seccion,
-      edad: est.edad ?? undefined,
-      fechaNacimiento: est.fechaNacimiento ?? undefined,
-      fotoPerfil: est.fotoPerfil ?? undefined,
-      contacto: {
-        telefono: est.contactoTelefono ?? undefined,
-        email: est.contactoEmail ?? undefined,
-        nombre: est.contactoNombre ?? undefined,
-        tutor: est.tutorNombre ?? undefined,
-      },
-      tutor: {
-        nombre: est.tutorNombre ?? undefined,
-        telefono: est.tutorTelefono ?? undefined,
-        email: est.tutorEmail ?? undefined,
-      },
-      apoderado: {
-        nombre: est.apoderadoNombre ?? undefined,
-        parentesco: est.apoderadoParentesco ?? undefined,
-        telefono: est.apoderadoTelefono ?? undefined,
-        telefonoAlternativo: est.apoderadoTelefonoAlt ?? undefined,
-        email: est.apoderadoEmail ?? undefined,
-        direccion: est.apoderadoDireccion ?? undefined,
-      },
-      nombres: (est as any).nombres ?? undefined,
-      apellidos: (est as any).apellidos ?? undefined,
-      asistencias: est.asistencias ?? undefined,
-      ausencias: est.ausencias ?? undefined,
-      tardanzas: est.tardanzas ?? undefined,
-    }));
+    return estudiantes.map(est => {
+      // Construir nombre completo desde nombres y apellidos si no existe
+      const nombreCompleto = est.nombre || `${est.nombres} ${est.apellidos}`.trim();
+      
+      return {
+        nombre: nombreCompleto,
+        grado: est.grado,
+        seccion: est.seccion,
+        edad: est.edad ?? undefined,
+        fechaNacimiento: est.fechaNacimiento ?? undefined,
+        fotoPerfil: est.fotoPerfil ?? undefined,
+        contacto: {
+          telefono: est.contactoTelefono ?? undefined,
+          email: est.contactoEmail ?? undefined,
+          nombre: est.contactoNombre ?? undefined,
+          tutor: est.tutorNombre ?? undefined,
+        },
+        tutor: {
+          nombre: est.tutorNombre ?? undefined,
+          telefono: est.tutorTelefono ?? undefined,
+          email: est.tutorEmail ?? undefined,
+        },
+        apoderado: {
+          nombre: est.apoderadoNombre ?? undefined,
+          parentesco: est.apoderadoParentesco ?? undefined,
+          telefono: est.apoderadoTelefono ?? undefined,
+          telefonoAlternativo: est.apoderadoTelefonoAlt ?? undefined,
+          email: est.apoderadoEmail ?? undefined,
+          direccion: est.apoderadoDireccion ?? undefined,
+        },
+        nombres: est.nombres,
+        apellidos: est.apellidos,
+        asistencias: est.asistencias ?? undefined,
+        ausencias: est.ausencias ?? undefined,
+        tardanzas: est.tardanzas ?? undefined,
+      };
+    });
   } catch (error) {
     console.error('Error obteniendo estudiantes:', error);
     return [];
@@ -71,14 +79,33 @@ export async function getEstudiantesInfo(): Promise<EstudianteInfo[]> {
 
 export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo | null> {
   try {
-    const estudiante = await prisma.estudiante.findFirst({
+    // Intentar buscar por nombre completo primero (para compatibilidad)
+    let estudiante = await prisma.estudiante.findFirst({
       where: { nombre }
     });
 
+    // Si no se encuentra, intentar buscar por nombres y apellidos separados
+    if (!estudiante && nombre.includes(' ')) {
+      const partes = nombre.trim().split(/\s+/);
+      if (partes.length >= 2) {
+        const apellidos = partes[partes.length - 1];
+        const nombres = partes.slice(0, -1).join(' ');
+        estudiante = await prisma.estudiante.findFirst({
+          where: {
+            nombres: nombres,
+            apellidos: apellidos
+          }
+        });
+      }
+    }
+
     if (!estudiante) return null;
 
+    // Construir nombre completo desde nombres y apellidos si no existe
+    const nombreCompleto = estudiante.nombre || `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+
     return {
-      nombre: estudiante.nombre,
+      nombre: nombreCompleto,
       grado: estudiante.grado,
       seccion: estudiante.seccion,
       edad: estudiante.edad ?? undefined,
@@ -103,8 +130,8 @@ export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo 
         email: estudiante.apoderadoEmail ?? undefined,
         direccion: estudiante.apoderadoDireccion ?? undefined,
       },
-      nombres: (estudiante as any).nombres ?? undefined,
-      apellidos: (estudiante as any).apellidos ?? undefined,
+      nombres: estudiante.nombres,
+      apellidos: estudiante.apellidos,
       asistencias: estudiante.asistencias ?? undefined,
       ausencias: estudiante.ausencias ?? undefined,
       tardanzas: estudiante.tardanzas ?? undefined,
@@ -117,28 +144,33 @@ export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo 
 
 export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOriginal?: string): Promise<void> {
   try {
-    // Si se proporciona nombreOriginal, buscar por ese nombre (para actualizaciones)
-    // Si no, buscar por el nombre actual
-    const nombreBusqueda = nombreOriginal || estudiante.nombre;
-    
-    const existente = await prisma.estudiante.findFirst({
-      where: { nombre: nombreBusqueda }
-    });
-
-    // Si se proporcionan nombres y apellidos por separado, combinarlos en nombre
-    // Si no se proporciona nombre pero sí nombres y apellidos, combinarlos
-    let nombreCompleto = estudiante.nombre;
-    if ((!nombreCompleto || nombreCompleto.trim() === '') && estudiante.nombres && estudiante.apellidos) {
-      nombreCompleto = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
-    } else if (estudiante.nombres && estudiante.apellidos) {
-      // Si ya hay nombre pero también hay nombres y apellidos, usar los separados para actualizar
-      nombreCompleto = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
+    // Asegurar que nombres y apellidos estén presentes (campos principales)
+    if (!estudiante.nombres || !estudiante.apellidos) {
+      throw new Error('Los campos nombres y apellidos son requeridos');
     }
 
+    // Buscar por nombres y apellidos (campos principales)
+    let existente = await prisma.estudiante.findFirst({
+      where: {
+        nombres: estudiante.nombres,
+        apellidos: estudiante.apellidos
+      }
+    });
+
+    // Si no se encuentra y hay nombreOriginal, intentar buscar por nombre (compatibilidad)
+    if (!existente && nombreOriginal) {
+      existente = await prisma.estudiante.findFirst({
+        where: { nombre: nombreOriginal }
+      });
+    }
+
+    // Construir nombre completo desde nombres y apellidos
+    const nombreCompleto = `${estudiante.nombres.trim()} ${estudiante.apellidos.trim()}`.trim();
+
     const data = {
-      nombre: nombreCompleto,
-      nombres: estudiante.nombres ?? null,
-      apellidos: estudiante.apellidos ?? null,
+      nombre: nombreCompleto, // Campo calculado para compatibilidad
+      nombres: estudiante.nombres.trim(), // Campo principal
+      apellidos: estudiante.apellidos.trim(), // Campo principal
       grado: estudiante.grado,
       seccion: estudiante.seccion,
       edad: estudiante.edad ?? null,
@@ -446,10 +478,26 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       }];
     }
 
-    // Buscar estudianteId por nombre y obtener grado/sección
-    const estudiante = await prisma.estudiante.findFirst({
+    // Buscar estudianteId por nombre (intentar por nombre completo o por nombres y apellidos)
+    let estudiante = await prisma.estudiante.findFirst({
       where: { nombre: newIncidencia.studentName }
     });
+    
+    // Si no se encuentra, intentar buscar por nombres y apellidos separados
+    if (!estudiante && newIncidencia.studentName.includes(' ')) {
+      const partes = newIncidencia.studentName.trim().split(/\s+/);
+      if (partes.length >= 2) {
+        const apellidos = partes[partes.length - 1];
+        const nombres = partes.slice(0, -1).join(' ');
+        estudiante = await prisma.estudiante.findFirst({
+          where: {
+            nombres: nombres,
+            apellidos: apellidos
+          }
+        });
+      }
+    }
+    
     const estudianteId = estudiante?.id ?? null;
 
     // Buscar profesorId por nombre (el campo profesor contiene el nombre del profesor que registra)
@@ -1222,7 +1270,12 @@ export async function saveAsistenciaClases(registros: RegistroAsistenciaClase[])
     // Pre-cargar todos los estudiantes para buscar IDs (una sola vez para todos los registros)
     const todosEstudiantes = await prisma.estudiante.findMany();
     const mapEstudianteId = new Map<string, string>();
-    todosEstudiantes.forEach(est => mapEstudianteId.set(est.nombre, est.id));
+    // Mapear tanto por nombre completo como por nombres+apellidos
+    todosEstudiantes.forEach(est => {
+      const nombreCompleto = est.nombre || `${est.nombres} ${est.apellidos}`.trim();
+      mapEstudianteId.set(nombreCompleto, est.id);
+      mapEstudianteId.set(`${est.nombres} ${est.apellidos}`.trim(), est.id);
+    });
 
     for (const reg of registros) {
       // Preparar entries con estudianteId
@@ -1278,7 +1331,12 @@ export async function addRegistroAsistenciaClase(
     // Pre-cargar todos los estudiantes para buscar IDs
     const todosEstudiantes = await prisma.estudiante.findMany();
     const mapEstudianteId = new Map<string, string>();
-    todosEstudiantes.forEach(est => mapEstudianteId.set(est.nombre, est.id));
+    // Mapear tanto por nombre completo como por nombres+apellidos
+    todosEstudiantes.forEach(est => {
+      const nombreCompleto = est.nombre || `${est.nombres} ${est.apellidos}`.trim();
+      mapEstudianteId.set(nombreCompleto, est.id);
+      mapEstudianteId.set(`${est.nombres} ${est.apellidos}`.trim(), est.id);
+    });
 
     // Preparar entries con estudianteId
     const entriesData = Object.entries(rec.entries || {}).map(([studentName, estado]) => {

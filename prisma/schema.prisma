@@ -8,9 +8,9 @@ datasource db {
 
 model Estudiante {
   id                   String                    @id @default(uuid())
-  nombre               String
-  nombres              String?
-  apellidos            String?
+  nombre               String?                   // Campo calculado para compatibilidad
+  nombres              String                    // Campo principal
+  apellidos            String                    // Campo principal
   grado                String
   seccion              String
   edad                 Int?
@@ -39,6 +39,7 @@ model Estudiante {
 
   @@index([grado, seccion])
   @@index([nombre])
+  @@index([nombres, apellidos])
 }
 
 model Tutor {
