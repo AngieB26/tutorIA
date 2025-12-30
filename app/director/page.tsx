@@ -752,11 +752,11 @@ export default function DirectorPage() {
   const [nuevoGradoInput, setNuevoGradoInput] = useState('');
   const [mostrarAgregarSeccion, setMostrarAgregarSeccion] = useState(false);
   const [nuevaSeccionInput, setNuevaSeccionInput] = useState('');
-  // Estados para diálogo de confirmación
-  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
-  const [confirmacionTipo, setConfirmacionTipo] = useState<'grado' | 'seccion' | null>(null);
-  const [confirmacionNombre, setConfirmacionNombre] = useState<string>('');
-  const [confirmacionCallback, setConfirmacionCallback] = useState<(() => Promise<void>) | null>(null);
+  // Estados para diálogo de información cuando hay estudiantes
+  const [mostrarInfoEstudiantes, setMostrarInfoEstudiantes] = useState(false);
+  const [infoTipo, setInfoTipo] = useState<'grado' | 'seccion' | null>(null);
+  const [infoNombre, setInfoNombre] = useState<string>('');
+  const [infoMensaje, setInfoMensaje] = useState<string>('');
   
   // Filtros para administración de estudiantes
   const [filtroAdminGrado, setFiltroAdminGrado] = useState('');
@@ -4670,35 +4670,31 @@ export default function DirectorPage() {
                                 .map(([seccion, count]) => `${count} en sección ${seccion}`)
                                 .join(', ');
                               
-                              toast.error(`No se puede eliminar el grado "${grado}": hay ${totalEstudiantes} estudiante(s) (${seccionesList})`);
+                              // Mostrar diálogo de información
+                              setInfoTipo('grado');
+                              setInfoNombre(grado);
+                              setInfoMensaje(`No se puede eliminar el grado "${grado}": hay ${totalEstudiantes} estudiante(s) (${seccionesList})`);
+                              setMostrarInfoEstudiantes(true);
                               return;
                             }
                             
                             // Si no tiene estudiantes, mostrar el diálogo de confirmación
-                            console.log('📋 No hay estudiantes, mostrando diálogo de confirmación...');
-                            setConfirmacionTipo('grado');
-                            setConfirmacionNombre(grado);
-                            setConfirmacionCallback(async () => {
-                              try {
-                                console.log('✅ Usuario confirmó eliminación');
-                                const nuevosGrados = grados.filter(g => g !== grado);
-                                console.log('💾 Nuevos grados después de filtrar:', nuevosGrados);
-                                console.log('💾 Guardando en BD...');
-                                await saveGrados(nuevosGrados);
-                                console.log('✅ Guardado en BD exitoso');
-                                setGrados(nuevosGrados);
-                                console.log('✅ Estado local actualizado');
-                                // Esperar un poco antes de recargar para evitar race conditions
-                                setTimeout(() => {
-                                  setRefreshKey(prev => prev + 1);
-                                }, 500);
-                                toast.success('Grado eliminado exitosamente');
-                              } catch (error) {
-                                console.error('❌ Error eliminando grado:', error);
-                                toast.error(`Error al eliminar el grado: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-                              }
-                            });
-                            setMostrarConfirmacion(true);
+                            if (!window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`)) {
+                              return;
+                            }
+                            
+                            try {
+                              const nuevosGrados = grados.filter(g => g !== grado);
+                              await saveGrados(nuevosGrados);
+                              setGrados(nuevosGrados);
+                              setTimeout(() => {
+                                setRefreshKey(prev => prev + 1);
+                              }, 500);
+                              toast.success('Grado eliminado exitosamente');
+                            } catch (error) {
+                              console.error('❌ Error eliminando grado:', error);
+                              toast.error(`Error al eliminar el grado: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+                            }
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
                         >
@@ -4831,35 +4827,31 @@ export default function DirectorPage() {
                                 .map(([grado, count]) => `${count} en grado ${grado}`)
                                 .join(', ');
                               
-                              toast.error(`No se puede eliminar la sección "${seccion}": hay ${totalEstudiantes} estudiante(s) (${gradosList})`);
+                              // Mostrar diálogo de información
+                              setInfoTipo('seccion');
+                              setInfoNombre(seccion);
+                              setInfoMensaje(`No se puede eliminar la sección "${seccion}": hay ${totalEstudiantes} estudiante(s) (${gradosList})`);
+                              setMostrarInfoEstudiantes(true);
                               return;
                             }
                             
                             // Si no tiene estudiantes, mostrar el diálogo de confirmación
-                            console.log('📋 No hay estudiantes, mostrando diálogo de confirmación...');
-                            setConfirmacionTipo('seccion');
-                            setConfirmacionNombre(seccion);
-                            setConfirmacionCallback(async () => {
-                              try {
-                                console.log('✅ Usuario confirmó eliminación');
-                                const nuevasSecciones = secciones.filter(s => s !== seccion);
-                                console.log('💾 Nuevas secciones después de filtrar:', nuevasSecciones);
-                                console.log('💾 Guardando en BD...');
-                                await saveSecciones(nuevasSecciones);
-                                console.log('✅ Guardado en BD exitoso');
-                                setSecciones(nuevasSecciones);
-                                console.log('✅ Estado local actualizado');
-                                // Esperar un poco antes de recargar para evitar race conditions
-                                setTimeout(() => {
-                                  setRefreshKey(prev => prev + 1);
-                                }, 500);
-                                toast.success('Sección eliminada exitosamente');
-                              } catch (error) {
-                                console.error('❌ Error eliminando sección:', error);
-                                toast.error(`Error al eliminar la sección: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-                              }
-                            });
-                            setMostrarConfirmacion(true);
+                            if (!window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`)) {
+                              return;
+                            }
+                            
+                            try {
+                              const nuevasSecciones = secciones.filter(s => s !== seccion);
+                              await saveSecciones(nuevasSecciones);
+                              setSecciones(nuevasSecciones);
+                              setTimeout(() => {
+                                setRefreshKey(prev => prev + 1);
+                              }, 500);
+                              toast.success('Sección eliminada exitosamente');
+                            } catch (error) {
+                              console.error('❌ Error eliminando sección:', error);
+                              toast.error(`Error al eliminar la sección: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+                            }
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
                         >
@@ -5355,44 +5347,33 @@ export default function DirectorPage() {
         </div>
       )}
 
-      {/* Diálogo de confirmación para eliminar grados/secciones */}
-      {mostrarConfirmacion && (
+      {/* Diálogo de información cuando hay estudiantes */}
+      {mostrarInfoEstudiantes && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <Card className="w-full max-w-md mx-4">
             <CardHeader>
-              <CardTitle className="text-lg text-gray-900">
-                Confirmar eliminación
+              <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                No se puede eliminar
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-700 mb-4">
-                ¿Estás seguro de eliminar {confirmacionTipo === 'grado' ? 'el grado' : 'la sección'} <strong>"{confirmacionNombre}"</strong>?
+                {infoMensaje}
               </p>
-              <div className="flex gap-3 justify-end">
+              <p className="text-sm text-gray-600 mb-4">
+                Para poder eliminar {infoTipo === 'grado' ? 'el grado' : 'la sección'} <strong>"{infoNombre}"</strong>, primero debes reasignar o eliminar los estudiantes asociados.
+              </p>
+              <div className="flex justify-end">
                 <Button
-                  variant="outline"
                   onClick={() => {
-                    setMostrarConfirmacion(false);
-                    setConfirmacionTipo(null);
-                    setConfirmacionNombre('');
-                    setConfirmacionCallback(null);
+                    setMostrarInfoEstudiantes(false);
+                    setInfoTipo(null);
+                    setInfoNombre('');
+                    setInfoMensaje('');
                   }}
                 >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    if (confirmacionCallback) {
-                      await confirmacionCallback();
-                    }
-                    setMostrarConfirmacion(false);
-                    setConfirmacionTipo(null);
-                    setConfirmacionNombre('');
-                    setConfirmacionCallback(null);
-                  }}
-                >
-                  Eliminar
+                  Entendido
                 </Button>
               </div>
             </CardContent>
