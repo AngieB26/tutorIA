@@ -2511,3 +2511,141 @@ export async function getEstudiantesAtendidosByProfesor(profesor: string, fecha?
   }
 }
 
+// ============================================
+// FUNCIONES PARA INCIDENCIAS VISTAS
+// ============================================
+
+export async function getIncidenciasVistas(usuario: string = 'director'): Promise<Set<string>> {
+  try {
+    const vistas = await prisma.incidenciaVista.findMany({
+      where: { usuario },
+      select: { incidenciaId: true }
+    });
+    
+    return new Set(vistas.map(v => v.incidenciaId));
+  } catch (error) {
+    console.error('Error obteniendo incidencias vistas:', error);
+    return new Set();
+  }
+}
+
+export async function marcarIncidenciaVista(incidenciaId: string, usuario: string = 'director'): Promise<void> {
+  try {
+    await prisma.incidenciaVista.upsert({
+      where: {
+        incidenciaId_usuario: {
+          incidenciaId,
+          usuario
+        }
+      },
+      create: {
+        incidenciaId,
+        usuario
+      },
+      update: {}
+    });
+  } catch (error) {
+    console.error('Error marcando incidencia como vista:', error);
+    throw error;
+  }
+}
+
+export async function marcarIncidenciasVistas(incidenciaIds: string[], usuario: string = 'director'): Promise<void> {
+  try {
+    // Usar createMany con skipDuplicates para evitar errores de duplicados
+    await prisma.incidenciaVista.createMany({
+      data: incidenciaIds.map(id => ({
+        incidenciaId: id,
+        usuario
+      })),
+      skipDuplicates: true
+    });
+  } catch (error) {
+    console.error('Error marcando incidencias como vistas:', error);
+    throw error;
+  }
+}
+
+// ============================================
+// FUNCIONES PARA PRELLENADO DE INCIDENCIAS
+// ============================================
+
+export interface PrellenadoIncidencia {
+  estudiante: string;
+  tipo?: string;
+  gravedad?: string;
+  profesor?: string;
+}
+
+export async function getPrellenadoIncidencia(estudiante: string): Promise<PrellenadoIncidencia | null> {
+  try {
+    // Limpiar registros expirados primero
+    await prisma.prellenadoIncidencia.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date()
+        }
+      }
+    });
+
+    const prellenado = await prisma.prellenadoIncidencia.findFirst({
+      where: {
+        estudiante: estudiante,
+        expiresAt: {
+          gt: new Date()
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!prellenado) return null;
+
+    return {
+      estudiante: prellenado.estudiante,
+      tipo: prellenado.tipo || undefined,
+      gravedad: prellenado.gravedad || undefined,
+      profesor: prellenado.profesor || undefined
+    };
+  } catch (error) {
+    console.error('Error obteniendo prellenado de incidencia:', error);
+    return null;
+  }
+}
+
+export async function savePrellenadoIncidencia(prellenado: PrellenadoIncidencia): Promise<void> {
+  try {
+    // Eliminar prellenados anteriores del mismo estudiante
+    await prisma.prellenadoIncidencia.deleteMany({
+      where: { estudiante: prellenado.estudiante }
+    });
+
+    // Crear nuevo prellenado con expiración de 1 hora
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    await prisma.prellenadoIncidencia.create({
+      data: {
+        estudiante: prellenado.estudiante,
+        tipo: prellenado.tipo,
+        gravedad: prellenado.gravedad,
+        profesor: prellenado.profesor,
+        expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('Error guardando prellenado de incidencia:', error);
+    throw error;
+  }
+}
+
+export async function deletePrellenadoIncidencia(estudiante: string): Promise<void> {
+  try {
+    await prisma.prellenadoIncidencia.deleteMany({
+      where: { estudiante }
+    });
+  } catch (error) {
+    console.error('Error eliminando prellenado de incidencia:', error);
+    throw error;
+  }
+}
+

@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
-import { fetchIncidencias, fetchEstudiantes, fetchTutores, fetchAsistenciaClases, getEstudiantesAtendidos } from '@/lib/api';
+import { fetchIncidencias, fetchEstudiantes, fetchTutores, fetchAsistenciaClases, getEstudiantesAtendidos, getIncidenciasVistas, marcarIncidenciaVista, marcarIncidenciasVistas, savePrellenadoIncidencia } from '@/lib/api';
 
 export function Navbar() {
   const router = useRouter();
@@ -26,23 +26,7 @@ export function Navbar() {
   const [profesorActual, setProfesorActual] = useState<string>('');
   
   // Estados para notificaciones del director
-  const [incidenciasVistas, setIncidenciasVistas] = useState<Set<string>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const vistasStr = localStorage.getItem('incidencias_vistas');
-        if (vistasStr) {
-          const vistasArray = JSON.parse(vistasStr);
-          const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-          if (idsValidos.length > 0) {
-            return new Set(idsValidos);
-          }
-        }
-      } catch (error) {
-        console.error('Error inicializando incidencias vistas:', error);
-      }
-    }
-    return new Set();
-  });
+  const [incidenciasVistas, setIncidenciasVistas] = useState<Set<string>>(new Set());
   const [nuevasIncidencias, setNuevasIncidencias] = useState<any[]>([]);
   const [mostrarNotificacionesDirector, setMostrarNotificacionesDirector] = useState(false);
   const [refreshKeyDirector, setRefreshKeyDirector] = useState(0);
@@ -272,16 +256,12 @@ export function Navbar() {
           // Cargar incidencias desde la base de datos
           const todasIncidencias = await fetchIncidencias();
           
-          // Sincronizar incidencias vistas con localStorage
+          // Cargar incidencias vistas desde la base de datos
           try {
-            const vistasStr = localStorage.getItem('incidencias_vistas');
-            if (vistasStr) {
-              const vistasArray = JSON.parse(vistasStr);
-              const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-              setIncidenciasVistas(new Set(idsValidos));
-            }
+            const ids = await getIncidenciasVistas('director');
+            setIncidenciasVistas(new Set(ids));
           } catch (error) {
-            console.error('Error sincronizando incidencias vistas:', error);
+            console.error('Error cargando incidencias vistas:', error);
           }
           
           // Obtener nuevas incidencias (no vistas)
@@ -348,12 +328,9 @@ export function Navbar() {
     }
     setIncidenciasVistas(prev => {
       const nuevoSet = new Set([...prev, incidenciaId]);
-      try {
-        const idsValidos = Array.from(nuevoSet).filter(id => id && typeof id === 'string' && id.trim() !== '');
-        localStorage.setItem('incidencias_vistas', JSON.stringify(idsValidos));
-      } catch (error) {
-        console.error('Error guardando incidencias vistas:', error);
-      }
+      marcarIncidenciaVista(incidenciaId, 'director').catch(error => {
+        console.error('Error guardando incidencia vista:', error);
+      });
       return nuevoSet;
     });
     // Disparar evento para que la página del director se actualice
@@ -361,19 +338,18 @@ export function Navbar() {
   };
 
   // Marcar todas como vistas
-  const marcarTodasComoVistas = () => {
+  const marcarTodasComoVistas = async () => {
     const todasIds = nuevasIncidencias
       .map((inc: any) => inc.id)
       .filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-    const nuevoSet = new Set([...incidenciasVistas, ...todasIds]);
-    setIncidenciasVistas(nuevoSet);
     try {
-      localStorage.setItem('incidencias_vistas', JSON.stringify(Array.from(nuevoSet)));
+      await marcarIncidenciasVistas(todasIds, 'director');
+      setIncidenciasVistas(prev => new Set([...prev, ...todasIds]));
+      // Disparar evento para que la página del director se actualice
+      window.dispatchEvent(new CustomEvent('todasIncidenciasMarcadasComoVistas'));
     } catch (error) {
       console.error('Error guardando incidencias vistas:', error);
     }
-    // Disparar evento para que la página del director se actualice
-    window.dispatchEvent(new CustomEvent('todasIncidenciasMarcadasComoVistas'));
   };
 
   // Cerrar dropdown al hacer clic fuera
@@ -425,10 +401,12 @@ export function Navbar() {
       }
     }
     
-    // Guardar los datos en localStorage para que la página de profesor lo use
-    localStorage.setItem('estudiante_para_incidencia', nombreEstudiante);
-    localStorage.setItem('tipo_incidencia_prellenado', tipoIncidencia);
-    localStorage.setItem('gravedad_incidencia_prellenado', gravedadIncidencia);
+    // Guardar los datos de prellenado en la base de datos
+    await savePrellenadoIncidencia({
+      estudiante: nombreEstudiante,
+      tipo: tipoIncidencia,
+      gravedad: gravedadIncidencia
+    });
     
     // Cerrar notificaciones primero
     setMostrarNotificaciones(false);

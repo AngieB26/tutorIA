@@ -547,3 +547,61 @@ export async function getEstudiantesAtendidosByProfesor(profesor: string, fecha?
   return res.json();
 }
 
+// ============================================
+// INCIDENCIAS VISTAS
+// ============================================
+
+export async function getIncidenciasVistas(usuario: string = 'director'): Promise<string[]> {
+  const res = await fetch(`/api/incidencias-vistas?usuario=${encodeURIComponent(usuario)}`);
+  if (!res.ok) throw new Error('Error al obtener incidencias vistas');
+  const data = await res.json();
+  return data.ids || [];
+}
+
+export async function marcarIncidenciaVista(incidenciaId: string, usuario: string = 'director'): Promise<void> {
+  const res = await fetch('/api/incidencias-vistas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ incidenciaId, usuario }),
+  });
+  if (!res.ok) throw new Error('Error al marcar incidencia como vista');
+}
+
+export async function marcarIncidenciasVistas(incidenciaIds: string[], usuario: string = 'director'): Promise<void> {
+  const res = await fetch('/api/incidencias-vistas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ incidenciaIds, usuario }),
+  });
+  if (!res.ok) throw new Error('Error al marcar incidencias como vistas');
+}
+
+// ============================================
+// PRELLENADO DE INCIDENCIAS
+// ============================================
+
+export async function getPrellenadoIncidencia(estudiante: string): Promise<any | null> {
+  const res = await fetch(`/api/prellenado-incidencia?estudiante=${encodeURIComponent(estudiante)}`);
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error('Error al obtener prellenado de incidencia');
+  }
+  return res.json();
+}
+
+export async function savePrellenadoIncidencia(prellenado: { estudiante: string; tipo?: string; gravedad?: string; profesor?: string }): Promise<void> {
+  const res = await fetch('/api/prellenado-incidencia', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prellenado),
+  });
+  if (!res.ok) throw new Error('Error al guardar prellenado de incidencia');
+}
+
+export async function deletePrellenadoIncidencia(estudiante: string): Promise<void> {
+  const res = await fetch(`/api/prellenado-incidencia?estudiante=${encodeURIComponent(estudiante)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Error al eliminar prellenado de incidencia');
+}
+

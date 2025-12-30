@@ -42,6 +42,9 @@ import {
   setTutorGradoSeccion,
   removeTutorGradoSeccion,
   getTutorGradoSeccion,
+  getIncidenciasVistas,
+  marcarIncidenciaVista,
+  marcarIncidenciasVistas,
 } from '@/lib/api';
 import { Incidencia, ReporteIA, TipoDerivacion, Gravedad, TipoIncidencia, EstudianteInfo, Tutor, Clase, DiaSemana } from '@/lib/types';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
@@ -869,25 +872,21 @@ export default function DirectorPage() {
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
 
   // Estados para notificaciones
-  // Inicializar desde localStorage si está disponible (solo en cliente)
-  const [incidenciasVistas, setIncidenciasVistas] = useState<Set<string>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const vistasStr = localStorage.getItem('incidencias_vistas');
-        if (vistasStr) {
-          const vistasArray = JSON.parse(vistasStr);
-          const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-          if (idsValidos.length > 0) {
-            return new Set(idsValidos);
-          }
-        }
-      } catch (error) {
-        console.error('Error inicializando incidencias vistas:', error);
-      }
-    }
-    return new Set();
-  });
+  const [incidenciasVistas, setIncidenciasVistas] = useState<Set<string>>(new Set());
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
+
+  // Cargar incidencias vistas desde la base de datos al montar
+  useEffect(() => {
+    const loadIncidenciasVistas = async () => {
+      try {
+        const ids = await getIncidenciasVistas('director');
+        setIncidenciasVistas(new Set(ids));
+      } catch (error) {
+        console.error('Error cargando incidencias vistas:', error);
+      }
+    };
+    loadIncidenciasVistas();
+  }, []);
 
   // Cargar incidencias desde la API al montar, cuando cambie refreshKey, o cuando se cambie al tab de incidencias
   useEffect(() => {
@@ -897,27 +896,6 @@ export default function DirectorPage() {
         console.log('📊 Director: Incidencias cargadas desde API:', todasIncidencias.length);
         console.log('📊 Director: IDs de incidencias:', todasIncidencias.map((inc: Incidencia) => ({ id: inc.id, estudiante: inc.studentName, derivacion: inc.derivacion, resuelta: inc.resuelta, estado: inc.estado })));
         setIncidencias(todasIncidencias);
-        
-        // Sincronizar incidencias vistas con localStorage después de cargar incidencias
-        if (typeof window !== 'undefined') {
-          try {
-            const vistasStr = localStorage.getItem('incidencias_vistas');
-            if (vistasStr) {
-              const vistasArray = JSON.parse(vistasStr);
-              const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-              // Solo actualizar si hay diferencias para evitar loops infinitos
-              setIncidenciasVistas(prev => {
-                const nuevoSet = new Set<string>(idsValidos);
-                if (prev.size !== nuevoSet.size || !idsValidos.every((id: string) => prev.has(id))) {
-                  return nuevoSet;
-                }
-                return prev;
-              });
-            }
-          } catch (error) {
-            console.error('Error sincronizando incidencias vistas:', error);
-          }
-        }
       } catch (error) {
         console.error('Error cargando incidencias:', error);
         setIncidencias([]);
@@ -1004,26 +982,27 @@ export default function DirectorPage() {
     };
   }, [mostrarNotificaciones]);
   
-  // Guardar incidencias vistas en localStorage (respaldo, aunque ya se guarda directamente en las funciones)
+  // Guardar incidencias vistas en la base de datos cuando cambien
   useEffect(() => {
-    try {
-      // Validar y filtrar solo IDs válidos antes de guardar
-      const idsValidos = Array.from(incidenciasVistas).filter(id => id && typeof id === 'string' && id.trim() !== '');
-      localStorage.setItem('incidencias_vistas', JSON.stringify(idsValidos));
-    } catch (error) {
-      console.error('Error guardando incidencias vistas:', error);
+    const saveVistas = async () => {
+      try {
+        // Validar y filtrar solo IDs válidos antes de guardar
+        const idsValidos = Array.from(incidenciasVistas).filter(id => id && typeof id === 'string' && id.trim() !== '');
+        if (idsValidos.length > 0) {
+          await marcarIncidenciasVistas(idsValidos, 'director');
+        }
+      } catch (error) {
+        console.error('Error guardando incidencias vistas:', error);
+      }
+    };
+    if (incidenciasVistas.size > 0) {
+      saveVistas();
     }
   }, [incidenciasVistas]);
 
-  // Escuchar cambios en localStorage y eventos personalizados para actualizar notificaciones
+  // Escuchar eventos personalizados para actualizar notificaciones
   useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      // Escuchar cambios en incidencias_vistas (cuando se marcan como vistas)
-      if (e.key === 'incidencias_vistas' && e.newValue) {
-        try {
-          const vistasArray = JSON.parse(e.newValue);
-          const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-          setIncidenciasVistas(new Set(idsValidos));
+    // Ya no escuchamos cambios en localStorage, solo eventos personalizados
         } catch (error) {
           console.error('Error procesando cambio en localStorage:', error);
         }
@@ -1095,32 +1074,27 @@ export default function DirectorPage() {
     window.addEventListener('incidenciaActualizada', handleIncidenciaActualizada as EventListener);
     
     // Escuchar evento cuando se marca una incidencia como vista desde el navbar
-    const handleIncidenciaMarcadaComoVista = (e: Event) => {
+    const handleIncidenciaMarcadaComoVista = async (e: Event) => {
       const customEvent = e as CustomEvent;
       const id = customEvent.detail?.id;
       if (id) {
-        setIncidenciasVistas(prev => {
-          const nuevoSet = new Set([...prev, id]);
-          try {
-            const idsValidos = Array.from(nuevoSet).filter(id => id && typeof id === 'string' && id.trim() !== '');
-            localStorage.setItem('incidencias_vistas', JSON.stringify(idsValidos));
-          } catch (error) {
-            console.error('Error guardando incidencias vistas:', error);
-          }
-          return nuevoSet;
-        });
+        try {
+          await marcarIncidenciaVista(id, 'director');
+          setIncidenciasVistas(prev => new Set([...prev, id]));
+        } catch (error) {
+          console.error('Error guardando incidencia vista:', error);
+        }
       }
     };
     
     // Escuchar evento cuando se marca todas como vistas desde el navbar
-    const handleTodasMarcadasComoVistas = () => {
+    const handleTodasMarcadasComoVistas = async () => {
       const todasIds = incidencias
         .map(inc => inc.id)
         .filter(id => id && typeof id === 'string' && id.trim() !== '');
-      const nuevoSet = new Set(todasIds);
-      setIncidenciasVistas(nuevoSet);
       try {
-        localStorage.setItem('incidencias_vistas', JSON.stringify(Array.from(nuevoSet)));
+        await marcarIncidenciasVistas(todasIds, 'director');
+        setIncidenciasVistas(new Set(todasIds));
       } catch (error) {
         console.error('Error guardando incidencias vistas:', error);
       }
@@ -1171,29 +1145,24 @@ export default function DirectorPage() {
     }
     setIncidenciasVistas(prev => {
       const nuevoSet = new Set([...prev, incidenciaId]);
-      // Guardar inmediatamente en localStorage
-      try {
-        const idsValidos = Array.from(nuevoSet).filter(id => id && typeof id === 'string' && id.trim() !== '');
-        localStorage.setItem('incidencias_vistas', JSON.stringify(idsValidos));
-      } catch (error) {
-        console.error('Error guardando incidencias vistas:', error);
-      }
+      // Guardar inmediatamente en la base de datos
+      marcarIncidenciaVista(incidenciaId, 'director').catch(error => {
+        console.error('Error guardando incidencia vista:', error);
+      });
       return nuevoSet;
     });
   };
   
   // Marcar todas como vistas
-  const marcarTodasComoVistas = () => {
+  const marcarTodasComoVistas = async () => {
     // Filtrar solo IDs válidos
     const todasIds = incidencias
       .map(inc => inc.id)
       .filter(id => id && typeof id === 'string' && id.trim() !== '');
-    const nuevoSet = new Set(todasIds);
-    setIncidenciasVistas(nuevoSet);
-    // Guardar inmediatamente en localStorage
     try {
-      localStorage.setItem('incidencias_vistas', JSON.stringify(Array.from(nuevoSet)));
-      console.log('✅ Todas las incidencias marcadas como vistas y guardadas. Total:', nuevoSet.size);
+      await marcarIncidenciasVistas(todasIds, 'director');
+      setIncidenciasVistas(new Set(todasIds));
+      console.log('✅ Todas las incidencias marcadas como vistas y guardadas. Total:', todasIds.length);
     } catch (error) {
       console.error('Error guardando incidencias vistas:', error);
     }

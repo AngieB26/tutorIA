@@ -204,3 +204,27 @@ model EstudianteAtendido {
   @@index([fecha])
   @@index([profesor])
 }
+
+model IncidenciaVista {
+  id          String   @id @default(uuid())
+  incidenciaId String
+  usuario     String   @default("director")
+  createdAt   DateTime @default(now())
+
+  @@unique([incidenciaId, usuario])
+  @@index([incidenciaId])
+  @@index([usuario])
+}
+
+model PrellenadoIncidencia {
+  id          String   @id @default(uuid())
+  estudiante  String
+  tipo        String?
+  gravedad    String?
+  profesor    String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // Se elimina después de un tiempo
+
+  @@index([estudiante])
+  @@index([createdAt])
+}

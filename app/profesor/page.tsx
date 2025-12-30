@@ -14,6 +14,8 @@ import {
   getGrados,
   getSecciones,
   marcarEstudianteAtendido,
+  getPrellenadoIncidencia,
+  deletePrellenadoIncidencia,
 } from '@/lib/api';
 
 import {
@@ -48,16 +50,13 @@ export default function ProfesorPage() {
   const [viewMode, setViewMode] =
     useState<'inicio' | 'asistencia' | 'incidencia'>('inicio');
 
-  // Limpiar formulario de incidencia al entrar (hook después de declarar viewMode)
-  // PERO solo si no viene de una notificación
+  // Cargar prellenado de incidencia al entrar (hook después de declarar viewMode)
   useEffect(() => {
-    if (viewMode === 'incidencia') {
-      // Verificar si hay datos de notificación pendientes
-      const estudianteDesdeNotificacion = localStorage.getItem('estudiante_para_incidencia');
-      
-      // Solo limpiar si NO viene de una notificación
-      if (!estudianteDesdeNotificacion) {
-        // No viene de notificación, limpiar formulario
+    const loadPrellenado = async () => {
+      if (viewMode === 'incidencia' && !incEstudiante) {
+        // Buscar prellenado para cualquier estudiante (el más reciente)
+        // Nota: Necesitamos buscar por estudiante, pero no sabemos cuál es
+        // Por ahora, solo limpiamos si no hay estudiante seleccionado
         setIncProfesor('');
         setIncEstudiante('');
         setIncTipo('');
@@ -66,7 +65,8 @@ export default function ProfesorPage() {
         setIncDescripcion('');
         setIncArchivos([]);
       }
-    }
+    };
+    loadPrellenado();
   }, [viewMode]);
 
   // Limpiar formulario de asistencia al entrar desde el panel
@@ -168,14 +168,18 @@ export default function ProfesorPage() {
 
   // Escuchar evento para abrir incidencia desde notificación del navbar
   useEffect(() => {
-    const handleAbrirIncidencia = (event: CustomEvent) => {
-      const estudianteNombre = event.detail?.estudiante || localStorage.getItem('estudiante_para_incidencia');
-      const tipoPrellenado = event.detail?.tipo || localStorage.getItem('tipo_incidencia_prellenado') || 'asistencia';
-      const gravedadPrellenada = event.detail?.gravedad || localStorage.getItem('gravedad_incidencia_prellenado') || 'moderada';
+    const handleAbrirIncidencia = async (event: CustomEvent) => {
+      const estudianteNombre = event.detail?.estudiante;
       
       if (estudianteNombre) {
+        // Buscar prellenado en la base de datos
+        const prellenado = await getPrellenadoIncidencia(estudianteNombre);
+        
+        const tipoPrellenado = event.detail?.tipo || prellenado?.tipo || 'asistencia';
+        const gravedadPrellenada = event.detail?.gravedad || prellenado?.gravedad || 'moderada';
+        
         // Primero establecer los valores (SIN prellenar profesor), luego cambiar el viewMode
-        setIncProfesor(''); // Profesor NO se prellena, debe seleccionarlo manualmente
+        setIncProfesor(prellenado?.profesor || ''); // Profesor puede venir del prellenado
         setIncEstudiante(estudianteNombre);
         setIncTipo(tipoPrellenado);
         setIncGravedad(gravedadPrellenada);
@@ -187,39 +191,19 @@ export default function ProfesorPage() {
           setViewMode('incidencia');
         }, 50);
         
-        // Limpiar localStorage después de un delay
-        setTimeout(() => {
-          localStorage.removeItem('estudiante_para_incidencia');
-          localStorage.removeItem('tipo_incidencia_prellenado');
-          localStorage.removeItem('gravedad_incidencia_prellenado');
-        }, 100);
+        // Eliminar prellenado después de usarlo
+        if (prellenado) {
+          await deletePrellenadoIncidencia(estudianteNombre);
+        }
       }
     };
 
-    // También verificar localStorage periódicamente por si el evento no se disparó
-    const checkLocalStorage = () => {
-      const estudianteNombre = localStorage.getItem('estudiante_para_incidencia');
-      if (estudianteNombre && viewMode !== 'incidencia') {
-        const tipoPrellenado = localStorage.getItem('tipo_incidencia_prellenado') || 'asistencia';
-        const gravedadPrellenada = localStorage.getItem('gravedad_incidencia_prellenado') || 'moderada';
-        handleAbrirIncidencia({ 
-          detail: { 
-            estudiante: estudianteNombre,
-            tipo: tipoPrellenado,
-            gravedad: gravedadPrellenada
-          } 
-        } as CustomEvent);
-      }
     };
 
     window.addEventListener('abrirIncidenciaDesdeNotificacion' as any, handleAbrirIncidencia as EventListener);
-    // Verificar inmediatamente y luego periódicamente
-    checkLocalStorage();
-    const interval = setInterval(checkLocalStorage, 300);
     
     return () => {
       window.removeEventListener('abrirIncidenciaDesdeNotificacion' as any, handleAbrirIncidencia as EventListener);
-      clearInterval(interval);
     };
   }, [profesor, viewMode]);
 
