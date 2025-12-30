@@ -552,9 +552,9 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
     if (resumen) {
       const resumenAntes = resumen;
       // Remover "ALERTAS INTELIGENTES:" y todo lo que sigue
-      resumen = resumen.replace(/ALERTAS?\s*INTELIGENTES?:?\s*.+$/is, '').trim();
+      resumen = resumen.replace(/ALERTAS?\s*INTELIGENTES?:?\s*[\s\S]*$/i, '').trim();
       // Remover punto y espacio antes de "ALERTAS" si existe
-      resumen = resumen.replace(/\.\s*ALERTAS?\s*INTELIGENTES?:?\s*.+$/is, '').trim();
+      resumen = resumen.replace(/\.\s*ALERTAS?\s*INTELIGENTES?:?\s*[\s\S]*$/i, '').trim();
       // Remover solo el texto "ALERTAS INTELIGENTES:" si está al final
       resumen = resumen.replace(/\s*ALERTAS?\s*INTELIGENTES?:?\s*$/i, '').trim();
       
