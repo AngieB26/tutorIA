@@ -288,22 +288,19 @@ export default function TutorPage() {
       });
       const asistenciaPromedio = totalRegistros > 0 ? Math.round((totalAsistencias / totalRegistros) * 100) : 0;
 
-      // Calcular incidencias recientes
+      // Calcular incidencias activas (pendientes o en revisión)
       const todasIncidencias = await Promise.all(
         estudiantesFiltrados.map(est => fetchIncidencias({ studentName: est.nombre }))
       );
-      const incidenciasRecientes = todasIncidencias.flat().filter(inc => {
-        const fechaInc = new Date(inc.fecha);
-        const hace30Dias = new Date();
-        hace30Dias.setDate(hace30Dias.getDate() - 30);
-        return fechaInc >= hace30Dias;
+      const incidenciasActivas = todasIncidencias.flat().filter(inc => {
+        const estudiante = estudiantesFiltrados.find(e => e.nombre === inc.studentName);
+        return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
       });
 
       setResumenData({
         totalEstudiantes,
         asistenciaPromedio,
-        totalIncidencias: incidenciasRecientes.length,
-        incidenciasGraves: incidenciasRecientes.filter(inc => inc.gravedad === 'grave').length
+        incidenciasActivas: incidenciasActivas.length
       });
     };
 
