@@ -4689,19 +4689,56 @@ export default function DirectorPage() {
                                             await new Promise(resolve => setTimeout(resolve, 0));
                                           
                                             // Esperar un momento para que la base de datos se actualice completamente
-                                            await new Promise(resolve => setTimeout(resolve, 300));
+                                            await new Promise(resolve => setTimeout(resolve, 500));
                                           
                                             // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
                                             console.log('🔄 Recargando estudiantes desde la base de datos...');
-                                            const estudiantesActualizados = await fetchEstudiantes();
-                                            console.log('✅ Estudiantes recargados:', estudiantesActualizados.length);
+                                            
+                                            // Intentar recargar con retry en caso de que la base de datos aún no se haya actualizado
+                                            let estudiantesActualizados = null;
+                                            let intentos = 0;
+                                            const maxIntentos = 3;
+                                            
+                                            while (!estudiantesActualizados && intentos < maxIntentos) {
+                                              try {
+                                                estudiantesActualizados = await fetchEstudiantes();
+                                                console.log(`✅ Estudiantes recargados (intento ${intentos + 1}):`, estudiantesActualizados.length);
+                                                
+                                                // Verificar que el estudiante actualizado esté en la lista
+                                                const estudianteEncontrado = estudiantesActualizados.find((e: any) => 
+                                                  (e.id === estudianteId) || 
+                                                  (e.nombres === estudianteActualizado.nombres && e.apellidos === estudianteActualizado.apellidos)
+                                                );
+                                                
+                                                if (estudianteEncontrado) {
+                                                  console.log('✅ Estudiante actualizado encontrado en la lista:', estudianteEncontrado);
+                                                  break;
+                                                } else if (intentos < maxIntentos - 1) {
+                                                  console.log(`⏳ Estudiante aún no encontrado, esperando... (intento ${intentos + 1}/${maxIntentos})`);
+                                                  await new Promise(resolve => setTimeout(resolve, 300));
+                                                  estudiantesActualizados = null;
+                                                }
+                                              } catch (error) {
+                                                console.error('❌ Error recargando estudiantes:', error);
+                                                if (intentos < maxIntentos - 1) {
+                                                  await new Promise(resolve => setTimeout(resolve, 300));
+                                                }
+                                              }
+                                              intentos++;
+                                            }
+                                            
+                                            if (!estudiantesActualizados) {
+                                              console.error('❌ No se pudieron recargar los estudiantes después de varios intentos');
+                                              estudiantesActualizados = await fetchEstudiantes(); // Último intento
+                                            }
                                             
                                             // Crear nuevas referencias de los objetos para forzar el re-render completo
                                             // Esto asegura que React detecte los cambios incluso si los objetos tienen la misma estructura
                                             const estudiantesConNuevasReferencias = estudiantesActualizados.map(est => ({ ...est }));
                                             
                                             // Actualizar el estado con los datos frescos de la base de datos
-                                            setEstudiantesInfo(estudiantesConNuevasReferencias);
+                                            // Usar una función de actualización para asegurar que React detecte el cambio
+                                            setEstudiantesInfo(() => estudiantesConNuevasReferencias);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
                                             const lista = await getListaEstudiantes();
@@ -4721,7 +4758,7 @@ export default function DirectorPage() {
                                                 seccion: datos.seccion ?? base.seccion ?? '',
                                               };
                                             });
-                                            setListaEstudiantes(listaFinal);
+                                            setListaEstudiantes(() => listaFinal);
                                             
                                             // Si el estudiante está seleccionado, actualizar también su información
                                             if (selectedStudentId && estudianteEditadoId === selectedStudentId) {
