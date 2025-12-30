@@ -1629,7 +1629,47 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
               studentName: inc.studentName,
               estudianteId: inc.estudianteId
             })));
+            // Agregar estas incidencias a los resultados
+            incidenciasPorContains.forEach(inc => {
+              if (!incidencias.find(i => i.id === inc.id)) {
+                incidencias.push(inc);
+              }
+            });
           }
+          
+          // Buscar también incidencias con estudianteId null pero que coincidan con el nombre
+          console.log(`🔍 Buscando incidencias con estudianteId null pero nombre coincidente...`);
+          const incidenciasSinId = await prisma.incidencia.findMany({
+            where: {
+              AND: [
+                { estudianteId: null },
+                {
+                  OR: [
+                    { studentName: { contains: estudiante.nombres, mode: 'insensitive' } },
+                    { studentName: { contains: estudiante.apellidos, mode: 'insensitive' } },
+                    { studentName: nombreCompletoEstudiante }
+                  ]
+                }
+              ]
+            }
+          });
+          console.log(`📊 Incidencias encontradas sin estudianteId pero con nombre coincidente: ${incidenciasSinId.length}`);
+          if (incidenciasSinId.length > 0) {
+            console.log(`📋 Incidencias sin estudianteId:`, incidenciasSinId.map(inc => ({
+              id: inc.id,
+              studentName: inc.studentName,
+              estudianteId: inc.estudianteId
+            })));
+            // Agregar estas incidencias también
+            incidenciasSinId.forEach(inc => {
+              if (!incidencias.find(i => i.id === inc.id)) {
+                incidencias.push(inc);
+              }
+            });
+          }
+          
+          // Actualizar el contador después de las búsquedas adicionales
+          console.log(`📊 Total incidencias después de búsquedas adicionales: ${incidencias.length}`);
         }
       }
     } catch (error) {
