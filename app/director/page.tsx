@@ -599,7 +599,11 @@ export default function DirectorPage() {
     loadData();
   }, [refreshKey]);
   
+  const [adminSubTab, setAdminSubTab] = useState<'estudiantes' | 'profesores' | 'grados' | 'cursos'>('estudiantes');
+  const [estudiantesInfo, setEstudiantesInfo] = useState<EstudianteInfo[]>([]);
+  
   // useEffect para asegurar que el formulario se cierre si estudianteEditandoAdmin tiene un valor pero no coincide con ningún estudiante
+  // IMPORTANTE: Este useEffect debe estar DESPUÉS de la declaración de estudiantesInfo
   useEffect(() => {
     if (estudianteEditandoAdmin !== null && estudiantesInfo.length > 0) {
       const estudianteEncontrado = estudiantesInfo.find((e: any) => {
@@ -617,9 +621,6 @@ export default function DirectorPage() {
       }
     }
   }, [estudiantesInfo, estudianteEditandoAdmin]);
-  
-  const [adminSubTab, setAdminSubTab] = useState<'estudiantes' | 'profesores' | 'grados' | 'cursos'>('estudiantes');
-  const [estudiantesInfo, setEstudiantesInfo] = useState<EstudianteInfo[]>([]);
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [grados, setGrados] = useState<string[]>([]);
