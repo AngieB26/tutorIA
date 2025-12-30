@@ -4336,14 +4336,21 @@ export default function DirectorPage() {
                                         size="sm"
                                         variant="default"
                                         onClick={async () => {
-                                          const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
+                                          try {
+                                            console.log('🔄 Iniciando guardado de estudiante...');
+                                            const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
+                                            console.log('📝 Nombre original:', nombreOriginal);
+                                            console.log('📝 Formulario editado:', estudianteEditForm);
                                           
-                                          // Obtener el estudiante completo desde la base de datos para preservar todos los campos
-                                          const estudianteCompleto = await fetchEstudiante(nombreOriginal);
-                                          if (!estudianteCompleto) {
-                                            toast.error('No se pudo cargar la información del estudiante');
-                                            return;
-                                          }
+                                            // Obtener el estudiante completo desde la base de datos para preservar todos los campos
+                                            console.log('🔍 Buscando estudiante completo...');
+                                            const estudianteCompleto = await fetchEstudiante(nombreOriginal);
+                                            if (!estudianteCompleto) {
+                                              console.error('❌ No se encontró el estudiante completo');
+                                              toast.error('No se pudo cargar la información del estudiante');
+                                              return;
+                                            }
+                                            console.log('✅ Estudiante completo encontrado:', estudianteCompleto);
 
                                           // Fusionar la información editada con la información completa existente
                                           // Esto asegura que no se pierdan campos que no se están editando
@@ -4375,21 +4382,22 @@ export default function DirectorPage() {
                                             } : estudianteCompleto.apoderado,
                                           };
                                           
-                                          // Validar que nombres y apellidos estén presentes antes de guardar
-                                          if (!estudianteActualizado.nombres || !estudianteActualizado.apellidos) {
-                                            toast.error('Los campos nombres y apellidos son requeridos');
-                                            return;
-                                          }
-                                          
-                                          // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
-                                          // Esto preserva todos los campos existentes y solo actualiza los editados
-                                          try {
+                                            // Validar que nombres y apellidos estén presentes antes de guardar
+                                            console.log('✅ Estudiante actualizado preparado:', estudianteActualizado);
+                                            if (!estudianteActualizado.nombres || !estudianteActualizado.apellidos) {
+                                              console.error('❌ Faltan nombres o apellidos:', {
+                                                nombres: estudianteActualizado.nombres,
+                                                apellidos: estudianteActualizado.apellidos
+                                              });
+                                              toast.error('Los campos nombres y apellidos son requeridos');
+                                              return;
+                                            }
+                                            
+                                            // Siempre usar saveEstudianteInfo con nombreOriginal para asegurar que actualizamos el registro correcto
+                                            // Esto preserva todos los campos existentes y solo actualiza los editados
+                                            console.log('💾 Guardando estudiante en base de datos...');
                                             await saveEstudianteInfo(estudianteActualizado, nombreOriginal);
-                                          } catch (error: any) {
-                                            console.error('Error guardando estudiante:', error);
-                                            toast.error(error.message || 'Error al guardar el estudiante');
-                                            return;
-                                          }
+                                            console.log('✅ Estudiante guardado exitosamente');
                                           
                                           // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
                                           const estudiantesActualizados = await fetchEstudiantes();
@@ -4427,10 +4435,14 @@ export default function DirectorPage() {
                                             }
                                             
                                             setRefreshKey(prev => prev + 1);
-                                          setEstudianteEditandoAdmin(null);
-                                          setEstudianteEditForm({});
-                                          setEstudianteNombreOriginal(null);
-                                          toast.success('Estudiante actualizado exitosamente');
+                                            setEstudianteEditandoAdmin(null);
+                                            setEstudianteEditForm({});
+                                            setEstudianteNombreOriginal(null);
+                                            toast.success('Estudiante actualizado exitosamente');
+                                          } catch (error: any) {
+                                            console.error('❌ Error guardando estudiante:', error);
+                                            toast.error(error.message || 'Error al guardar el estudiante');
+                                          }
                                         }}
                                       >
                                         Guardar
