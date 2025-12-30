@@ -1424,6 +1424,7 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
     console.log(`📋 Es UUID: ${isUUID}`);
     
     let estudiante = null;
+    let estudianteIdFinal: string | null = null;
     
     if (isUUID) {
       // Si es un ID, buscar directamente por ID
@@ -1434,15 +1435,18 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
         });
         if (estudiante) {
           console.log(`✅ Estudiante encontrado por ID: ${estudiante.id}`);
+          estudianteIdFinal = estudiante.id;
         } else {
           console.log(`⚠️ Estudiante no encontrado por ID: "${studentNameOrId}"`);
+          // Aún así, intentar buscar incidencias por este ID
+          estudianteIdFinal = studentNameOrId;
         }
       } catch (error) {
         console.error(`❌ Error buscando estudiante por ID:`, error);
         throw error;
       }
     } else {
-      // Si es un nombre, buscar por nombre
+      // Si es un nombre, buscar por nombre para obtener el ID
       console.log(`🔍 Buscando estudiante por nombre: "${studentNameOrId}"`);
       try {
         const partes = studentNameOrId.trim().split(/\s+/);
@@ -1477,6 +1481,7 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
         
         if (estudiante) {
           console.log(`✅ Estudiante encontrado por nombre (ID: ${estudiante.id})`);
+          estudianteIdFinal = estudiante.id;
         } else {
           console.log(`⚠️ Estudiante no encontrado por nombre: "${studentNameOrId}"`);
         }
@@ -1486,101 +1491,68 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
       }
     }
 
-    // Buscar incidencias por estudianteId (más confiable) o por studentName
-    // IMPORTANTE: Buscar tanto por ID como por nombre para asegurar que encontremos todas las incidencias
+    // PRIORIDAD: Buscar incidencias PRIMERO por estudianteId (más confiable)
     let incidencias: any[] = [];
     
     try {
-      // Construir condiciones de búsqueda
-      const condiciones: any[] = [];
-      
-      if (estudiante) {
-        // Si encontramos el estudiante, buscar por ID (más confiable)
-        condiciones.push({ estudianteId: estudiante.id });
-        // También buscar por nombre completo del estudiante encontrado
-        const nombreCompletoEstudiante = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
-        condiciones.push({ studentName: nombreCompletoEstudiante });
-        // Buscar por variaciones del nombre (solo nombres, solo apellidos, etc.)
-        if (estudiante.nombres) {
-          condiciones.push({ studentName: { contains: estudiante.nombres, mode: 'insensitive' } });
-        }
-        if (estudiante.apellidos) {
-          condiciones.push({ studentName: { contains: estudiante.apellidos, mode: 'insensitive' } });
-        }
-        // También buscar por el nombre original que se pasó (por si hay diferencias)
-        if (!isUUID && studentNameOrId !== nombreCompletoEstudiante) {
-          condiciones.push({ studentName: studentNameOrId });
-          const partesOriginal = studentNameOrId.trim().split(/\s+/);
-          partesOriginal.forEach(parte => {
-            if (parte.length > 2) {
-              condiciones.push({ studentName: { contains: parte, mode: 'insensitive' } });
-            }
-          });
-        }
-        // IMPORTANTE: También buscar incidencias que tengan estudianteId null pero studentName que coincida
-        // Esto es para incidencias antiguas que no tienen estudianteId asignado
-        condiciones.push({
-          AND: [
-            { estudianteId: null },
-            { studentName: { contains: estudiante.nombres, mode: 'insensitive' } }
-          ]
-        });
-        condiciones.push({
-          AND: [
-            { estudianteId: null },
-            { studentName: { contains: estudiante.apellidos, mode: 'insensitive' } }
-          ]
-        });
-        console.log(`🔍 Buscando incidencias por estudianteId: ${estudiante.id}, nombre completo: "${nombreCompletoEstudiante}"`);
-        console.log(`🔍 Total de condiciones de búsqueda: ${condiciones.length}`);
-      } else if (isUUID) {
-        // Si es un ID pero no encontramos el estudiante, buscar por estudianteId directamente
-        condiciones.push({ estudianteId: studentNameOrId });
-        console.log(`🔍 Buscando incidencias por estudianteId (directo): ${studentNameOrId}`);
-      } else {
-        // Si es un nombre y no encontramos el estudiante, buscar por nombre exacto y variaciones
-        condiciones.push({ studentName: studentNameOrId });
-        // También buscar con contains para encontrar variaciones
-        const partesNombre = studentNameOrId.trim().split(/\s+/);
-        partesNombre.forEach(parte => {
-          if (parte.length > 2) { // Solo buscar partes con más de 2 caracteres
-            condiciones.push({ studentName: { contains: parte, mode: 'insensitive' } });
-          }
-        });
-        console.log(`🔍 Buscando incidencias por studentName: "${studentNameOrId}" y variaciones`);
-      }
-      
-      // Buscar incidencias con OR para encontrar todas las posibles coincidencias
-      // Si no hay condiciones, buscar todas las incidencias (fallback)
-      if (condiciones.length === 0) {
-        console.log(`⚠️ No hay condiciones de búsqueda, buscando todas las incidencias...`);
+      // Si tenemos el ID del estudiante, buscar directamente por estudianteId
+      if (estudianteIdFinal) {
+        console.log(`🔍 Buscando incidencias por estudianteId: ${estudianteIdFinal}`);
         incidencias = await prisma.incidencia.findMany({
+          where: { estudianteId: estudianteIdFinal },
           orderBy: { timestamp: 'desc' }
         });
-      } else {
+        console.log(`📊 Encontradas ${incidencias.length} incidencias por estudianteId`);
+        
+        // Si no encontramos incidencias por ID, buscar también por nombre como fallback
+        // (para incidencias antiguas que no tienen estudianteId asignado)
+        if (incidencias.length === 0 && estudiante) {
+          const nombreCompletoEstudiante = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+          console.log(`⚠️ No se encontraron incidencias por ID, buscando por nombre como fallback: "${nombreCompletoEstudiante}"`);
+          const incidenciasPorNombre = await prisma.incidencia.findMany({
+            where: {
+              OR: [
+                { studentName: nombreCompletoEstudiante },
+                { studentName: { contains: estudiante.nombres, mode: 'insensitive' } },
+                { studentName: { contains: estudiante.apellidos, mode: 'insensitive' } }
+              ]
+            },
+            orderBy: { timestamp: 'desc' }
+          });
+          console.log(`📊 Encontradas ${incidenciasPorNombre.length} incidencias por nombre (fallback)`);
+          incidencias = incidenciasPorNombre;
+        }
+      } else if (estudiante) {
+        // Si encontramos al estudiante pero no tenemos el ID (caso raro), buscar por nombre
+        const nombreCompletoEstudiante = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+        console.log(`🔍 Buscando incidencias por nombre: "${nombreCompletoEstudiante}"`);
         incidencias = await prisma.incidencia.findMany({
           where: {
-            OR: condiciones
+            OR: [
+              { studentName: nombreCompletoEstudiante },
+              { studentName: { contains: estudiante.nombres, mode: 'insensitive' } },
+              { studentName: { contains: estudiante.apellidos, mode: 'insensitive' } }
+            ]
           },
           orderBy: { timestamp: 'desc' }
         });
+        console.log(`📊 Encontradas ${incidencias.length} incidencias por nombre`);
+      } else {
+        // Si no encontramos al estudiante, buscar por el nombre original pasado
+        console.log(`⚠️ Estudiante no encontrado, buscando por nombre original: "${studentNameOrId}"`);
+        incidencias = await prisma.incidencia.findMany({
+          where: {
+            OR: [
+              { studentName: studentNameOrId },
+              { studentName: { contains: studentNameOrId, mode: 'insensitive' } }
+            ]
+          },
+          orderBy: { timestamp: 'desc' }
+        });
+        console.log(`📊 Encontradas ${incidencias.length} incidencias por nombre original`);
       }
       
-      console.log(`🔍 Condiciones de búsqueda usadas:`, condiciones.length);
-      if (condiciones.length > 0) {
-        console.log(`📋 Primeras 3 condiciones:`, condiciones.slice(0, 3));
-      }
-      
-      // Eliminar duplicados por ID (por si hay coincidencias tanto por ID como por nombre)
-      const incidenciasUnicas = new Map();
-      incidencias.forEach(inc => {
-        if (!incidenciasUnicas.has(inc.id)) {
-          incidenciasUnicas.set(inc.id, inc);
-        }
-      });
-      incidencias = Array.from(incidenciasUnicas.values());
-      
-      console.log(`📊 Encontradas ${incidencias.length} incidencias para el estudiante`);
+      console.log(`📊 Total incidencias encontradas: ${incidencias.length}`);
       if (incidencias.length > 0) {
         console.log(`📋 Primeras incidencias encontradas:`, incidencias.slice(0, 3).map(inc => ({
           id: inc.id,
