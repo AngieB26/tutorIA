@@ -258,6 +258,57 @@ export default function TutorPage() {
     loadEstudiantesConEstado();
   }, [seccionSeleccionada, estudiantesFiltrados, esTutorDeLaSeccion, iaResumenes, iaCargando]);
 
+  // Estados para resumen de datos
+  const [resumenData, setResumenData] = useState<any>(null);
+
+  // Cargar resumen de datos cuando cambia la sección
+  useEffect(() => {
+    const loadResumenData = async () => {
+      if (!seccionSeleccionada || !esTutorDeLaSeccion) {
+        setResumenData(null);
+        return;
+      }
+
+      const totalEstudiantes = estudiantesFiltrados.length;
+      
+      // Calcular asistencia promedio
+      const registrosAsistencia = await getAsistenciaClasesByFilters({
+        grado: seccionSeleccionada.grado,
+        seccion: seccionSeleccionada.seccion
+      });
+      
+      let totalAsistencias = 0;
+      let totalRegistros = 0;
+      registrosAsistencia.forEach(reg => {
+        Object.values(reg.entries).forEach(estado => {
+          totalRegistros++;
+          if (estado === 'presente') totalAsistencias++;
+        });
+      });
+      const asistenciaPromedio = totalRegistros > 0 ? Math.round((totalAsistencias / totalRegistros) * 100) : 0;
+
+      // Calcular incidencias recientes
+      const todasIncidencias = await Promise.all(
+        estudiantesFiltrados.map(est => fetchIncidencias({ studentName: est.nombre }))
+      );
+      const incidenciasRecientes = todasIncidencias.flat().filter(inc => {
+        const fechaInc = new Date(inc.fecha);
+        const hace30Dias = new Date();
+        hace30Dias.setDate(hace30Dias.getDate() - 30);
+        return fechaInc >= hace30Dias;
+      });
+
+      setResumenData({
+        totalEstudiantes,
+        asistenciaPromedio,
+        totalIncidencias: incidenciasRecientes.length,
+        incidenciasGraves: incidenciasRecientes.filter(inc => inc.gravedad === 'grave').length
+      });
+    };
+
+    loadResumenData();
+  }, [seccionSeleccionada, estudiantesFiltrados, esTutorDeLaSeccion]);
+
   const handleRegistrarAsistencia = (estudiante: EstudianteInfo) => {
     setSelectedStudent(estudiante);
     setViewMode('asistencia');
@@ -551,69 +602,6 @@ export default function TutorPage() {
     );
   }
 
-  // Cargar estudiantes con estado cuando cambia la sección seleccionada
-  useEffect(() => {
-    const loadEstudiantesConEstado = async () => {
-      if (!seccionSeleccionada || estudiantesFiltrados.length === 0) {
-        setEstudiantesConEstado([]);
-        return;
-      }
-
-      if (!esTutorDeLaSeccion) {
-        setEstudiantesConEstado(estudiantesFiltrados.map(est => ({ ...est, estado: null, iaResumen: null, estaCargandoIA: false })));
-        return;
-      }
-
-      const estudiantesPromises = estudiantesFiltrados.map(async (est) => {
-        const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
-        const incidenciasRecientes = incidenciasEst.filter(inc => {
-          const fechaInc = new Date(inc.fecha);
-          const hace30Dias = new Date();
-          hace30Dias.setDate(hace30Dias.getDate() - 30);
-          return fechaInc >= hace30Dias;
-        });
-
-        // Separar incidencias positivas y negativas
-        const incidenciasNegativas = incidenciasRecientes.filter(inc => 
-          inc.tipo === 'asistencia' || inc.tipo === 'tardanza' || inc.tipo === 'conducta' || inc.tipo === 'academica'
-        );
-        const incidenciasPositivas = incidenciasRecientes.filter(inc => inc.tipo === 'positivo');
-        
-        const incidenciasGraves = incidenciasNegativas.filter(inc => inc.gravedad === 'grave');
-        const ausencias = incidenciasNegativas.filter(inc => inc.tipo === 'asistencia').length;
-        const totalIncidenciasNegativas = incidenciasNegativas.length;
-        const totalIncidenciasPositivas = incidenciasPositivas.length;
-
-        // Determinar estado: Normal, Atención o Riesgo (solo basado en incidencias negativas)
-        // Las incidencias positivas mejoran el estado
-        let estado: 'normal' | 'atencion' | 'riesgo' = 'normal';
-        
-        // Si hay muchas incidencias positivas, favorece estado normal
-        const balance = totalIncidenciasPositivas - totalIncidenciasNegativas;
-        
-        if (incidenciasGraves.length > 0 || ausencias >= 5 || (totalIncidenciasNegativas >= 8 && balance < -3)) {
-          estado = 'riesgo';
-        } else if ((totalIncidenciasNegativas >= 3 && balance < 0) || (ausencias >= 2 && balance < 0)) {
-          estado = 'atencion';
-        } else if (totalIncidenciasNegativas >= 5 && balance <= 0) {
-          estado = 'atencion';
-        }
-        // Si balance >= 0 (más positivas que negativas), mantener normal
-
-        // Resumen IA será cargado de forma asíncrona desde la API
-        const iaResumen = iaResumenes[est.nombre] || null;
-        const estaCargandoIA = iaCargando[est.nombre] || false;
-
-        return { ...est, estado, iaResumen, estaCargandoIA };
-      });
-
-      const estudiantes = await Promise.all(estudiantesPromises);
-      setEstudiantesConEstado(estudiantes);
-    };
-
-    loadEstudiantesConEstado();
-  }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion, iaResumenes, iaCargando]);
-
   // Estados para resumen de datos
   const [resumenData, setResumenData] = useState<any>(null);
 
@@ -649,16 +637,6 @@ export default function TutorPage() {
         const estudiante = estudiantesFiltrados.find(e => e.nombre === inc.studentName);
         return estudiante && (inc.estado === 'Pendiente' || inc.estado === 'En revisión');
       }).length;
-
-      setResumenData({
-        totalEstudiantes,
-        asistenciaPromedio,
-        incidenciasActivas
-      });
-    };
-
-    loadResumenData();
-  }, [seccionSeleccionada, esTutorDeLaSeccion, estudiantesFiltrados.length]);
 
   // Vista de Estudiantes de una Sección
   if (viewMode === 'lista' && seccionSeleccionada) {
