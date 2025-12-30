@@ -720,7 +720,16 @@ export async function getClases(): Promise<Clase[]> {
     });
 
     return clases.map(clase => {
-      const dias: DiaSemana[] = clase.dias ? JSON.parse(clase.dias) : [];
+      let dias: DiaSemana[] = [];
+      try {
+        if (clase.dias) {
+          const parsed = JSON.parse(clase.dias);
+          dias = Array.isArray(parsed) ? parsed : [];
+        }
+      } catch (error) {
+        console.error('Error parseando dias para clase', clase.id, ':', error);
+        dias = [];
+      }
 
       return {
         id: clase.id,

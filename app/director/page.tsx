@@ -5357,10 +5357,10 @@ export default function DirectorPage() {
                               </Select>
                             </TableCell>
                             <TableCell className="text-gray-900">
-                              {clase.dias && clase.dias.length > 0 ? (
+                              {clase.dias && Array.isArray(clase.dias) && clase.dias.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                   {clase.dias.map((dia, idx) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs capitalize">
+                                    <Badge key={idx} variant="secondary" className="text-xs capitalize bg-blue-100 text-blue-800">
                                       {dia}
                                     </Badge>
                                   ))}
