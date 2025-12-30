@@ -4650,9 +4650,12 @@ export default function DirectorPage() {
                                             const estudiantesActualizados = await fetchEstudiantes();
                                             console.log('✅ Estudiantes recargados:', estudiantesActualizados.length);
                                             
-                                            // Crear una nueva referencia del array para forzar el re-render
+                                            // Crear nuevas referencias de los objetos para forzar el re-render completo
+                                            // Esto asegura que React detecte los cambios incluso si los objetos tienen la misma estructura
+                                            const estudiantesConNuevasReferencias = estudiantesActualizados.map(est => ({ ...est }));
+                                            
                                             // Actualizar el estado con los datos frescos de la base de datos
-                                            setEstudiantesInfo([...estudiantesActualizados]);
+                                            setEstudiantesInfo(estudiantesConNuevasReferencias);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
                                             const lista = await getListaEstudiantes();
