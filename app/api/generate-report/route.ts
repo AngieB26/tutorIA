@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
     const estudiante = body.estudiante;
     
     let prompt = '';
+    let reporteGeneralPrompts: { resumen: string; alertas: string; recomendaciones: string } | null = null;
     
     // Caso 1: Múltiples incidencias para un estudiante (reporte consolidado) o sin incidencias
     if (estudiante && incidencias && Array.isArray(incidencias)) {
@@ -36,18 +37,79 @@ Formato: Solo una línea, sin encabezados, positivo y alentador.`;
       });
       
       // Si es reporte general (estudiante es "Reporte General"), generar análisis institucional
+      // HACER 3 LLAMADAS SEPARADAS para evitar que se mezclen las secciones
+      
       if (estudiante === 'Reporte General') {
-        prompt = `Genera un reporte ejecutivo breve:
+        // Calcular estadísticas adicionales para las alertas
+        const estudiantesUnicos = new Set(incidencias.map((i: any) => i.studentName));
+        const profesoresUnicos = new Set(incidencias.map((i: any) => i.profesor).filter(Boolean));
+        const incidenciasGraves = incidencias.filter((i: any) => i.gravedad === 'grave').length;
+        const porcentajeGraves = totalIncidencias > 0 ? ((incidenciasGraves / totalIncidencias) * 100).toFixed(1) : '0';
+        
+        // Contar incidencias por estudiante
+        const porEstudiante: Record<string, number> = {};
+        incidencias.forEach((inc: any) => {
+          porEstudiante[inc.studentName] = (porEstudiante[inc.studentName] || 0) + 1;
+        });
+        const estudiantesRiesgo = Object.entries(porEstudiante)
+          .filter(([_, count]) => count >= 5)
+          .sort(([_, a], [__, b]) => b - a)
+          .slice(0, 10);
+        
+        // Contar incidencias por profesor
+        const porProfesor: Record<string, number> = {};
+        incidencias.forEach((inc: any) => {
+          if (inc.profesor) porProfesor[inc.profesor] = (porProfesor[inc.profesor] || 0) + 1;
+        });
+        const promedioProfesor = profesoresUnicos.size > 0 ? totalIncidencias / profesoresUnicos.size : 0;
+        const profesoresFueraPromedio = Object.entries(porProfesor)
+          .filter(([_, count]) => promedioProfesor > 0 && count > promedioProfesor * 1.5)
+          .sort(([_, a], [__, b]) => b - a)
+          .slice(0, 5);
+        
+        const datosEstadisticos = `${totalIncidencias} incidencias totales | Tipos: ${Object.entries(porTipo).map(([tipo, count]) => `${tipo}:${count}`).join(', ')} | Gravedades: ${Object.entries(porGravedad).map(([grav, count]) => `${grav}:${count}`).join(', ')} | Estudiantes únicos: ${estudiantesUnicos.size} | Profesores únicos: ${profesoresUnicos.size}`;
+        
+        // Preparar prompts separados y guardarlos
+        reporteGeneralPrompts = {
+          resumen: `Genera SOLO un resumen ejecutivo (2-3 líneas) sobre el análisis general del estado de incidencias, tendencias principales y situación institucional.
 
-RESUMEN:
-[2 líneas: total de incidencias y porcentajes principales]
+Datos: ${datosEstadisticos}
 
-RECOMENDACIONES:
-[3 recomendaciones breves, una por línea. IMPORTANTE: Las "positivas" DEBEN INCREMENTARSE. Las "ausencia", "conducta" y "académica" se deben PREVENIR o REDUCIR]
+IMPORTANTE: Solo genera el resumen, sin títulos, sin alertas, sin recomendaciones. Solo texto descriptivo directo.`,
+          
+          alertas: `Identifica y describe las alertas más importantes basándote en los datos. 
 
-Datos: ${totalIncidencias} incidencias | Tipos: ${Object.entries(porTipo).map(([tipo, count]) => `${tipo}:${count}`).join(', ')} | Gravedades: ${Object.entries(porGravedad).map(([grav, count]) => `${grav}:${count}`).join(', ')} | Estudiantes: ${new Set(incidencias.map((i: any) => i.studentName)).size}
+Datos específicos:
+- Estudiantes con alto número de incidencias (5 o más): ${estudiantesRiesgo.length > 0 ? estudiantesRiesgo.map(([nombre, count]) => `${nombre} (${count})`).join(', ') : 'Ninguno'}
+- Profesores con reportes superiores al promedio: ${profesoresFueraPromedio.length > 0 ? profesoresFueraPromedio.map(([nombre, count]) => `${nombre} (${count})`).join(', ') : 'Ninguno'}
+- Porcentaje de incidencias graves: ${porcentajeGraves}% (${incidenciasGraves} de ${totalIncidencias})
+- Tipo de incidencia predominante: ${Object.entries(porTipo).sort(([_, a], [__, b]) => b - a)[0]?.[0] || 'N/A'}
 
-Sin asteriscos ni markdown.`;
+Datos generales: ${datosEstadisticos}
+
+IMPORTANTE: 
+- Si no hay alertas críticas, indica que el estado general es positivo y los indicadores están dentro de rangos normales
+- NO uses markdown, asteriscos, guiones, ni ningún formato especial
+- Solo texto plano y directo
+- Describe cada alerta en una o dos líneas, de forma clara y concisa
+- Sin títulos, sin resumen, sin recomendaciones`,
+          
+          recomendaciones: `Genera 3-4 recomendaciones breves y específicas basándote en los datos de incidencias.
+
+Datos: ${datosEstadisticos}
+
+IMPORTANTE: 
+- Las recomendaciones "positivas" DEBEN INCREMENTARSE
+- Las incidencias de "ausencia", "conducta" y "académica" se deben PREVENIR o REDUCIR
+- Escribe UNA recomendación por línea
+- Cada línea debe ser una recomendación completa e independiente
+- NO uses números, guiones, asteriscos ni ningún marcador al inicio
+- Solo texto directo, cada recomendación en su propia línea
+- Sin títulos, sin resumen, sin alertas`
+        };
+        
+        // Marcar que es reporte general para procesamiento especial
+        prompt = 'REPORTE_GENERAL_SEPARADO';
       } else {
         // Caso con incidencias individuales (length > 0 ya verificado arriba)
         prompt = `Analiza las incidencias y genera un reporte CONCISO:
@@ -118,12 +180,137 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
       { nombre: 'gemini-3-flash', version: 'v1beta' },
       { nombre: 'gemini-2.5-flash-lite', version: 'v1beta' },
       { nombre: 'gemini-2.0-flash-lite', version: 'v1beta' },
-      { nombre: 'gemini-pro', version: 'v1' }, // Fallback a v1
+      { nombre: 'gemini-1.5-flash', version: 'v1beta' },
+      { nombre: 'gemini-1.5-pro', version: 'v1beta' },
     ];
 
     // Log para debugging (sin mostrar la key completa por seguridad)
     console.log('🔑 API Key configurada:', geminiApiKey ? `${geminiApiKey.substring(0, 10)}...` : 'NO ENCONTRADA');
     
+    // Función auxiliar para llamar a Gemini con un prompt específico
+    const llamarGemini = async (promptTexto: string, maxTokens: number = 1500): Promise<{ texto: string; modelo: string } | null> => {
+      const requestBody = {
+        contents: [{ parts: [{ text: promptTexto }] }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: maxTokens,
+          topP: 0.95,
+          topK: 40
+        }
+      };
+
+      let geminiRes: Response | null = null;
+      let modeloUsado = '';
+      let ultimoError: any = null;
+
+      // Intentar cada modelo hasta que uno funcione
+      for (const modelo of modelosAPrueba) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/${modelo.version}/models/${modelo.nombre}:generateContent?key=${geminiApiKey}`;
+          
+          geminiRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
+          
+          if (geminiRes.ok) {
+            modeloUsado = modelo.nombre;
+            const data = await geminiRes.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (text) {
+              return { texto: text.trim(), modelo: modeloUsado };
+            }
+          } else {
+            const errorText = await geminiRes.text();
+            ultimoError = { status: geminiRes.status, text: errorText, modelo: modelo.nombre };
+          }
+        } catch (error) {
+          ultimoError = { error, modelo: modelo.nombre };
+        }
+      }
+      
+      console.error('❌ Error en llamada a Gemini:', ultimoError);
+      return null;
+    };
+
+    // Si es reporte general, hacer 3 llamadas separadas
+    if (prompt === 'REPORTE_GENERAL_SEPARADO' && reporteGeneralPrompts) {
+      console.log('🔄 Generando reporte general con llamadas separadas...');
+      
+      // Hacer las 3 llamadas en paralelo usando los prompts guardados
+      const [resResumen, resAlertas, resRecomendaciones] = await Promise.all([
+        llamarGemini(reporteGeneralPrompts.resumen, 500),
+        llamarGemini(reporteGeneralPrompts.alertas, 1000),
+        llamarGemini(reporteGeneralPrompts.recomendaciones, 800)
+      ]);
+
+      // Si todas las llamadas fallaron, retornar error
+      if (!resResumen && !resAlertas && !resRecomendaciones) {
+        console.error('❌ Todas las llamadas a Gemini fallaron');
+        return NextResponse.json({ 
+          resumen: 'Error al conectar con el servicio de IA', 
+          alertas: '',
+          recomendaciones: 'Por favor, intenta nuevamente más tarde.',
+          error: 'API Error',
+          report: 'Error al generar el análisis'
+        }, { status: 200 });
+      }
+
+      // Función para limpiar markdown (definida más abajo en el código, pero la usamos aquí también)
+      const cleanMarkdown = (text: string): string => {
+        if (!text) return '';
+        return text
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/\*([^*]+)\*/g, '$1')
+          .replace(/__([^_]+)__/g, '$1')
+          .replace(/_([^_]+)_/g, '$1')
+          .replace(/^#+\s*/gm, '')
+          .trim();
+      };
+
+      let resumen = resResumen?.texto || 'Análisis no disponible';
+      let alertas = resAlertas?.texto || '';
+      let recomendaciones = resRecomendaciones?.texto || 'Recomendaciones no disponibles';
+
+      // Limpiar markdown de todas las respuestas
+      resumen = cleanMarkdown(resumen);
+      alertas = cleanMarkdown(alertas);
+      recomendaciones = cleanMarkdown(recomendaciones);
+      
+      // Asegurar que las recomendaciones estén separadas por líneas
+      // Si hay recomendaciones en una sola línea, intentar separarlas por puntos o números
+      if (recomendaciones && !recomendaciones.includes('\n')) {
+        // Intentar separar por patrones comunes
+        recomendaciones = recomendaciones
+          .replace(/(\d+[.)]\s*)/g, '\n$1') // Separar por números
+          .replace(/([-•*]\s*)/g, '\n$1') // Separar por bullets
+          .replace(/\.\s+([A-ZÁÉÍÓÚÑ])/g, '.\n$1') // Separar por puntos seguidos de mayúscula
+          .trim();
+      }
+
+      console.log('✅ Resumen generado:', resumen.substring(0, 100));
+      console.log('✅ Alertas generadas:', alertas.substring(0, 100));
+      console.log('✅ Recomendaciones generadas:', recomendaciones.substring(0, 100));
+
+      // Construir el reporte completo
+      let reportComplete = '';
+      if (resumen) reportComplete = 'RESUMEN:\n' + resumen;
+      if (alertas) reportComplete += (reportComplete ? '\n\nALERTAS INTELIGENTES:\n' : '') + alertas;
+      if (recomendaciones) reportComplete += (reportComplete ? '\n\nRECOMENDACIONES:\n' : '') + recomendaciones;
+
+      return NextResponse.json({
+        resumen: resumen,
+        alertas: alertas,
+        recomendaciones: recomendaciones,
+        report: reportComplete || resumen,
+        raw: `Resumen: ${resumen}\n\nAlertas: ${alertas}\n\nRecomendaciones: ${recomendaciones}`,
+        truncated: false,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Para otros casos, usar el flujo original
     // Preparar el body de la solicitud
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -287,15 +474,103 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
     };
 
     // Extraer todas las secciones con nombres completos primero
-    let resumen = extractSection(text, 'RESUMEN', 'ANÁLISIS DE PATRONES|PATRONES|FORTALEZAS|RIESGOS|RECOMENDACIONES|SEGUIMIENTO');
-    let analisisPatrones = extractSection(text, 'ANÁLISIS DE PATRONES', 'FORTALEZAS|RIESGOS|RECOMENDACIONES|SEGUIMIENTO');
-    if (!analisisPatrones) analisisPatrones = extractSection(text, 'PATRONES', 'FORTALEZAS|RIESGOS|RECOMENDACIONES|SEGUIMIENTO');
+    let resumen = extractSection(text, 'RESUMEN', 'ANÁLISIS DE PATRONES|PATRONES|FORTALEZAS|RIESGOS|ALERTAS|RECOMENDACIONES|SEGUIMIENTO');
+    let analisisPatrones = extractSection(text, 'ANÁLISIS DE PATRONES', 'FORTALEZAS|RIESGOS|ALERTAS|RECOMENDACIONES|SEGUIMIENTO');
+    if (!analisisPatrones) analisisPatrones = extractSection(text, 'PATRONES', 'FORTALEZAS|RIESGOS|ALERTAS|RECOMENDACIONES|SEGUIMIENTO');
     
-    let fortalezas = extractSection(text, 'FORTALEZAS Y ÁREAS DE MEJORA', 'RIESGOS|FACTORES|RECOMENDACIONES|SEGUIMIENTO');
-    if (!fortalezas) fortalezas = extractSection(text, 'FORTALEZAS Y MEJORAS', 'RIESGOS|FACTORES|RECOMENDACIONES|SEGUIMIENTO');
+    let fortalezas = extractSection(text, 'FORTALEZAS Y ÁREAS DE MEJORA', 'RIESGOS|FACTORES|ALERTAS|RECOMENDACIONES|SEGUIMIENTO');
+    if (!fortalezas) fortalezas = extractSection(text, 'FORTALEZAS Y MEJORAS', 'RIESGOS|FACTORES|ALERTAS|RECOMENDACIONES|SEGUIMIENTO');
     
-    let factoresRiesgo = extractSection(text, 'FACTORES DE RIESGO', 'RECOMENDACIONES|SEGUIMIENTO');
-    if (!factoresRiesgo) factoresRiesgo = extractSection(text, 'RIESGOS', 'RECOMENDACIONES|SEGUIMIENTO');
+    let factoresRiesgo = extractSection(text, 'FACTORES DE RIESGO', 'ALERTAS|RECOMENDACIONES|SEGUIMIENTO');
+    if (!factoresRiesgo) factoresRiesgo = extractSection(text, 'RIESGOS', 'ALERTAS|RECOMENDACIONES|SEGUIMIENTO');
+    
+    // Extraer alertas inteligentes (especialmente para reporte general)
+    let alertas = extractSection(text, 'ALERTAS INTELIGENTES', 'RECOMENDACIONES|SEGUIMIENTO');
+    if (!alertas) {
+      alertas = extractSection(text, 'ALERTAS', 'RECOMENDACIONES|SEGUIMIENTO');
+    }
+    
+    // Si las alertas están mezcladas en el resumen, intentar extraerlas
+    if (!alertas && resumen) {
+      // Buscar si el resumen contiene texto de alertas (varios formatos posibles)
+      // Formato: "ALERTAS INTELIGENTES: - Porcentaje..." o "ALERTAS INTELIGENTES: Porcentaje..."
+      // Usar modo no-greedy con lookahead para capturar hasta RECOMENDACIONES o hasta el final
+      // Nota: No usar flag 's' (dotAll) para compatibilidad, usar [\s\S] en su lugar
+      let alertasEnResumen = resumen.match(/ALERTAS?\s*INTELIGENTES?:?\s*[-•]?\s*([\s\S]+?)(?=\s*RECOMENDACIONES|$)/i);
+      
+      // Si no encontró con el formato anterior, buscar sin el guión inicial
+      if (!alertasEnResumen) {
+        alertasEnResumen = resumen.match(/ALERTAS?\s*INTELIGENTES?:?\s*([\s\S]+?)(?=\s*RECOMENDACIONES|$)/i);
+      }
+      
+      // Si aún no encontró, buscar desde "ALERTAS" hasta el final del texto
+      if (!alertasEnResumen) {
+        alertasEnResumen = resumen.match(/ALERTAS?\s*INTELIGENTES?:?\s*([\s\S]+)/i);
+      }
+      
+      if (alertasEnResumen && alertasEnResumen[1]) {
+        alertas = alertasEnResumen[1].trim();
+        // Limpiar el prefijo "ALERTAS INTELIGENTES:" si quedó
+        alertas = alertas.replace(/^ALERTAS?\s*INTELIGENTES?:?\s*/i, '').trim();
+        // Limpiar guiones o bullets al inicio si existen
+        alertas = alertas.replace(/^[-•]\s*/, '').trim();
+        console.log('🔍 Alertas extraídas del resumen:', alertas.substring(0, 200));
+        
+        // Limpiar las alertas del resumen (remover desde "ALERTAS" hasta el final)
+        // Primero intentar remover con punto antes
+        resumen = resumen.replace(/\.\s*ALERTAS?\s*INTELIGENTES?:?\s*[\s\S]*$/i, '').trim();
+        // Si no se removió, intentar sin punto
+        if (resumen.includes('ALERTAS')) {
+          resumen = resumen.replace(/ALERTAS?\s*INTELIGENTES?:?\s*[\s\S]*$/i, '').trim();
+        }
+        console.log('📝 Resumen después de extraer alertas:', resumen.substring(0, 150));
+      }
+    }
+    
+    // También buscar alertas en el texto completo si no se encontraron
+    if (!alertas) {
+      // Buscar en todo el texto, no solo después de RESUMEN
+      const matchAlertas = text.match(/ALERTAS?\s*INTELIGENTES?:?\s*[-•]?\s*([\s\S]+?)(?=\s*RECOMENDACIONES|$)/i);
+      if (matchAlertas && matchAlertas[1]) {
+        alertas = matchAlertas[1].trim();
+        // Limpiar el prefijo si quedó
+        alertas = alertas.replace(/^ALERTAS?\s*INTELIGENTES?:?\s*/i, '').trim();
+        alertas = alertas.replace(/^[-•]\s*/, '').trim();
+        console.log('🔍 Alertas encontradas en texto completo:', alertas.substring(0, 200));
+      } else {
+        // Intentar sin el guión
+        const matchAlertas2 = text.match(/ALERTAS?\s*INTELIGENTES?:?\s*([\s\S]+?)(?=\s*RECOMENDACIONES|$)/i);
+        if (matchAlertas2 && matchAlertas2[1]) {
+          alertas = matchAlertas2[1].trim();
+          alertas = alertas.replace(/^ALERTAS?\s*INTELIGENTES?:?\s*/i, '').trim();
+          console.log('🔍 Alertas encontradas (sin guión):', alertas.substring(0, 200));
+        }
+      }
+    }
+    
+    // Limpiar el resumen de cualquier referencia a alertas que pueda haber quedado
+    if (resumen) {
+      const resumenAntes = resumen;
+      // Remover "ALERTAS INTELIGENTES:" y todo lo que sigue
+      resumen = resumen.replace(/ALERTAS?\s*INTELIGENTES?:?\s*.+$/is, '').trim();
+      // Remover punto y espacio antes de "ALERTAS" si existe
+      resumen = resumen.replace(/\.\s*ALERTAS?\s*INTELIGENTES?:?\s*.+$/is, '').trim();
+      // Remover solo el texto "ALERTAS INTELIGENTES:" si está al final
+      resumen = resumen.replace(/\s*ALERTAS?\s*INTELIGENTES?:?\s*$/i, '').trim();
+      
+      if (resumenAntes !== resumen) {
+        console.log('🧹 Limpiado resumen de referencias a alertas');
+        console.log('📝 Resumen después de limpieza:', resumen.substring(0, 100));
+      }
+    }
+    
+    // Log para debugging
+    if (alertas) {
+      console.log('✅ Alertas extraídas:', alertas.substring(0, 200));
+    } else {
+      console.warn('⚠️ No se encontraron alertas en la respuesta');
+      console.log('📄 Texto completo para debugging:', text.substring(0, 500));
+    }
     
     let recomendaciones = extractSection(text, 'RECOMENDACIONES', 'PLAN DE SEGUIMIENTO|SEGUIMIENTO');
     let planSeguimiento = extractSection(text, 'PLAN DE SEGUIMIENTO');
@@ -334,11 +609,13 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
     analisisPatrones = cleanMarkdown(analisisPatrones);
     fortalezas = cleanMarkdown(fortalezas);
     factoresRiesgo = cleanMarkdown(factoresRiesgo);
+    alertas = cleanMarkdown(alertas);
     recomendaciones = cleanMarkdown(recomendaciones);
     planSeguimiento = cleanMarkdown(planSeguimiento);
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📝 Resumen:', resumen.substring(0, 100));
+    console.log('🚨 Alertas:', alertas.substring(0, 100));
     console.log('🔍 Análisis de Patrones:', analisisPatrones.substring(0, 100));
     console.log('💡 Recomendaciones:', recomendaciones.substring(0, 100));
     console.log('📋 Plan de Seguimiento:', planSeguimiento.substring(0, 100));
@@ -348,6 +625,10 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
     let reportComplete = '';
     if (resumen) {
       reportComplete = 'RESUMEN:\n' + resumen;
+    }
+    if (alertas) {
+      if (reportComplete) reportComplete += '\n\nALERTAS INTELIGENTES:\n';
+      reportComplete += alertas;
     }
     if (analisisPatrones) {
       if (reportComplete) reportComplete += '\n\nPATRONES:\n';
@@ -377,6 +658,7 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
 
     const response = {
       resumen: resumen || 'Análisis no disponible',
+      alertas: alertas || '',
       analisisPatrones: analisisPatrones || '',
       fortalezas: fortalezas || '',
       factoresRiesgo: factoresRiesgo || '',

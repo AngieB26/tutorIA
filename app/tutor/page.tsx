@@ -273,48 +273,71 @@ export default function TutorPage() {
     // Removido iaResumenes de las dependencias para evitar loops infinitos
   }, [estudiantesFiltrados.length, esTutorDeLaSeccion, seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '']);
 
-  // Cargar estudiantes con estado cuando cambia la sección seleccionada
+  // Estado para incidencias por estudiante (para calcular estados)
+  const [incidenciasPorEstudiante, setIncidenciasPorEstudiante] = useState<Record<string, any[]>>({});
+
+  // Cargar incidencias para calcular estados (solo cuando cambia la sección)
   useEffect(() => {
-    const loadEstudiantesConEstado = async () => {
-      if (!seccionSeleccionada || estudiantesFiltrados.length === 0) {
-        setEstudiantesConEstado([]);
+    const loadIncidencias = async () => {
+      if (!seccionSeleccionada || estudiantesFiltrados.length === 0 || !esTutorDeLaSeccion) {
+        setIncidenciasPorEstudiante({});
         return;
       }
 
-      if (!esTutorDeLaSeccion) {
-        setEstudiantesConEstado(estudiantesFiltrados.map(est => ({ ...est, estado: null, iaResumen: null, estaCargandoIA: false })));
-        return;
-      }
-
-      const estudiantesPromises = estudiantesFiltrados.map(async (est) => {
-        const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
-        const incidenciasRecientes = incidenciasEst.filter(inc => {
-          const fechaInc = new Date(inc.fecha);
-          const hace30Dias = new Date();
-          hace30Dias.setDate(hace30Dias.getDate() - 30);
-          return fechaInc >= hace30Dias;
-        });
-
-        const estado = incidenciasRecientes.length === 0 
-          ? 'normal' 
-          : incidenciasRecientes.length <= 2 
-            ? 'atencion' 
-            : 'alerta';
-
-        return {
-          ...est,
-          estado,
-          iaResumen: iaResumenes[est.nombre] || null,
-          estaCargandoIA: iaCargando[est.nombre] || false
-        };
-      });
-
-      const estudiantesConEstadoData = await Promise.all(estudiantesPromises);
-      setEstudiantesConEstado(estudiantesConEstadoData);
+      const incidenciasMap: Record<string, any[]> = {};
+      await Promise.all(
+        estudiantesFiltrados.map(async (est) => {
+          try {
+            const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+            const incidenciasRecientes = incidenciasEst.filter(inc => {
+              const fechaInc = new Date(inc.fecha);
+              const hace30Dias = new Date();
+              hace30Dias.setDate(hace30Dias.getDate() - 30);
+              return fechaInc >= hace30Dias;
+            });
+            incidenciasMap[est.nombre] = incidenciasRecientes;
+          } catch (error) {
+            console.error(`Error cargando incidencias para ${est.nombre}:`, error);
+            incidenciasMap[est.nombre] = [];
+          }
+        })
+      );
+      setIncidenciasPorEstudiante(incidenciasMap);
     };
 
-    loadEstudiantesConEstado();
+    loadIncidencias();
   }, [seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '', estudiantesFiltrados.length, esTutorDeLaSeccion]);
+
+  // Calcular estudiantes con estado (se actualiza cuando cambian iaResumenes, iaCargando o incidenciasPorEstudiante)
+  useEffect(() => {
+    if (!seccionSeleccionada || estudiantesFiltrados.length === 0) {
+      setEstudiantesConEstado([]);
+      return;
+    }
+
+    if (!esTutorDeLaSeccion) {
+      setEstudiantesConEstado(estudiantesFiltrados.map(est => ({ ...est, estado: null, iaResumen: null, estaCargandoIA: false })));
+      return;
+    }
+
+    const estudiantesConEstadoData = estudiantesFiltrados.map((est) => {
+      const incidenciasRecientes = incidenciasPorEstudiante[est.nombre] || [];
+      const estado = incidenciasRecientes.length === 0 
+        ? 'normal' 
+        : incidenciasRecientes.length <= 2 
+          ? 'atencion' 
+          : 'alerta';
+
+      return {
+        ...est,
+        estado,
+        iaResumen: iaResumenes[est.nombre] || null,
+        estaCargandoIA: iaCargando[est.nombre] || false
+      };
+    });
+
+    setEstudiantesConEstado(estudiantesConEstadoData);
+  }, [estudiantesFiltrados, seccionSeleccionada, esTutorDeLaSeccion, incidenciasPorEstudiante, iaResumenes, iaCargando]);
 
   // Estados para resumen de datos
   const [resumenData, setResumenData] = useState<any>(null);

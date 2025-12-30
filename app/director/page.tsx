@@ -1570,7 +1570,7 @@ export default function DirectorPage() {
       const report = {
         report: data.report || data.resumen || 'Análisis no disponible',
         resumen: data.resumen || '',
-        alertas: data.alertas || '',
+        alertas: data.alertas || '', // Alertas generadas por IA
         recomendaciones: data.recomendaciones || '',
         timestamp: data.timestamp || new Date().toISOString(),
         truncated: !!data.truncated,
@@ -4007,7 +4007,7 @@ export default function DirectorPage() {
 
                 {/* Render reporteGeneral card safely */}
                 {!generatingGeneralReport && reporteGeneral && (() => {
-            const { timestamp, truncated, report, resumen, recomendaciones } = reporteGeneral as any;
+            const { timestamp, truncated, report, resumen, alertas, recomendaciones } = reporteGeneral as any;
                   return (
                     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-white">
                       <CardHeader>
@@ -4039,144 +4039,53 @@ export default function DirectorPage() {
                       </div>
                     )}
                     
-                    {/* Alertas Inteligentes */}
+                    {/* Alertas Inteligentes - Generadas por IA */}
                     {(() => {
-                      const stats = getGeneralStats(incidenciasGenerales);
+                      const alertasIA = (reporteGeneral as any)?.alertas;
                       
-                      // Calcular incidencias por estudiante con más detalle
-                      const porEstudiante: Record<string, { count: number; graves: number; tipos: Record<string, number> }> = {};
-                      incidenciasGenerales.forEach((inc: Incidencia) => {
-                        if (!porEstudiante[inc.studentName]) {
-                          porEstudiante[inc.studentName] = { count: 0, graves: 0, tipos: {} };
-                        }
-                        porEstudiante[inc.studentName].count++;
-                        if (inc.gravedad === 'grave') {
-                          porEstudiante[inc.studentName].graves++;
-                        }
-                        porEstudiante[inc.studentName].tipos[inc.tipo] = (porEstudiante[inc.studentName].tipos[inc.tipo] || 0) + 1;
-                      });
-                      
-                      const estudiantesRiesgo = Object.entries(porEstudiante)
-                        .filter(([_, data]) => data.count >= 5)
-                        .sort(([_, a], [__, b]) => b.count - a.count)
-                        .slice(0, 10); // Top 10
-                      
-                      // Calcular promedio de profesores
-                      const profesoresUnicos = new Set(incidenciasGenerales.map((i: Incidencia) => i.profesor).filter(Boolean));
-                      const promedioProfesor = profesoresUnicos.size > 0 ? 
-                        incidenciasGenerales.length / profesoresUnicos.size : 0;
-                      
-                      const porProfesor: Record<string, number> = {};
-                      incidenciasGenerales.forEach((inc: Incidencia) => {
-                        if (inc.profesor) porProfesor[inc.profesor] = (porProfesor[inc.profesor] || 0) + 1;
-                      });
-                      
-                      const profesoresFueraPromedio = Object.entries(porProfesor)
-                        .filter(([_, count]) => promedioProfesor > 0 && count > promedioProfesor * 1.5)
-                        .sort(([_, a], [__, b]) => b - a)
-                        .slice(0, 5); // Top 5
-                      
-                      // Calcular incidencias graves totales
-                      const incidenciasGraves = incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'grave').length;
-                      const porcentajeGraves = incidenciasGenerales.length > 0 
-                        ? ((incidenciasGraves / incidenciasGenerales.length) * 100).toFixed(1) 
-                        : '0';
-                      
-                      // Calcular tendencia de tipos problemáticos
-                      const porTipo = {
-                        conducta: incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'conducta').length,
-                        asistencia: incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'asistencia').length,
-                        academica: incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'academica').length,
-                      };
-                      const tipoMasProblema = Object.entries(porTipo).sort(([_, a], [__, b]) => b - a)[0];
-                      
-                      // Si no hay alertas, mostrar un mensaje positivo
-                      if (estudiantesRiesgo.length === 0 && profesoresFueraPromedio.length === 0 && parseFloat(porcentajeGraves) < 30) {
-                        return (
-                          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <h4 className="font-semibold text-gray-900 text-sm">Estado General</h4>
+                      // Si hay alertas generadas por IA, mostrarlas
+                      if (alertasIA && alertasIA.trim()) {
+                        // Determinar el color según el contenido (positivo o alerta)
+                        const esPositivo = alertasIA.toLowerCase().includes('no se detectaron') || 
+                                          alertasIA.toLowerCase().includes('estado general es positivo') ||
+                                          alertasIA.toLowerCase().includes('rangos normales') ||
+                                          alertasIA.toLowerCase().includes('ninguna alerta');
+                        
+                        if (esPositivo) {
+                          return (
+                            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                              <div className="flex items-center gap-2 mb-2">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
+                              </div>
+                              <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">{alertasIA}</p>
                             </div>
-                            <p className="text-gray-900 text-sm">
-                              No se detectaron alertas críticas en el período seleccionado. Los indicadores están dentro de rangos normales.
-                            </p>
-                          </div>
-                        );
+                          );
+                        } else {
+                          return (
+                            <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                              <div className="flex items-center gap-2 mb-3">
+                                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                                <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
+                              </div>
+                              <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">
+                                {alertasIA}
+                              </div>
+                            </div>
+                          );
+                        }
                       }
                       
+                      // Si no hay alertas de IA, mostrar mensaje por defecto
                       return (
-                        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                          <div className="flex items-center gap-2 mb-3">
-                            <AlertCircle className="h-5 w-5 text-yellow-600" />
-                            <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle className="h-4 w-4 text-gray-600" />
+                            <h4 className="font-semibold text-gray-900 text-sm">Alertas Inteligentes</h4>
                           </div>
-                          <div className="space-y-3 text-gray-900 text-sm">
-                            
-                            {/* Estudiantes en riesgo */}
-                            {estudiantesRiesgo.length > 0 && (
-                              <div>
-                                <p className="font-semibold text-gray-900 mb-2">
-                                  🚨 {estudiantesRiesgo.length} Estudiante{estudiantesRiesgo.length > 1 ? 's' : ''} con Alto Número de Incidencias (5+):
-                                </p>
-                                <ul className="list-disc list-inside space-y-1.5 ml-2">
-                                  {estudiantesRiesgo.map(([nombre, data]) => (
-                                    <li key={nombre} className="leading-relaxed">
-                                      <span className="font-medium">{nombre}</span>: {data.count} incidencia{data.count > 1 ? 's' : ''} total{data.graves > 0 ? ` (${data.graves} grave${data.graves > 1 ? 's' : ''})` : ''}
-                                      {Object.keys(data.tipos).length > 0 && (
-                                        <span className="text-gray-600"> - Tipos: {Object.entries(data.tipos).map(([tipo, count]) => `${getTipoLabel(tipo as TipoIncidencia)}: ${count}`).join(', ')}</span>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {/* Profesores fuera del promedio */}
-                            {profesoresFueraPromedio.length > 0 && (
-                              <div>
-                                <p className="font-semibold text-gray-900 mb-2">
-                                  👨‍🏫 Profesores con Reportes Superiores al Promedio:
-                                </p>
-                                <ul className="list-disc list-inside space-y-1.5 ml-2">
-                                  {profesoresFueraPromedio.map(([nombre, count]) => (
-                                    <li key={nombre} className="leading-relaxed">
-                                      <span className="font-medium">{nombre}</span>: {count} incidencia{count > 1 ? 's' : ''} 
-                                      <span className="text-gray-600"> (Promedio: {promedioProfesor.toFixed(1)}, {((count / promedioProfesor - 1) * 100).toFixed(0)}% por encima)</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {/* Porcentaje de incidencias graves */}
-                            {parseFloat(porcentajeGraves) >= 30 && (
-                              <div>
-                                <p className="font-semibold text-gray-900 mb-1">
-                                  ⚠️ Alta Proporción de Incidencias Graves:
-                                </p>
-                                <p className="ml-2 leading-relaxed">
-                                  El {porcentajeGraves}% de las incidencias son graves ({incidenciasGraves} de {incidenciasGenerales.length} total). 
-                                  Esto indica un nivel de gravedad elevado que requiere atención prioritaria.
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Tipo de incidencia más problemático */}
-                            {tipoMasProblema && tipoMasProblema[1] > incidenciasGenerales.length * 0.4 && (
-                              <div>
-                                <p className="font-semibold text-gray-900 mb-1">
-                                  📊 Tipo de Incidencia Predominante:
-                                </p>
-                                <p className="ml-2 leading-relaxed">
-                                  Las incidencias de tipo <span className="font-medium">{getTipoLabel(tipoMasProblema[0] as TipoIncidencia)}</span> representan 
-                                  el {((tipoMasProblema[1] / incidenciasGenerales.length) * 100).toFixed(1)}% del total ({tipoMasProblema[1]} de {incidenciasGenerales.length}). 
-                                  Se recomienda revisar las estrategias de prevención para este tipo específico.
-                                </p>
-                              </div>
-                            )}
-                            
-                          </div>
+                          <p className="text-gray-900 text-sm italic">
+                            Las alertas se generarán automáticamente al crear el análisis con IA.
+                          </p>
                         </div>
                       );
                     })()}
