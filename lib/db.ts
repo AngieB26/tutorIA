@@ -748,6 +748,14 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       timestamp: newIncidencia.timestamp
     });
 
+    console.log(`💾 Creando incidencia en BD con:`, {
+      id: newIncidencia.id,
+      studentName: studentNameNormalizado,
+      estudianteId: estudianteId,
+      estudianteIdTipo: typeof estudianteId,
+      estudianteIdLength: estudianteId?.length
+    });
+    
     await prisma.incidencia.create({
       data: {
         id: newIncidencia.id,
