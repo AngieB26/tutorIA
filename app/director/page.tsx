@@ -4633,12 +4633,21 @@ export default function DirectorPage() {
                                             await saveEstudianteInfo(estudianteActualizado, estudianteId);
                                             console.log('✅ Estudiante guardado exitosamente');
                                           
+                                            // Cerrar el formulario de edición primero para evitar conflictos
+                                            setEstudianteEditandoAdmin(null);
+                                            setEstudianteEditForm({});
+                                            setEstudianteNombreOriginal(null);
+                                          
+                                            // Esperar un momento para que la base de datos se actualice completamente
+                                            await new Promise(resolve => setTimeout(resolve, 200));
+                                          
                                             // Recargar estudiantes desde la base de datos para obtener los datos actualizados (incluyendo nombres y apellidos)
+                                            console.log('🔄 Recargando estudiantes desde la base de datos...');
                                             const estudiantesActualizados = await fetchEstudiantes();
-                                            setEstudiantesInfo(estudiantesActualizados);
+                                            console.log('✅ Estudiantes recargados:', estudiantesActualizados.length);
                                             
-                                            // Forzar actualización del refreshKey para recargar todos los datos
-                                            setRefreshKey(prev => prev + 1);
+                                            // Actualizar el estado con los datos frescos de la base de datos
+                                            setEstudiantesInfo(estudiantesActualizados);
                                             
                                             // Actualizar lista de estudiantes para reflejar cambios
                                             const lista = await getListaEstudiantes();
@@ -4661,19 +4670,21 @@ export default function DirectorPage() {
                                             setListaEstudiantes(listaFinal);
                                             
                                             // Si el estudiante está seleccionado, actualizar también su información
-                                            if (selectedStudentId && estudiante.id === selectedStudentId) {
+                                            if (selectedStudentId && estudianteId === selectedStudentId) {
+                                              console.log('🔄 Actualizando información del estudiante seleccionado...');
                                               const estudianteActualizadoInfo = await fetchEstudianteById(selectedStudentId);
                                               if (estudianteActualizadoInfo) {
                                                 setInfoEdit(estudianteActualizadoInfo);
                                                 if (estudianteActualizadoInfo.nombre) {
                                                   setSelectedStudentName(estudianteActualizadoInfo.nombre);
                                                 }
+                                                console.log('✅ Información del estudiante seleccionado actualizada');
                                               }
                                             }
                                             
-                                            setEstudianteEditandoAdmin(null);
-                                            setEstudianteEditForm({});
-                                            setEstudianteNombreOriginal(null);
+                                            // Forzar actualización del refreshKey para recargar todos los datos
+                                            setRefreshKey(prev => prev + 1);
+                                            
                                             toast.success('Estudiante actualizado exitosamente');
                                           } catch (error: any) {
                                             console.error('❌ Error guardando estudiante:', error);
