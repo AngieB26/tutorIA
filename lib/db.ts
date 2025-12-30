@@ -1500,15 +1500,25 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
         // También buscar por nombre completo del estudiante encontrado
         const nombreCompletoEstudiante = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
         condiciones.push({ studentName: nombreCompletoEstudiante });
-        console.log(`🔍 Buscando incidencias por estudianteId: ${estudiante.id} y por studentName: "${nombreCompletoEstudiante}"`);
+        // Buscar por variaciones del nombre (solo nombres, solo apellidos, etc.)
+        condiciones.push({ studentName: { contains: estudiante.nombres, mode: 'insensitive' } });
+        condiciones.push({ studentName: { contains: estudiante.apellidos, mode: 'insensitive' } });
+        console.log(`🔍 Buscando incidencias por estudianteId: ${estudiante.id} y por variaciones del nombre`);
       } else if (isUUID) {
         // Si es un ID pero no encontramos el estudiante, buscar por estudianteId directamente
         condiciones.push({ estudianteId: studentNameOrId });
         console.log(`🔍 Buscando incidencias por estudianteId (directo): ${studentNameOrId}`);
       } else {
-        // Si es un nombre y no encontramos el estudiante, buscar por nombre
+        // Si es un nombre y no encontramos el estudiante, buscar por nombre exacto y variaciones
         condiciones.push({ studentName: studentNameOrId });
-        console.log(`🔍 Buscando incidencias por studentName: "${studentNameOrId}"`);
+        // También buscar con contains para encontrar variaciones
+        const partesNombre = studentNameOrId.trim().split(/\s+/);
+        partesNombre.forEach(parte => {
+          if (parte.length > 2) { // Solo buscar partes con más de 2 caracteres
+            condiciones.push({ studentName: { contains: parte, mode: 'insensitive' } });
+          }
+        });
+        console.log(`🔍 Buscando incidencias por studentName: "${studentNameOrId}" y variaciones`);
       }
       
       // Buscar incidencias con OR para encontrar todas las posibles coincidencias

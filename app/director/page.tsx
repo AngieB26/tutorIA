@@ -18,7 +18,6 @@ import {
   getIncidenciasDerivadas,
   getListaEstudiantes,
   getIncidenciasCompletasByStudent,
-  corregirIncidenciasEstudiantes,
   marcarIncidenciaResuelta,
   fetchNotas,
   fetchEstudiante,
@@ -1212,7 +1211,6 @@ export default function DirectorPage() {
   const [infoEdit, setInfoEdit] = useState<any>(null);
   const [fotoPreview, setFotoPreview] = useState('');
   const [guardandoEstudiante, setGuardandoEstudiante] = useState(false);
-  const [corrigiendoIncidencias, setCorrigiendoIncidencias] = useState(false);
 
   // Sincronizar infoEdit y fotoPreview cuando cambia el estudiante seleccionado o refreshKey
   // PERO solo si no estamos guardando (para evitar interferencias)
@@ -4457,9 +4455,8 @@ export default function DirectorPage() {
 
               {/* Lista de estudiantes actuales */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Estudiantes Registrados ({estudiantesInfo.filter(e => 
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Estudiantes Registrados ({estudiantesInfo.filter(e => 
                           (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
                           (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
                           (!busquedaAdminEstudiante || 
@@ -4468,38 +4465,7 @@ export default function DirectorPage() {
                             (e.apellidos && e.apellidos.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
                           )
                     ).length})
-                  </h3>
-                  <Button
-                    onClick={async () => {
-                      setCorrigiendoIncidencias(true);
-                      try {
-                        const resultado = await corregirIncidenciasEstudiantes();
-                        toast.success(`Corrección completada: ${resultado.actualizadas} incidencias actualizadas, ${resultado.errores} errores`);
-                        // Recargar incidencias del estudiante si está viendo un perfil
-                        if (selectedStudentId || selectedStudentName) {
-                          const idParaBuscar = selectedStudentId || selectedStudentName;
-                          if (idParaBuscar) {
-                            const incidenciasActualizadas = await getIncidenciasCompletasByStudent(idParaBuscar);
-                            setIncidenciasEstudiante(incidenciasActualizadas);
-                          }
-                        }
-                        // Recargar lista de estudiantes
-                        setRefreshKey(prev => prev + 1);
-                      } catch (error) {
-                        console.error('Error corrigiendo incidencias:', error);
-                        toast.error('Error al corregir incidencias');
-                      } finally {
-                        setCorrigiendoIncidencias(false);
-                      }
-                    }}
-                    disabled={corrigiendoIncidencias}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    {corrigiendoIncidencias ? 'Corrigiendo...' : 'Corregir Incidencias'}
-                  </Button>
-                </div>
+                </h3>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
