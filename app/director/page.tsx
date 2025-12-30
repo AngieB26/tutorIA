@@ -4651,10 +4651,21 @@ export default function DirectorPage() {
                             console.log('📊 Grados actuales:', grados);
                             
                             // Verificar primero si tiene estudiantes antes de mostrar el diálogo
-                            const tieneEstudiantes = estudiantesInfo.some(e => e.grado === grado);
-                            if (tieneEstudiantes) {
-                              const estudiantesCount = estudiantesInfo.filter(e => e.grado === grado).length;
-                              toast.error(`No se puede eliminar el grado "${grado}": hay ${estudiantesCount} estudiante(s) asignado(s) a este grado`);
+                            const estudiantesDelGrado = estudiantesInfo.filter(e => e.grado === grado);
+                            if (estudiantesDelGrado.length > 0) {
+                              // Agrupar estudiantes por sección
+                              const estudiantesPorSeccion: Record<string, number> = {};
+                              estudiantesDelGrado.forEach(e => {
+                                const seccion = e.seccion || 'Sin sección';
+                                estudiantesPorSeccion[seccion] = (estudiantesPorSeccion[seccion] || 0) + 1;
+                              });
+                              
+                              const totalEstudiantes = estudiantesDelGrado.length;
+                              const seccionesList = Object.entries(estudiantesPorSeccion)
+                                .map(([seccion, count]) => `${count} en sección ${seccion}`)
+                                .join(', ');
+                              
+                              toast.error(`No se puede eliminar el grado "${grado}": hay ${totalEstudiantes} estudiante(s) (${seccionesList})`);
                               return;
                             }
                             
@@ -4800,10 +4811,21 @@ export default function DirectorPage() {
                             console.log('📊 Secciones actuales:', secciones);
                             
                             // Verificar primero si tiene estudiantes antes de mostrar el diálogo
-                            const tieneEstudiantes = estudiantesInfo.some(e => e.seccion === seccion);
-                            if (tieneEstudiantes) {
-                              const estudiantesCount = estudiantesInfo.filter(e => e.seccion === seccion).length;
-                              toast.error(`No se puede eliminar la sección "${seccion}": hay ${estudiantesCount} estudiante(s) asignado(s) a esta sección`);
+                            const estudiantesDeLaSeccion = estudiantesInfo.filter(e => e.seccion === seccion);
+                            if (estudiantesDeLaSeccion.length > 0) {
+                              // Agrupar estudiantes por grado
+                              const estudiantesPorGrado: Record<string, number> = {};
+                              estudiantesDeLaSeccion.forEach(e => {
+                                const grado = e.grado || 'Sin grado';
+                                estudiantesPorGrado[grado] = (estudiantesPorGrado[grado] || 0) + 1;
+                              });
+                              
+                              const totalEstudiantes = estudiantesDeLaSeccion.length;
+                              const gradosList = Object.entries(estudiantesPorGrado)
+                                .map(([grado, count]) => `${count} en grado ${grado}`)
+                                .join(', ');
+                              
+                              toast.error(`No se puede eliminar la sección "${seccion}": hay ${totalEstudiantes} estudiante(s) (${gradosList})`);
                               return;
                             }
                             
