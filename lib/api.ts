@@ -337,6 +337,35 @@ export async function getAsistenciaClasesByFilters(params: {
   return res.json();
 }
 
+export async function addRegistroAsistenciaClase(registro: Omit<any, 'id' | 'timestamp'>): Promise<any> {
+  const res = await fetch('/api/asistencia', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(registro),
+  });
+  if (!res.ok) throw new Error('Error al guardar asistencia');
+  return res.json();
+}
+
+export async function saveAsistenciaClases(registros: any[]): Promise<void> {
+  const res = await fetch('/api/asistencia', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(registros),
+  });
+  if (!res.ok) throw new Error('Error al guardar asistencias');
+}
+
+export async function findRegistroAsistencia(fecha: string, claseId: string, periodo: number): Promise<any | undefined> {
+  const res = await fetch(`/api/asistencia?fecha=${encodeURIComponent(fecha)}&claseId=${encodeURIComponent(claseId)}&periodo=${periodo}`);
+  if (!res.ok) {
+    if (res.status === 404) return undefined;
+    throw new Error('Error al buscar registro de asistencia');
+  }
+  const registros = await res.json();
+  return registros.length > 0 ? registros[0] : undefined;
+}
+
 // ============================================
 // HELPERS DE INCIDENCIAS
 // ============================================

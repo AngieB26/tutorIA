@@ -6,17 +6,14 @@
 
 import { useState, useEffect } from 'react';
 import {
-  getClases,
-  getAsistenciaClases,
-  saveAsistenciaClases,
-  addRegistroAsistenciaClase,
-  findRegistroAsistencia,
   marcarEstudianteAtendido,
 } from '@/lib/storage';
 import {
   fetchTutores,
   fetchEstudiantes,
   fetchClases,
+  addRegistroAsistenciaClase,
+  findRegistroAsistencia,
 } from '@/lib/api';
 
 import {
@@ -111,6 +108,11 @@ export default function ProfesorPage() {
   const [asistencia, setAsistencia] = useState<Record<string, 'presente' | 'tardanza' | 'ausente'>>({});
   const [registroId, setRegistroId] = useState<string | null>(null);
 
+  /* ---------- datos ---------- */
+  const [profesores, setProfesores] = useState<string[]>([]);
+  const [estudiantes, setEstudiantes] = useState<any[]>([]);
+  const [clases, setClases] = useState<any[]>([]);
+
   // Determinar si la fecha seleccionada es hoy (robusto, ignora zona horaria y ceros a la izquierda)
   const isToday = (() => {
     const today = new Date();
@@ -122,17 +124,12 @@ export default function ProfesorPage() {
   })();
 
   // Buscar claseId y periodo para el curso seleccionado
-  const claseObj = getClases().find(
+  const claseObj = clases.find(
     c => c.grado === grado && c.seccion === seccion && c.nombre === curso
   );
   const claseId = claseObj?.id || '';
   // Para simplicidad, periodo = 1 (puedes ajustar si hay varios periodos)
   const periodo = 1;
-
-  /* ---------- datos ---------- */
-  const [profesores, setProfesores] = useState<string[]>([]);
-  const [estudiantes, setEstudiantes] = useState<any[]>([]);
-  const [clases, setClases] = useState<any[]>([]);
 
   // Cargar profesores, estudiantes y clases desde la base de datos
   useEffect(() => {
@@ -220,24 +217,34 @@ export default function ProfesorPage() {
 
   // Cargar asistencia existente al cambiar filtros
   useEffect(() => {
-    if (profesor && grado && seccion && curso && fecha && claseId) {
-      const registro = findRegistroAsistencia(fecha, claseId, periodo);
-      if (registro) {
-        setAsistencia(registro.entries || {});
-        setLugar(registro.lugar || '');
-        setRegistroId(registro.id);
+    const loadAsistencia = async () => {
+      if (profesor && grado && seccion && curso && fecha && claseId) {
+        try {
+          const registro = await findRegistroAsistencia(fecha, claseId, periodo);
+          if (registro) {
+            setAsistencia(registro.entries || {});
+            setLugar(registro.lugar || '');
+            setRegistroId(registro.id);
+          } else {
+            setAsistencia({});
+            setLugar('');
+            setRegistroId(null);
+          }
+        } catch (error) {
+          console.error('Error cargando asistencia:', error);
+          setAsistencia({});
+          setLugar('');
+          setRegistroId(null);
+        }
       } else {
         setAsistencia({});
         setLugar('');
         setRegistroId(null);
       }
-    } else {
-      setAsistencia({});
-      setLugar('');
-      setRegistroId(null);
-    }
+    };
+    loadAsistencia();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profesor, grado, seccion, curso, fecha, claseId]);
+  }, [profesor, grado, seccion, curso, fecha, claseId, periodo]);
 
   /* ---------- incidencia ---------- */
   const [incProfesor, setIncProfesor] = useState('');
@@ -277,31 +284,36 @@ export default function ProfesorPage() {
   /* ---------- submit ---------- */
 
   // Guardar asistencia
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!profesor || !grado || !seccion || !curso || !fecha || !claseId) return;
     setLoading(true);
-    const diaSemana = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fecha + 'T00:00:00').getDay()] as any;
-    const registro = {
-      fecha,
-      dia: diaSemana,
-      claseId,
-      grado,
-      seccion,
-      profesor,
-      periodo,
-      lugar,
-      entries: asistencia,
-    };
-    // Detectar si ya existe ANTES de guardar (más robusto que usar registroId, que puede resetearse)
-    const yaExiste = !!findRegistroAsistencia(fecha, claseId, periodo);
-    addRegistroAsistenciaClase(registro);
-    // Disparar evento para actualizar notificaciones en el navbar
-    window.dispatchEvent(new CustomEvent('asistenciaActualizada'));
-    setTimeout(() => {
+    try {
+      const diaSemana = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fecha + 'T00:00:00').getDay()] as any;
+      const registro = {
+        fecha,
+        dia: diaSemana,
+        claseId,
+        grado,
+        seccion,
+        profesor,
+        periodo,
+        lugar,
+        entries: asistencia,
+      };
+      // Detectar si ya existe ANTES de guardar (más robusto que usar registroId, que puede resetearse)
+      const registroExistente = await findRegistroAsistencia(fecha, claseId, periodo);
+      const yaExiste = !!registroExistente;
+      await addRegistroAsistenciaClase(registro);
+      // Disparar evento para actualizar notificaciones en el navbar
+      window.dispatchEvent(new CustomEvent('asistenciaActualizada'));
       setLoading(false);
       setViewMode('inicio');
       alert(yaExiste ? 'Asistencia actualizada correctamente' : 'Registro guardado correctamente');
-    }, 700);
+    } catch (error) {
+      console.error('Error guardando asistencia:', error);
+      setLoading(false);
+      alert('Error al guardar la asistencia. Por favor, intenta nuevamente.');
+    }
   };
 
   // Función para guardar incidencia en la base de datos
