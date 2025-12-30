@@ -4642,12 +4642,17 @@ export default function DirectorPage() {
                                             const estudianteEditadoId = estudianteId;
                                           
                                             // Cerrar el formulario de edición INMEDIATAMENTE para que la UI se actualice
+                                            // Esto debe hacerse ANTES de cualquier otra operación asíncrona
                                             setEstudianteEditandoAdmin(null);
                                             setEstudianteEditForm({});
                                             setEstudianteNombreOriginal(null);
                                           
                                             // Mostrar toast de éxito inmediatamente
                                             toast.success('Estudiante actualizado exitosamente');
+                                            
+                                            // Forzar un re-render inmediato para que React detecte el cambio
+                                            // Usar requestAnimationFrame para asegurar que el cambio se refleje en el siguiente frame
+                                            await new Promise(resolve => requestAnimationFrame(resolve));
                                           
                                             // Esperar un momento para que la base de datos se actualice completamente
                                             await new Promise(resolve => setTimeout(resolve, 300));
@@ -4701,6 +4706,10 @@ export default function DirectorPage() {
                                             setRefreshKey(prev => prev + 1);
                                           } catch (error: any) {
                                             console.error('❌ Error guardando estudiante:', error);
+                                            // Asegurar que el formulario se cierre incluso si hay un error
+                                            setEstudianteEditandoAdmin(null);
+                                            setEstudianteEditForm({});
+                                            setEstudianteNombreOriginal(null);
                                             toast.error(error.message || 'Error al guardar el estudiante');
                                           }
                                         }}
