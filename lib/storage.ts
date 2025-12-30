@@ -101,7 +101,7 @@ export function getIncidenciasByGravedad(gravedad?: 'grave' | 'moderada' | 'leve
 
 export function getIncidenciasByFiltros(
   gravedad?: 'grave' | 'moderada' | 'leve' | 'todas',
-  tipo?: 'ausencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo' | 'todas'
+  tipo?: 'asistencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo' | 'todas'
 ): Incidencia[] {
   let incidencias = getIncidencias();
   // Filtrar por gravedad
@@ -304,7 +304,7 @@ export function seedInitialData(): void {
     {
       id: '1',
       studentName: 'Juan Pérez',
-      tipo: 'ausencia',
+      tipo: 'asistencia',
       gravedad: 'moderada',
       descripcion: 'No asistió a clase sin justificación',
       fecha: '2024-12-02',
@@ -322,7 +322,7 @@ export function seedInitialData(): void {
     {
       id: '2',
       studentName: 'Juan Pérez',
-      tipo: 'ausencia',
+      tipo: 'asistencia',
       gravedad: 'grave',
       descripcion: 'Falta sin justificar por tercera vez este mes',
       fecha: '2024-12-09',
@@ -433,7 +433,7 @@ export function seedInitialData(): void {
     {
       id: '8',
       studentName: 'Ana García',
-      tipo: 'ausencia',
+      tipo: 'asistencia',
       gravedad: 'leve',
       descripcion: 'Ausencia justificada por enfermedad',
       fecha: '2024-12-01',
@@ -566,7 +566,7 @@ export function seedInitialData(): void {
     {
       id: '15',
       studentName: 'Andrés Castro',
-      tipo: 'ausencia',
+      tipo: 'asistencia',
       gravedad: 'moderada',
       descripcion: 'Ausencia sin justificar',
       fecha: '2024-12-15',

@@ -192,12 +192,14 @@ export default function ProfesorPage() {
       }
     };
 
+    const handleAbrirIncidenciaWrapper = (e: Event) => {
+      handleAbrirIncidencia(e as CustomEvent);
     };
 
-    window.addEventListener('abrirIncidenciaDesdeNotificacion' as any, handleAbrirIncidencia as EventListener);
+    window.addEventListener('abrirIncidenciaDesdeNotificacion' as any, handleAbrirIncidenciaWrapper);
     
     return () => {
-      window.removeEventListener('abrirIncidenciaDesdeNotificacion' as any, handleAbrirIncidencia as EventListener);
+      window.removeEventListener('abrirIncidenciaDesdeNotificacion' as any, handleAbrirIncidenciaWrapper);
     };
   }, [profesor, viewMode]);
 

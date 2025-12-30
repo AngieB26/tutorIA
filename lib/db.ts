@@ -403,8 +403,34 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, estudianteI
       console.log(`✅ ${asistenciasActualizadas.count} registros de asistencia actualizados`);
       console.log(`✅ Todos los registros relacionados actualizados para ${nombreCompletoNuevo}`);
     } else {
+      // Crear nuevo estudiante
+      const dataToCreate: any = {
+        nombres: estudiante.nombres.trim(),
+        apellidos: estudiante.apellidos.trim(),
+        grado: estudiante.grado || null,
+        seccion: estudiante.seccion || null,
+        edad: estudiante.edad || null,
+        fechaNacimiento: estudiante.fechaNacimiento || null,
+        fotoPerfil: estudiante.fotoPerfil || null,
+        contactoTelefono: estudiante.contacto?.telefono || null,
+        contactoEmail: estudiante.contacto?.email || null,
+        contactoNombre: estudiante.contacto?.nombre || null,
+        tutorNombre: estudiante.tutor?.nombre || null,
+        tutorTelefono: estudiante.tutor?.telefono || null,
+        tutorEmail: estudiante.tutor?.email || null,
+        apoderadoNombre: estudiante.apoderado?.nombre || null,
+        apoderadoParentesco: estudiante.apoderado?.parentesco || null,
+        apoderadoTelefono: estudiante.apoderado?.telefono || null,
+        apoderadoTelefonoAlt: estudiante.apoderado?.telefonoAlternativo || null,
+        apoderadoEmail: estudiante.apoderado?.email || null,
+        apoderadoDireccion: estudiante.apoderado?.direccion || null,
+        asistencias: estudiante.asistencias || null,
+        ausencias: estudiante.ausencias || null,
+        tardanzas: estudiante.tardanzas || null,
+      };
+      
       await prisma.estudiante.create({
-        data,
+        data: dataToCreate,
       });
     }
   } catch (error) {
@@ -1784,7 +1810,7 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
           }
           
           // El timestamp es BigInt, convertirlo a number
-          let timestampNumber: number | undefined = undefined;
+          let timestampNumber: number;
           if (inc.timestamp) {
             if (typeof inc.timestamp === 'bigint') {
               timestampNumber = Number(inc.timestamp);
@@ -1792,7 +1818,13 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
               timestampNumber = inc.timestamp;
             } else if (inc.timestamp instanceof Date) {
               timestampNumber = inc.timestamp.getTime();
+            } else {
+              // Fallback: usar la fecha si está disponible, o la fecha actual
+              timestampNumber = new Date(inc.fecha || Date.now()).getTime();
             }
+          } else {
+            // Si no hay timestamp, usar la fecha si está disponible, o la fecha actual
+            timestampNumber = new Date(inc.fecha || Date.now()).getTime();
           }
           
           // Parsear historialEstado si es string
@@ -1850,7 +1882,7 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
             gravedad: inc.gravedad as any,
             descripcion: inc.descripcion || '',
             fecha: typeof inc.fecha === 'string' ? inc.fecha : String(inc.fecha || ''),
-            timestamp: typeof inc.timestamp === 'bigint' ? Number(inc.timestamp) : (inc.timestamp as any),
+            timestamp: typeof inc.timestamp === 'bigint' ? Number(inc.timestamp) : (typeof inc.timestamp === 'number' ? inc.timestamp : new Date(inc.fecha || Date.now()).getTime()),
             profesor: inc.profesor || '',
             tutor: inc.tutorNombre || undefined,
             lugar: inc.lugar || undefined,
@@ -1889,8 +1921,8 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
         subtipo: inc.subtipo as any,
         gravedad: inc.gravedad as any,
         descripcion: inc.descripcion || '',
-        fecha: typeof inc.fecha === 'string' ? inc.fecha : String(inc.fecha || ''),
-        timestamp: typeof inc.timestamp === 'bigint' ? Number(inc.timestamp) : (inc.timestamp as any),
+            fecha: typeof inc.fecha === 'string' ? inc.fecha : String(inc.fecha || ''),
+            timestamp: typeof inc.timestamp === 'bigint' ? Number(inc.timestamp) : (typeof inc.timestamp === 'number' ? inc.timestamp : new Date(inc.fecha || Date.now()).getTime()),
         profesor: inc.profesor || '',
         tutor: inc.tutorNombre || undefined,
         lugar: inc.lugar || undefined,

@@ -85,7 +85,7 @@ async function seed() {
       {
         id: '1',
         studentName: 'Juan Pérez',
-        tipo: 'ausencia',
+        tipo: 'asistencia',
         gravedad: 'moderada',
         descripcion: 'No asistió a clase sin justificación',
         fecha: '2024-12-02',
@@ -103,7 +103,7 @@ async function seed() {
       {
         id: '2',
         studentName: 'Juan Pérez',
-        tipo: 'ausencia',
+        tipo: 'asistencia',
         gravedad: 'grave',
         descripcion: 'Falta sin justificar por tercera vez este mes',
         fecha: '2024-12-09',
