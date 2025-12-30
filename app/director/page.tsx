@@ -1285,45 +1285,54 @@ export default function DirectorPage() {
       // Construir el nuevo nombre completo desde los datos que se guardaron
       const nombreCompletoNuevo = `${estudianteActualizado.nombres.trim()} ${estudianteActualizado.apellidos.trim()}`.trim();
       
-      // Esperar un momento para asegurar que la base de datos se actualizó
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Esperar un momento para asegurar que la base de datos se actualizó completamente
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Recargar el estudiante desde la base de datos usando el nuevo nombre
       // Esto asegura que obtenemos los datos actualizados después del guardado
       console.log(`🔄 Recargando estudiante con nombre: "${nombreCompletoNuevo}"`);
-      const estudianteRecargado = await fetchEstudiante(nombreCompletoNuevo);
+      
+      // Intentar recargar hasta 3 veces si falla (por posibles problemas de timing)
+      let estudianteRecargado = null;
+      for (let intento = 0; intento < 3; intento++) {
+        estudianteRecargado = await fetchEstudiante(nombreCompletoNuevo);
+        if (estudianteRecargado) break;
+        if (intento < 2) {
+          console.log(`⚠️ Intento ${intento + 1} falló, reintentando...`);
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
       
       if (!estudianteRecargado) {
-        console.error('❌ No se pudo recargar el estudiante después de guardar');
-        toast.error('Error al recargar la información del estudiante');
-        return;
+        console.error('❌ No se pudo recargar el estudiante después de guardar después de 3 intentos');
+        // Intentar recargar con el nombre original como fallback
+        console.log(`🔄 Intentando recargar con nombre original: "${nombreOriginal}"`);
+        estudianteRecargado = await fetchEstudiante(nombreOriginal);
+        if (!estudianteRecargado) {
+          toast.error('Error al recargar la información del estudiante. Por favor, recarga la página.');
+          return;
+        }
       }
       
       console.log('✅ Estudiante recargado:', estudianteRecargado);
       
+      // Recargar incidencias con el nuevo nombre (siempre, para asegurar que estén actualizadas)
+      console.log(`🔄 Recargando incidencias con nombre: "${nombreCompletoNuevo}"`);
+      const nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
+      setIncidenciasEstudiante(nuevasIncidencias);
+      console.log(`✅ ${nuevasIncidencias.length} incidencias recargadas`);
+      
       // Verificar si el nombre cambió
       if (nombreCompletoNuevo !== nombreOriginal) {
         console.log(`🔄 Nombre cambió: ${nombreOriginal} → ${nombreCompletoNuevo}`);
-        // Actualizar el estado con el nuevo nombre
-        setSelectedStudent(nombreCompletoNuevo);
-        
-        // Recargar incidencias con el nuevo nombre
-        const nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
-        setIncidenciasEstudiante(nuevasIncidencias);
         setReporte(null);
         setMostrarNotas(false);
-      } else {
-        console.log('✅ Nombre no cambió');
-        // Recargar incidencias con el nombre actual (por si acaso hay cambios)
-        const nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
-        setIncidenciasEstudiante(nuevasIncidencias);
       }
       
-      // Actualizar la información del estudiante con los datos recargados
+      // Actualizar TODOS los estados de una vez para evitar renders intermedios
+      // Esto asegura que el useEffect no interfiera con la actualización
       setInfoEdit(estudianteRecargado);
       setFotoPreview(estudianteRecargado.fotoPerfil || '');
-      
-      // Actualizar selectedStudent para asegurar que esté sincronizado
       setSelectedStudent(nombreCompletoNuevo);
       
       // Refrescar lista de estudiantes
