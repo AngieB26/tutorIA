@@ -418,9 +418,20 @@ export async function getListaEstudiantes(): Promise<any[]> {
 }
 
 export async function getIncidenciasCompletasByStudent(studentName: string): Promise<any[]> {
-  const res = await fetch(`/api/incidencias/helpers?action=completas&studentName=${encodeURIComponent(studentName)}`);
-  if (!res.ok) throw new Error('Error al obtener incidencias completas del estudiante');
-  return res.json();
+  const url = `/api/incidencias/helpers?action=completas&studentName=${encodeURIComponent(studentName)}`;
+  console.log(`🌐 Frontend: Llamando a API: ${url}`);
+  const res = await fetch(url);
+  console.log(`🌐 Frontend: Respuesta de API - status: ${res.status}, ok: ${res.ok}`);
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`❌ Frontend: Error en respuesta de API:`, errorText);
+    throw new Error('Error al obtener incidencias completas del estudiante');
+  }
+  const data = await res.json();
+  console.log(`🌐 Frontend: Datos recibidos de API:`, data);
+  console.log(`🌐 Frontend: Tipo de datos:`, Array.isArray(data) ? 'Array' : typeof data);
+  console.log(`🌐 Frontend: Cantidad de incidencias:`, Array.isArray(data) ? data.length : 'No es array');
+  return data;
 }
 
 export async function corregirIncidenciasEstudiantes(): Promise<{ actualizadas: number; errores: number }> {
