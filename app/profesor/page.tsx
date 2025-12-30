@@ -14,6 +14,8 @@ import {
   fetchClases,
   addRegistroAsistenciaClase,
   findRegistroAsistencia,
+  getGrados,
+  getSecciones,
 } from '@/lib/api';
 
 import {
@@ -112,6 +114,8 @@ export default function ProfesorPage() {
   const [profesores, setProfesores] = useState<string[]>([]);
   const [estudiantes, setEstudiantes] = useState<any[]>([]);
   const [clases, setClases] = useState<any[]>([]);
+  const [grados, setGrados] = useState<string[]>([]);
+  const [secciones, setSecciones] = useState<string[]>([]);
 
   // Determinar si la fecha seleccionada es hoy (robusto, ignora zona horaria y ceros a la izquierda)
   const isToday = (() => {
@@ -131,21 +135,27 @@ export default function ProfesorPage() {
   // Para simplicidad, periodo = 1 (puedes ajustar si hay varios periodos)
   const periodo = 1;
 
-  // Cargar profesores, estudiantes y clases desde la base de datos
+  // Cargar profesores, estudiantes, clases, grados y secciones desde la base de datos
   useEffect(() => {
     const loadData = async () => {
       try {
         const tutoresData = await fetchTutores();
         const estudiantesData = await fetchEstudiantes();
         const clasesData = await fetchClases();
+        const gradosData = await getGrados();
+        const seccionesData = await getSecciones();
         setProfesores(tutoresData.map(t => t.nombre) || []);
         setEstudiantes(estudiantesData || []);
         setClases(clasesData || []);
+        setGrados(gradosData || []);
+        setSecciones(seccionesData || []);
       } catch (error) {
         console.error('Error cargando datos:', error);
         setProfesores([]);
         setEstudiantes([]);
         setClases([]);
+        setGrados([]);
+        setSecciones([]);
       }
     };
     loadData();
@@ -265,10 +275,12 @@ export default function ProfesorPage() {
     }
   }, [incProfesor]);
 
-  const grados = ['1ro', '2do', '3ro', '4to', '5to'];
-  const secciones = Array.from(
+  // Filtrar secciones disponibles según el grado seleccionado (solo las que tienen clases registradas)
+  const seccionesDisponibles = Array.from(
     new Set(clases.filter(c => c.grado === grado).map(c => c.seccion))
-  );
+  ).filter(s => secciones.includes(s)); // Solo mostrar secciones que están en la BD
+
+  // Filtrar cursos disponibles según el grado y sección seleccionados
   const cursos = Array.from(
     new Set(
       clases
@@ -562,7 +574,7 @@ export default function ProfesorPage() {
                       <SelectValue placeholder="Selecciona la sección" />
                     </SelectTrigger>
                     <SelectContent>
-                      {secciones.map(s => (
+                      {seccionesDisponibles.map(s => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>
