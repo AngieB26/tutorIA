@@ -56,20 +56,28 @@ export async function POST(req: NextRequest) {
     const nombreOriginal = searchParams.get('nombreOriginal') || undefined; // Mantener para compatibilidad
     const body = await req.json();
 
+    console.log('📥 POST /api/estudiantes recibido');
+    console.log('📋 Parámetros:', { estudianteId, nombreOriginal });
+    console.log('📦 Body:', JSON.stringify(body, null, 2));
+
     // Si es un array, usar saveEstudiantesInfo
     if (Array.isArray(body)) {
+      console.log('📚 Guardando array de estudiantes');
       await saveEstudiantesInfo(body);
       return NextResponse.json({ success: true, count: body.length });
     }
 
     // Priorizar estudianteId sobre nombreOriginal (más confiable)
     const idToUse = estudianteId || (body.id ? body.id : undefined);
+    console.log('💾 Guardando estudiante con ID:', idToUse);
     await saveEstudianteInfo(body, idToUse);
+    console.log('✅ Estudiante guardado exitosamente');
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error guardando estudiante(s):', error);
+  } catch (error: any) {
+    console.error('❌ Error guardando estudiante(s):', error);
+    console.error('❌ Stack:', error.stack);
     return NextResponse.json(
-      { error: 'Error al guardar estudiante(s)' },
+      { error: error.message || 'Error al guardar estudiante(s)' },
       { status: 500 }
     );
   }

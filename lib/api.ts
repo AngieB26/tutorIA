@@ -38,12 +38,35 @@ export async function saveEstudiante(estudiante: any, estudianteId?: string): Pr
   const url = estudianteId 
     ? `/api/estudiantes?estudianteId=${encodeURIComponent(estudianteId)}`
     : '/api/estudiantes';
+  
+  console.log('📤 Enviando petición a:', url);
+  console.log('📦 Datos del estudiante:', JSON.stringify(estudiante, null, 2));
+  
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(estudiante),
   });
-  if (!res.ok) throw new Error('Error al guardar estudiante');
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('❌ Error en respuesta del servidor:', {
+      status: res.status,
+      statusText: res.statusText,
+      body: errorText
+    });
+    let errorMessage = 'Error al guardar estudiante';
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.error || errorMessage;
+    } catch (e) {
+      errorMessage = errorText || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
+  
+  const result = await res.json();
+  console.log('✅ Respuesta del servidor:', result);
 }
 
 export async function saveEstudiantes(estudiantes: any[]): Promise<void> {

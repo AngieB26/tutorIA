@@ -4654,8 +4654,22 @@ export default function DirectorPage() {
                                             // Usar saveEstudianteInfo con estudianteId para asegurar que actualizamos el registro correcto
                                             // Esto preserva todos los campos existentes y solo actualiza los editados
                                             console.log('💾 Guardando estudiante en base de datos con ID:', estudianteId);
-                                            await saveEstudianteInfo(estudianteActualizado, estudianteId);
-                                            console.log('✅ Estudiante guardado exitosamente');
+                                            console.log('📦 Datos a guardar:', JSON.stringify(estudianteActualizado, null, 2));
+                                            
+                                            try {
+                                              await saveEstudianteInfo(estudianteActualizado, estudianteId);
+                                              console.log('✅ Estudiante guardado exitosamente en la base de datos');
+                                            } catch (saveError: any) {
+                                              console.error('❌ Error al guardar estudiante:', saveError);
+                                              console.error('❌ Detalles del error:', {
+                                                message: saveError.message,
+                                                stack: saveError.stack,
+                                                estudianteId,
+                                                estudianteActualizado
+                                              });
+                                              toast.error(`Error al guardar: ${saveError.message || 'Error desconocido'}`);
+                                              return; // Salir temprano si hay error
+                                            }
                                           
                                             // Guardar el ID del estudiante que se está editando antes de cerrar el formulario
                                             const estudianteEditadoId = estudianteId;
