@@ -1815,23 +1815,35 @@ export default function DirectorPage() {
                       };
                     });
                     
+                    // Obtener estudiantes existentes para verificar cuáles son nuevos y cuáles actualizados
                     const estudiantesExistentes = await fetchEstudiantes();
-                    const estudiantesActualizados = [...estudiantesExistentes];
+                    const mapaEstudiantesExistentes = new Map(estudiantesExistentes.map(e => [e.nombre, e]));
+                    
                     let nuevos = 0;
                     let actualizados = 0;
                     
-                    estudiantesImportados.forEach(est => {
-                      const idx = estudiantesActualizados.findIndex(e => e.nombre === est.nombre);
-                      if (idx >= 0) {
-                        estudiantesActualizados[idx] = { ...estudiantesActualizados[idx], ...est };
-                        actualizados++;
-                      } else {
-                        estudiantesActualizados.push(est);
-                        nuevos++;
+                    // Guardar cada estudiante importado individualmente
+                    // Esto permite que saveEstudianteInfo determine si debe crear o actualizar
+                    for (const est of estudiantesImportados) {
+                      try {
+                        const estudianteExistente = mapaEstudiantesExistentes.get(est.nombre);
+                        if (estudianteExistente) {
+                          // El estudiante existe, actualizarlo usando su nombre como nombreOriginal
+                          await saveEstudianteInfo(est, est.nombre);
+                          actualizados++;
+                        } else {
+                          // El estudiante no existe, crearlo
+                          await saveEstudianteInfo(est);
+                          nuevos++;
+                        }
+                      } catch (error) {
+                        console.error(`Error guardando estudiante ${est.nombre}:`, error);
+                        // Continuar con los demás estudiantes aunque uno falle
                       }
-                    });
+                    }
                     
-                    await saveEstudiantesInfo(estudiantesActualizados);
+                    // Refrescar la lista de estudiantes desde la base de datos
+                    const estudiantesActualizados = await fetchEstudiantes();
                     setEstudiantesInfo(estudiantesActualizados);
                     setRefreshKey(prev => prev + 1);
                     setMostrarMapeoEstudiantes(false);
