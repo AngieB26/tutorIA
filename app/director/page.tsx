@@ -1053,8 +1053,7 @@ export default function DirectorPage() {
       }, 200);
     };
 
-    // Escuchar eventos de storage (para cambios desde otras pestañas)
-    window.addEventListener('storage', handleStorageChange);
+    // Ya no escuchamos eventos de storage de localStorage
     // Escuchar evento personalizado (para cambios en la misma pestaña)
     window.addEventListener('incidenciaRegistrada', handleIncidenciaRegistrada as EventListener);
     window.addEventListener('incidenciaActualizada', handleIncidenciaActualizada as EventListener);
