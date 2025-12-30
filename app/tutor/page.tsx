@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -111,16 +111,17 @@ export default function TutorPage() {
     return true;
   });
 
-  // Filtrar estudiantes de la sección seleccionada
-  const estudiantesFiltrados = seccionSeleccionada 
-    ? estudiantes.filter(est => {
-        const matchSeccion = est.grado === seccionSeleccionada.grado && 
-                            est.seccion === seccionSeleccionada.seccion;
-        const matchBusqueda = !busquedaEstudiante || 
-                             est.nombre.toLowerCase().includes(busquedaEstudiante.toLowerCase());
-        return matchSeccion && matchBusqueda;
-      })
-    : [];
+  // Filtrar estudiantes de la sección seleccionada (usar useMemo para evitar recreaciones)
+  const estudiantesFiltrados = useMemo(() => {
+    if (!seccionSeleccionada) return [];
+    return estudiantes.filter(est => {
+      const matchSeccion = est.grado === seccionSeleccionada.grado && 
+                          est.seccion === seccionSeleccionada.seccion;
+      const matchBusqueda = !busquedaEstudiante || 
+                           est.nombre.toLowerCase().includes(busquedaEstudiante.toLowerCase());
+      return matchSeccion && matchBusqueda;
+    });
+  }, [estudiantes, seccionSeleccionada, busquedaEstudiante]);
 
   // Estado para tutor asignado
   const [tutorAsignado, setTutorAsignado] = useState<any>(null);
@@ -213,7 +214,7 @@ export default function TutorPage() {
     };
 
     loadResumenes();
-  }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion]);
+  }, [estudiantesFiltrados.length, esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion, iaResumenes]);
 
   // Cargar estudiantes con estado cuando cambia la sección seleccionada
   useEffect(() => {
@@ -256,7 +257,7 @@ export default function TutorPage() {
     };
 
     loadEstudiantesConEstado();
-  }, [seccionSeleccionada, estudiantesFiltrados, esTutorDeLaSeccion, iaResumenes, iaCargando]);
+  }, [seccionSeleccionada?.grado, seccionSeleccionada?.seccion, estudiantesFiltrados.length, esTutorDeLaSeccion]);
 
   // Estados para resumen de datos
   const [resumenData, setResumenData] = useState<any>(null);
@@ -307,7 +308,7 @@ export default function TutorPage() {
     };
 
     loadResumenData();
-  }, [seccionSeleccionada, estudiantesFiltrados, esTutorDeLaSeccion]);
+  }, [seccionSeleccionada?.grado, seccionSeleccionada?.seccion, estudiantesFiltrados.length, esTutorDeLaSeccion]);
 
   const handleRegistrarAsistencia = (estudiante: EstudianteInfo) => {
     setSelectedStudent(estudiante);
