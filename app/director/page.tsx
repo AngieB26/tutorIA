@@ -752,6 +752,11 @@ export default function DirectorPage() {
   const [nuevoGradoInput, setNuevoGradoInput] = useState('');
   const [mostrarAgregarSeccion, setMostrarAgregarSeccion] = useState(false);
   const [nuevaSeccionInput, setNuevaSeccionInput] = useState('');
+  // Estados para diálogo de confirmación
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+  const [confirmacionTipo, setConfirmacionTipo] = useState<'grado' | 'seccion' | null>(null);
+  const [confirmacionNombre, setConfirmacionNombre] = useState<string>('');
+  const [confirmacionCallback, setConfirmacionCallback] = useState<(() => Promise<void>) | null>(null);
   
   // Filtros para administración de estudiantes
   const [filtroAdminGrado, setFiltroAdminGrado] = useState('');
@@ -4671,32 +4676,29 @@ export default function DirectorPage() {
                             
                             // Si no tiene estudiantes, mostrar el diálogo de confirmación
                             console.log('📋 No hay estudiantes, mostrando diálogo de confirmación...');
-                            const confirmar = window.confirm(`¿Estás seguro de eliminar el grado "${grado}"?`);
-                            console.log('📋 Resultado del diálogo:', confirmar);
-                            if (!confirmar) {
-                              console.log('❌ Usuario canceló');
-                              return;
-                            }
-                            console.log('✅ Usuario confirmó');
-                            
-                            try {
-                              console.log('✅ Usuario confirmó eliminación');
-                              const nuevosGrados = grados.filter(g => g !== grado);
-                              console.log('💾 Nuevos grados después de filtrar:', nuevosGrados);
-                              console.log('💾 Guardando en BD...');
-                              await saveGrados(nuevosGrados);
-                              console.log('✅ Guardado en BD exitoso');
-                              setGrados(nuevosGrados);
-                              console.log('✅ Estado local actualizado');
-                              // Esperar un poco antes de recargar para evitar race conditions
-                              setTimeout(() => {
-                                setRefreshKey(prev => prev + 1);
-                              }, 500);
-                              toast.success('Grado eliminado exitosamente');
-                            } catch (error) {
-                              console.error('❌ Error eliminando grado:', error);
-                              toast.error(`Error al eliminar el grado: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-                            }
+                            setConfirmacionTipo('grado');
+                            setConfirmacionNombre(grado);
+                            setConfirmacionCallback(async () => {
+                              try {
+                                console.log('✅ Usuario confirmó eliminación');
+                                const nuevosGrados = grados.filter(g => g !== grado);
+                                console.log('💾 Nuevos grados después de filtrar:', nuevosGrados);
+                                console.log('💾 Guardando en BD...');
+                                await saveGrados(nuevosGrados);
+                                console.log('✅ Guardado en BD exitoso');
+                                setGrados(nuevosGrados);
+                                console.log('✅ Estado local actualizado');
+                                // Esperar un poco antes de recargar para evitar race conditions
+                                setTimeout(() => {
+                                  setRefreshKey(prev => prev + 1);
+                                }, 500);
+                                toast.success('Grado eliminado exitosamente');
+                              } catch (error) {
+                                console.error('❌ Error eliminando grado:', error);
+                                toast.error(`Error al eliminar el grado: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+                              }
+                            });
+                            setMostrarConfirmacion(true);
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
                         >
@@ -4835,32 +4837,29 @@ export default function DirectorPage() {
                             
                             // Si no tiene estudiantes, mostrar el diálogo de confirmación
                             console.log('📋 No hay estudiantes, mostrando diálogo de confirmación...');
-                            const confirmar = window.confirm(`¿Estás seguro de eliminar la sección "${seccion}"?`);
-                            console.log('📋 Resultado del diálogo:', confirmar);
-                            if (!confirmar) {
-                              console.log('❌ Usuario canceló');
-                              return;
-                            }
-                            console.log('✅ Usuario confirmó');
-                            
-                            try {
-                              console.log('✅ Usuario confirmó eliminación');
-                              const nuevasSecciones = secciones.filter(s => s !== seccion);
-                              console.log('💾 Nuevas secciones después de filtrar:', nuevasSecciones);
-                              console.log('💾 Guardando en BD...');
-                              await saveSecciones(nuevasSecciones);
-                              console.log('✅ Guardado en BD exitoso');
-                              setSecciones(nuevasSecciones);
-                              console.log('✅ Estado local actualizado');
-                              // Esperar un poco antes de recargar para evitar race conditions
-                              setTimeout(() => {
-                                setRefreshKey(prev => prev + 1);
-                              }, 500);
-                              toast.success('Sección eliminada exitosamente');
-                            } catch (error) {
-                              console.error('❌ Error eliminando sección:', error);
-                              toast.error(`Error al eliminar la sección: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-                            }
+                            setConfirmacionTipo('seccion');
+                            setConfirmacionNombre(seccion);
+                            setConfirmacionCallback(async () => {
+                              try {
+                                console.log('✅ Usuario confirmó eliminación');
+                                const nuevasSecciones = secciones.filter(s => s !== seccion);
+                                console.log('💾 Nuevas secciones después de filtrar:', nuevasSecciones);
+                                console.log('💾 Guardando en BD...');
+                                await saveSecciones(nuevasSecciones);
+                                console.log('✅ Guardado en BD exitoso');
+                                setSecciones(nuevasSecciones);
+                                console.log('✅ Estado local actualizado');
+                                // Esperar un poco antes de recargar para evitar race conditions
+                                setTimeout(() => {
+                                  setRefreshKey(prev => prev + 1);
+                                }, 500);
+                                toast.success('Sección eliminada exitosamente');
+                              } catch (error) {
+                                console.error('❌ Error eliminando sección:', error);
+                                toast.error(`Error al eliminar la sección: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+                              }
+                            });
+                            setMostrarConfirmacion(true);
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded hover:bg-opacity-10"
                         >
