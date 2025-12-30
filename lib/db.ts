@@ -1537,12 +1537,25 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
       }
       
       // Buscar incidencias con OR para encontrar todas las posibles coincidencias
-      incidencias = await prisma.incidencia.findMany({
-        where: {
-          OR: condiciones
-        },
-        orderBy: { timestamp: 'desc' }
-      });
+      // Si no hay condiciones, buscar todas las incidencias (fallback)
+      if (condiciones.length === 0) {
+        console.log(`⚠️ No hay condiciones de búsqueda, buscando todas las incidencias...`);
+        incidencias = await prisma.incidencia.findMany({
+          orderBy: { timestamp: 'desc' }
+        });
+      } else {
+        incidencias = await prisma.incidencia.findMany({
+          where: {
+            OR: condiciones
+          },
+          orderBy: { timestamp: 'desc' }
+        });
+      }
+      
+      console.log(`🔍 Condiciones de búsqueda usadas:`, condiciones.length);
+      if (condiciones.length > 0) {
+        console.log(`📋 Primeras 3 condiciones:`, condiciones.slice(0, 3));
+      }
       
       // Eliminar duplicados por ID (por si hay coincidencias tanto por ID como por nombre)
       const incidenciasUnicas = new Map();
