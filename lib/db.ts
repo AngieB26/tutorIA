@@ -2563,20 +2563,32 @@ export async function getIncidenciasVistas(usuario: string = 'director'): Promis
 
 export async function marcarIncidenciaVista(incidenciaId: string, usuario: string = 'director'): Promise<void> {
   try {
-    await prisma.incidenciaVista.upsert({
+    // Verificar si ya existe
+    const existente = await prisma.incidenciaVista.findFirst({
       where: {
-        incidenciaId_usuario: {
-          incidenciaId,
-          usuario
-        }
-      },
-      create: {
         incidenciaId,
         usuario
-      },
-      update: {}
+      }
     });
-  } catch (error) {
+
+    if (existente) {
+      // Ya está marcada como vista, no hacer nada
+      return;
+    }
+
+    // Crear nuevo registro
+    await prisma.incidenciaVista.create({
+      data: {
+        incidenciaId,
+        usuario
+      }
+    });
+  } catch (error: any) {
+    // Si el error es por duplicado (constraint único), ignorarlo
+    if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
+      console.log('Incidencia ya marcada como vista:', incidenciaId);
+      return;
+    }
     console.error('Error marcando incidencia como vista:', error);
     throw error;
   }
