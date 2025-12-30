@@ -1353,9 +1353,11 @@ export default function DirectorPage() {
       
       // Actualizar TODOS los estados de una vez para evitar renders intermedios
       // Esto asegura que el useEffect no interfiera con la actualización
+      console.log('🔄 Actualizando estados con datos recargados...');
       setInfoEdit(estudianteRecargado);
       setFotoPreview(estudianteRecargado.fotoPerfil || '');
       setSelectedStudent(nombreCompletoNuevo);
+      setEditando(false);
       
       // Refrescar lista de estudiantes
       const lista = await getListaEstudiantes();
@@ -1379,23 +1381,18 @@ export default function DirectorPage() {
       setListaEstudiantes(listaFinal);
       console.log('✅ Lista de estudiantes actualizada');
       
-      // Actualizar refreshKey DESPUÉS de actualizar todos los estados
-      // Esto evita que el useEffect se ejecute prematuramente
-      setEditando(false);
-      
-      // Actualizar refreshKey al final para forzar re-render en toda la página
-      // pero después de que todos los estados estén actualizados
-      setTimeout(() => {
-        setRefreshKey(prev => prev + 1);
-      }, 100);
-      
       toast.success('Información actualizada exitosamente en la base de datos');
       console.log('✅ Guardado completado exitosamente');
       
-      // Desactivar bandera después de un momento para permitir que el useEffect funcione de nuevo
+      // Desactivar bandera PRIMERO, luego actualizar refreshKey después de un momento
+      // Esto asegura que el useEffect no interfiera mientras actualizamos los estados
       setTimeout(() => {
         setGuardandoEstudiante(false);
-      }, 500);
+        // Actualizar refreshKey después de desactivar la bandera para forzar re-render
+        setTimeout(() => {
+          setRefreshKey(prev => prev + 1);
+        }, 200);
+      }, 300);
     } catch (error: any) {
       console.error('❌ Error guardando estudiante:', error);
       toast.error(error.message || 'Error al guardar la información del estudiante');
