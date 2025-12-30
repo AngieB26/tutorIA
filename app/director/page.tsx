@@ -3662,6 +3662,50 @@ export default function DirectorPage() {
                         })()}
 
 
+          {/* SECCIÓN: Estudiantes Destacados */}
+          {incidenciasGenerales.length > 0 && (() => {
+            // Calcular estudiantes con más incidencias positivas
+            const porEstudiantePositivo: Record<string, number> = {};
+            incidenciasGenerales.forEach((inc: Incidencia) => {
+              if (inc.tipo === 'positivo') {
+                porEstudiantePositivo[inc.studentName] = (porEstudiantePositivo[inc.studentName] || 0) + 1;
+              }
+            });
+            const estudiantesDestacados = Object.entries(porEstudiantePositivo)
+              .sort(([_, a], [__, b]) => b - a)
+              .slice(0, 10);
+            
+            if (estudiantesDestacados.length === 0) return null;
+            
+            return (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900">
+                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                    Estudiantes Destacados
+                  </CardTitle>
+                  <CardDescription className="text-sm text-gray-900">
+                    Top estudiantes con comportamientos positivos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <div className="space-y-2">
+                      {estudiantesDestacados.map(([nombre, count]) => (
+                        <div key={nombre} className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-gray-900">{nombre}</span>
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                            {count} comportamiento{count > 1 ? 's' : ''} positivo{count > 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* SECCIÓN: Evolución Temporal */}
           {incidenciasGenerales.length > 0 && (() => {
             // Agrupar incidencias por mes

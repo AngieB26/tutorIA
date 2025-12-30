@@ -56,6 +56,17 @@ Formato: Solo una línea, sin encabezados, positivo y alentador.`;
           .sort(([_, a], [__, b]) => b - a)
           .slice(0, 10);
         
+        // Contar incidencias positivas por estudiante
+        const porEstudiantePositivo: Record<string, number> = {};
+        incidencias.forEach((inc: any) => {
+          if (inc.tipo === 'positivo') {
+            porEstudiantePositivo[inc.studentName] = (porEstudiantePositivo[inc.studentName] || 0) + 1;
+          }
+        });
+        const estudiantesDestacados = Object.entries(porEstudiantePositivo)
+          .sort(([_, a], [__, b]) => b - a)
+          .slice(0, 10);
+        
         // Contar incidencias por profesor
         const porProfesor: Record<string, number> = {};
         incidencias.forEach((inc: any) => {
@@ -209,8 +220,8 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
           const url = `https://generativelanguage.googleapis.com/${modelo.version}/models/${modelo.nombre}:generateContent?key=${geminiApiKey}`;
           
           geminiRes = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
           });
           
@@ -313,15 +324,15 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
     // Para otros casos, usar el flujo original
     // Preparar el body de la solicitud
     const requestBody = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: incidencias && Array.isArray(incidencias) 
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: incidencias && Array.isArray(incidencias) 
           ? (estudiante === 'Reporte General' ? 4000 : 2500)
           : 2000,
-        topP: 0.95,
-        topK: 40
-      }
+            topP: 0.95,
+            topK: 40
+          }
     };
 
     let geminiRes: Response | null = null;
@@ -347,7 +358,7 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
           console.log(`✅ Modelo ${modelo.nombre} funcionó correctamente`);
           break; // Salir del loop si funciona
         } else {
-          const errorText = await geminiRes.text();
+      const errorText = await geminiRes.text();
           console.warn(`⚠️ Modelo ${modelo.nombre} falló:`, geminiRes.status, errorText.substring(0, 100));
           ultimoError = { status: geminiRes.status, text: errorText, modelo: modelo.nombre };
           // Continuar con el siguiente modelo
@@ -367,7 +378,7 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
       let recomendaciones = 'Por favor, intenta nuevamente más tarde.';
       
       if (ultimoError) {
-        try {
+      try {
           const errorJson = typeof ultimoError.text === 'string' ? JSON.parse(ultimoError.text) : null;
           if (errorJson?.error?.message) {
             const errorMessage = errorJson.error.message.toLowerCase();
