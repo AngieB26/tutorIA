@@ -544,7 +544,7 @@ export default function DirectorPage() {
             const incidencias = await getIncidenciasCompletasByStudent(idFinal);
             console.log(`📊 Incidencias recibidas del API: ${incidencias.length}`);
             console.log(`📋 Detalles de incidencias:`, incidencias);
-            setIncidenciasEstudiante(incidencias);
+          setIncidenciasEstudiante(incidencias);
           } else {
             console.log(`🔍 Buscando incidencias para estudiante nombre: ${nombreFinal}`);
             const incidencias = await getIncidenciasCompletasByStudent(nombreFinal);
@@ -907,11 +907,11 @@ export default function DirectorPage() {
   // Actualizar incidencias cuando se cambia al tab de incidencias
   useEffect(() => {
     if (activeTab === 'incidencias') {
-      const loadIncidencias = async () => {
-        try {
-          const todasIncidencias = await fetchIncidencias();
+    const loadIncidencias = async () => {
+      try {
+        const todasIncidencias = await fetchIncidencias();
           console.log('📊 Tab Incidencias: Recargando incidencias desde BD:', todasIncidencias.length);
-          setIncidencias(todasIncidencias);
+        setIncidencias(todasIncidencias);
         } catch (error) {
           console.error('Error recargando incidencias en tab:', error);
         }
@@ -934,10 +934,10 @@ export default function DirectorPage() {
                 !Array.from(idsNuevos).every(id => idsPrevios.has(id))) {
               console.log('🔄 Actualizando incidencias desde BD (cambios detectados)');
               return todasIncidencias;
-            }
-            return prev;
-          });
-        } catch (error) {
+                }
+                return prev;
+              });
+          } catch (error) {
           console.error('Error actualizando incidencias periódicamente:', error);
         }
       }, 5000); // Actualizar cada 5 segundos
@@ -985,14 +985,14 @@ export default function DirectorPage() {
   // Guardar incidencias vistas en la base de datos cuando cambien
   useEffect(() => {
     const saveVistas = async () => {
-      try {
-        // Validar y filtrar solo IDs válidos antes de guardar
-        const idsValidos = Array.from(incidenciasVistas).filter(id => id && typeof id === 'string' && id.trim() !== '');
+    try {
+      // Validar y filtrar solo IDs válidos antes de guardar
+      const idsValidos = Array.from(incidenciasVistas).filter(id => id && typeof id === 'string' && id.trim() !== '');
         if (idsValidos.length > 0) {
           await marcarIncidenciasVistas(idsValidos, 'director');
         }
-      } catch (error) {
-        console.error('Error guardando incidencias vistas:', error);
+    } catch (error) {
+      console.error('Error guardando incidencias vistas:', error);
       }
     };
     if (incidenciasVistas.size > 0) {
@@ -1063,12 +1063,12 @@ export default function DirectorPage() {
       const customEvent = e as CustomEvent;
       const id = customEvent.detail?.id;
       if (id) {
-        try {
+          try {
           await marcarIncidenciaVista(id, 'director');
           setIncidenciasVistas(prev => new Set([...prev, id]));
-        } catch (error) {
+          } catch (error) {
           console.error('Error guardando incidencia vista:', error);
-        }
+          }
       }
     };
     
@@ -1456,27 +1456,27 @@ export default function DirectorPage() {
       setSelectedStudentId(estudianteId);
       setSelectedStudentName(nombreCompletoNuevo);
       setEditando(false);
-      
-      // Refrescar lista de estudiantes
-      const lista = await getListaEstudiantes();
-      const info = await fetchEstudiantes();
-      // Unir ambas fuentes para asegurar que todos los estudiantes estén presentes
-      const nombresUnicos = Array.from(new Set([
-        ...info.map((i: any) => i.nombre),
-        ...lista.map((e: any) => e.nombre)
-      ]));
-      const listaFinal = nombresUnicos.map((nombre: string) => {
-        const estInfo = info.find((i: any) => i.nombre === nombre);
-        const inc = lista.find((e: any) => e.nombre === nombre);
-        return {
-          nombre,
-          grado: estInfo?.grado || (inc as any)?.grado || '',
-          seccion: estInfo?.seccion || (inc as any)?.seccion || '',
-          totalIncidencias: inc ? inc.totalIncidencias : 0,
-          ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
-        };
-      });
-      setListaEstudiantes(listaFinal);
+        
+        // Refrescar lista de estudiantes
+        const lista = await getListaEstudiantes();
+        const info = await fetchEstudiantes();
+        // Unir ambas fuentes para asegurar que todos los estudiantes estén presentes
+        const nombresUnicos = Array.from(new Set([
+          ...info.map((i: any) => i.nombre),
+          ...lista.map((e: any) => e.nombre)
+        ]));
+        const listaFinal = nombresUnicos.map((nombre: string) => {
+          const estInfo = info.find((i: any) => i.nombre === nombre);
+          const inc = lista.find((e: any) => e.nombre === nombre);
+          return {
+            nombre,
+            grado: estInfo?.grado || (inc as any)?.grado || '',
+            seccion: estInfo?.seccion || (inc as any)?.seccion || '',
+            totalIncidencias: inc ? inc.totalIncidencias : 0,
+            ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
+          };
+        });
+        setListaEstudiantes(listaFinal);
       console.log('✅ Lista de estudiantes actualizada');
       
       toast.success('Información actualizada exitosamente en la base de datos');
@@ -1512,8 +1512,8 @@ export default function DirectorPage() {
       const filtered = fechaInicio && fechaFin
         ? await fetchIncidencias({ fechaInicio, fechaFin })
         : await fetchIncidencias();
-      setIncidenciasGenerales(filtered);
-      setReporteGeneral(null);
+    setIncidenciasGenerales(filtered);
+    setReporteGeneral(null);
     } catch (error) {
       console.error('Error filtrando incidencias por fecha:', error);
       setIncidenciasGenerales([]);
@@ -2099,12 +2099,12 @@ export default function DirectorPage() {
                         if (estudianteExistente) {
                           // El estudiante existe, actualizarlo usando su nombre como nombreOriginal
                           await saveEstudianteInfo(est, est.nombre);
-                          actualizados++;
-                        } else {
+                        actualizados++;
+                      } else {
                           // El estudiante no existe, crearlo
                           await saveEstudianteInfo(est);
-                          nuevos++;
-                        }
+                        nuevos++;
+                      }
                       } catch (error) {
                         console.error(`Error guardando estudiante ${est.nombre}:`, error);
                         // Continuar con los demás estudiantes aunque uno falle
@@ -2741,14 +2741,14 @@ export default function DirectorPage() {
                     {/* Nombres y Apellidos del estudiante */}
                     {editando ? (
                       <div className="mt-1 w-full flex flex-col gap-2">
-                        <Input
+                      <Input
                           className="text-base font-semibold text-gray-900 text-center"
                           name="nombres"
                           value={infoEdit.nombres || ''}
-                          onChange={handleInputChange}
+                        onChange={handleInputChange}
                           placeholder="Nombres"
-                          autoComplete="off"
-                        />
+                        autoComplete="off"
+                      />
                         <Input
                           className="text-base font-semibold text-gray-900 text-center"
                           name="apellidos"
@@ -3359,7 +3359,7 @@ export default function DirectorPage() {
                     try {
                       const todasIncidencias = await fetchIncidencias();
                       setIncidenciasGenerales(todasIncidencias);
-                      setReporteGeneral(null);
+                    setReporteGeneral(null);
                     } catch (error) {
                       console.error('Error cargando incidencias:', error);
                       setIncidenciasGenerales([]);
@@ -3661,7 +3661,6 @@ export default function DirectorPage() {
                           );
                         })()}
 
-
           {/* SECCIÓN: Estudiantes Destacados */}
           {incidenciasGenerales.length > 0 && (() => {
             // Calcular estudiantes con más incidencias positivas
@@ -3674,8 +3673,6 @@ export default function DirectorPage() {
             const estudiantesDestacados = Object.entries(porEstudiantePositivo)
               .sort(([_, a], [__, b]) => b - a)
               .slice(0, 10);
-            
-            if (estudiantesDestacados.length === 0) return null;
             
             return (
               <Card className="mb-6">
@@ -3690,16 +3687,22 @@ export default function DirectorPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <div className="space-y-2">
-                      {estudiantesDestacados.map(([nombre, count]) => (
-                        <div key={nombre} className="flex items-center justify-between text-sm">
-                          <span className="font-medium text-gray-900">{nombre}</span>
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-300">
-                            {count} comportamiento{count > 1 ? 's' : ''} positivo{count > 1 ? 's' : ''}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
+                    {estudiantesDestacados.length > 0 ? (
+                      <div className="space-y-2">
+                        {estudiantesDestacados.map(([nombre, count]) => (
+                          <div key={nombre} className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-gray-900">{nombre}</span>
+                            <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                              {count} comportamiento{count > 1 ? 's' : ''} positivo{count > 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600 italic text-center py-2">
+                        No hay estudiantes con comportamientos positivos registrados en el período seleccionado.
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -4096,26 +4099,26 @@ export default function DirectorPage() {
                                           alertasIA.toLowerCase().includes('ninguna alerta');
                         
                         if (esPositivo) {
-                          return (
-                            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                              <div className="flex items-center gap-2 mb-2">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
+                        return (
+                          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
                                 <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
-                              </div>
-                              <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">{alertasIA}</p>
                             </div>
-                          );
+                              <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">{alertasIA}</p>
+                          </div>
+                        );
                         } else {
-                          return (
-                            <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                              <div className="flex items-center gap-2 mb-3">
-                                <AlertCircle className="h-5 w-5 text-yellow-600" />
-                                <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
-                              </div>
+                      return (
+                        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                            <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
+                          </div>
                               <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">
                                 {alertasIA}
                               </div>
-                            </div>
+                              </div>
                           );
                         }
                       }
@@ -4126,7 +4129,7 @@ export default function DirectorPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <AlertCircle className="h-4 w-4 text-gray-600" />
                             <h4 className="font-semibold text-gray-900 text-sm">Alertas Inteligentes</h4>
-                          </div>
+                              </div>
                           <p className="text-gray-900 text-sm italic">
                             Las alertas se generarán automáticamente al crear el análisis con IA.
                           </p>
@@ -4403,8 +4406,8 @@ export default function DirectorPage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Estudiantes Registrados ({estudiantesInfo.filter(e => 
-                          (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
-                          (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
+                      (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
+                      (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
                           (!busquedaAdminEstudiante || 
                             e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()) ||
                             (e.nombres && e.nombres.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase())) ||
@@ -5079,10 +5082,10 @@ export default function DirectorPage() {
                                       size="sm"
                                       variant="default"
                                       onClick={async () => {
-                                        if (!profesorEditForm.nombre || !profesorEditForm.nombre.trim()) {
-                                          toast.error('El nombre es obligatorio');
-                                          return;
-                                        }
+                                          if (!profesorEditForm.nombre || !profesorEditForm.nombre.trim()) {
+                                            toast.error('El nombre es obligatorio');
+                                            return;
+                                          }
                                         
                                         // Actualizar el profesor con todos los campos del formulario
                                         const profesorActualizado = {...profesor, ...profesorEditForm} as Tutor;
@@ -5098,10 +5101,10 @@ export default function DirectorPage() {
                                           setTutores(profesores);
                                         }
                                         
-                                        setRefreshKey(prev => prev + 1);
-                                        setProfesorEditandoAdmin(null);
-                                        setProfesorEditForm({});
-                                        toast.success('Profesor actualizado exitosamente');
+                                          setRefreshKey(prev => prev + 1);
+                                          setProfesorEditandoAdmin(null);
+                                          setProfesorEditForm({});
+                                          toast.success('Profesor actualizado exitosamente');
                                       }}
                                     >
                                       Guardar
@@ -5142,7 +5145,7 @@ export default function DirectorPage() {
                                             await deleteTutor(profesor.id);
                                             const profesoresFiltrados = tutores.filter(p => p.id !== profesor.id);
                                             setTutores(profesoresFiltrados);
-                                            setRefreshKey(prev => prev + 1);
+                                          setRefreshKey(prev => prev + 1);
                                             toast.success('Profesor eliminado exitosamente de la base de datos');
                                           } catch (error) {
                                             console.error('Error eliminando profesor:', error);
@@ -5214,10 +5217,10 @@ export default function DirectorPage() {
                                   const nuevosGrados = [...grados, nuevoGradoInput.trim()];
                                   saveGrados(nuevosGrados).then(() => {
                                     setGrados(nuevosGrados);
-                                    setMostrarAgregarGrado(false);
-                                    setNuevoGradoInput('');
-                                    setRefreshKey(prev => prev + 1);
-                                    toast.success('Grado agregado exitosamente');
+                                  setMostrarAgregarGrado(false);
+                                  setNuevoGradoInput('');
+                                  setRefreshKey(prev => prev + 1);
+                                  toast.success('Grado agregado exitosamente');
                                   }).catch(error => {
                                     console.error('Error guardando grados:', error);
                                     toast.error('Error al guardar grado');
@@ -5311,7 +5314,7 @@ export default function DirectorPage() {
                               setTimeout(() => {
                                 setRefreshKey(prev => prev + 1);
                               }, 500);
-                              toast.success('Grado eliminado exitosamente');
+                                toast.success('Grado eliminado exitosamente');
                             } catch (error) {
                               console.error('❌ Error eliminando grado:', error);
                               toast.error(`Error al eliminar el grado: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -5370,10 +5373,10 @@ export default function DirectorPage() {
                                   const nuevasSecciones = [...secciones, nuevaSeccion];
                                   saveSecciones(nuevasSecciones).then(() => {
                                     setSecciones(nuevasSecciones);
-                                    setMostrarAgregarSeccion(false);
-                                    setNuevaSeccionInput('');
-                                    setRefreshKey(prev => prev + 1);
-                                    toast.success('Sección agregada exitosamente');
+                                  setMostrarAgregarSeccion(false);
+                                  setNuevaSeccionInput('');
+                                  setRefreshKey(prev => prev + 1);
+                                  toast.success('Sección agregada exitosamente');
                                   }).catch(error => {
                                     console.error('Error guardando secciones:', error);
                                     toast.error('Error al guardar sección');
@@ -5398,10 +5401,10 @@ export default function DirectorPage() {
                                 const nuevasSecciones = [...secciones, nuevaSeccion];
                                 await saveSecciones(nuevasSecciones);
                                 setSecciones(nuevasSecciones);
-                                setMostrarAgregarSeccion(false);
-                                setNuevaSeccionInput('');
-                                setRefreshKey(prev => prev + 1);
-                                toast.success('Sección agregada exitosamente');
+                                  setMostrarAgregarSeccion(false);
+                                  setNuevaSeccionInput('');
+                                  setRefreshKey(prev => prev + 1);
+                                  toast.success('Sección agregada exitosamente');
                               } else {
                                 toast.error('Esta sección ya existe');
                               }
@@ -5468,7 +5471,7 @@ export default function DirectorPage() {
                               setTimeout(() => {
                                 setRefreshKey(prev => prev + 1);
                               }, 500);
-                              toast.success('Sección eliminada exitosamente');
+                                toast.success('Sección eliminada exitosamente');
                             } catch (error) {
                               console.error('❌ Error eliminando sección:', error);
                               toast.error(`Error al eliminar la sección: ${error instanceof Error ? error.message : 'Error desconocido'}`);
