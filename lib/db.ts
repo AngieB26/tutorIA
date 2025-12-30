@@ -499,13 +499,9 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       }];
     }
 
-    // Buscar estudianteId por nombre (intentar por nombre completo o por nombres y apellidos)
-    let estudiante = await prisma.estudiante.findFirst({
-      where: { nombre: newIncidencia.studentName }
-    });
-    
-    // Si no se encuentra, intentar buscar por nombres y apellidos separados
-    if (!estudiante && newIncidencia.studentName.includes(' ')) {
+    // Buscar estudianteId por nombres y apellidos
+    let estudiante = null;
+    if (newIncidencia.studentName.includes(' ')) {
       const partes = newIncidencia.studentName.trim().split(/\s+/);
       if (partes.length >= 2) {
         const apellidos = partes[partes.length - 1];
