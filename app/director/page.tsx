@@ -1100,7 +1100,6 @@ export default function DirectorPage() {
     window.addEventListener('incidenciaActualizada', handleIncidenciaActualizada as EventListener);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('incidenciaRegistrada', handleIncidenciaRegistrada as EventListener);
       window.removeEventListener('incidenciaMarcadaComoVista', handleIncidenciaMarcadaComoVista as EventListener);
       window.removeEventListener('todasIncidenciasMarcadasComoVistas', handleTodasMarcadasComoVistas);
