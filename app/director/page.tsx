@@ -4656,6 +4656,9 @@ export default function DirectorPage() {
                                             console.log('💾 Guardando estudiante en base de datos con ID:', estudianteId);
                                             console.log('📦 Datos a guardar:', JSON.stringify(estudianteActualizado, null, 2));
                                             
+                                            // Guardar el ID del estudiante que se está editando antes de guardar
+                                            const estudianteEditadoId = estudianteId;
+                                          
                                             try {
                                               await saveEstudianteInfo(estudianteActualizado, estudianteId);
                                               console.log('✅ Estudiante guardado exitosamente en la base de datos');
@@ -4671,22 +4674,28 @@ export default function DirectorPage() {
                                               return; // Salir temprano si hay error
                                             }
                                           
-                                            // Guardar el ID del estudiante que se está editando antes de cerrar el formulario
-                                            const estudianteEditadoId = estudianteId;
-                                          
-                                            // Cerrar el formulario de edición INMEDIATAMENTE para que la UI se actualice
+                                            // Cerrar el formulario de edición INMEDIATAMENTE después de guardar exitosamente
                                             // Esto debe hacerse ANTES de cualquier otra operación asíncrona
-                                            // Usar una función de actualización para asegurar que el estado se actualice correctamente
-                                            setEstudianteEditandoAdmin(() => null);
-                                            setEstudianteEditForm(() => ({}));
-                                            setEstudianteNombreOriginal(() => null);
+                                            console.log('🔄 Cerrando formulario de edición...');
+                                            console.log('📝 ID del estudiante que se estaba editando:', estudianteEditandoAdmin);
+                                            
+                                            // Limpiar el estado de edición de forma explícita
+                                            setEstudianteEditandoAdmin(null);
+                                            setEstudianteEditForm({});
+                                            setEstudianteNombreOriginal(null);
+                                            
+                                            // Forzar un re-render inmediato para que React procese el cambio
+                                            await new Promise(resolve => {
+                                              // Usar requestAnimationFrame para asegurar que el cambio se refleje en el siguiente frame
+                                              requestAnimationFrame(() => {
+                                                setTimeout(resolve, 0);
+                                              });
+                                            });
+                                            
+                                            console.log('✅ Formulario cerrado');
                                           
                                             // Mostrar toast de éxito inmediatamente
                                             toast.success('Estudiante actualizado exitosamente');
-                                            
-                                            // Forzar un re-render inmediato usando setTimeout con 0 para el siguiente tick
-                                            // Esto asegura que React procese el cambio de estado antes de continuar
-                                            await new Promise(resolve => setTimeout(resolve, 0));
                                           
                                             // Esperar un momento para que la base de datos se actualice completamente
                                             await new Promise(resolve => setTimeout(resolve, 500));
