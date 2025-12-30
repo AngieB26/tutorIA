@@ -1003,20 +1003,6 @@ export default function DirectorPage() {
   // Escuchar eventos personalizados para actualizar notificaciones
   useEffect(() => {
     // Ya no escuchamos cambios en localStorage, solo eventos personalizados
-        } catch (error) {
-          console.error('Error procesando cambio en localStorage:', error);
-        }
-      }
-      // Escuchar cambios en tutoria_incidencias (cuando se registran nuevas incidencias)
-      if (e.key === 'tutoria_incidencias' || e.key === null) {
-        console.log('📢 Cambio detectado en storage de incidencias, recargando...');
-        setTimeout(() => {
-          setRefreshKey(prev => prev + 1);
-          // El useEffect que maneja fechaInicio/fechaFin se encargará de actualizar incidenciasGenerales
-          // Solo necesitamos disparar un re-render
-        }, 200);
-      }
-    };
 
     const handleIncidenciaRegistrada = async (e: Event) => {
       const customEvent = e as CustomEvent;
