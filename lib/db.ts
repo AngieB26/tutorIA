@@ -1503,11 +1503,54 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
         
         // Buscar primero con el ID exacto
         console.log(`🔍 Ejecutando query: prisma.incidencia.findMany({ where: { estudianteId: "${estudianteIdFinal}" } })`);
+        console.log(`🔍 estudianteIdFinal.trim(): "${estudianteIdFinal.trim()}"`);
+        console.log(`🔍 estudianteIdFinal.length: ${estudianteIdFinal.length}`);
+        
+        // Intentar búsqueda directa
         incidencias = await prisma.incidencia.findMany({
           where: { estudianteId: estudianteIdFinal },
           orderBy: { timestamp: 'desc' }
         });
-        console.log(`📊 Encontradas ${incidencias.length} incidencias por estudianteId`);
+        console.log(`📊 Encontradas ${incidencias.length} incidencias por estudianteId (búsqueda directa)`);
+        
+        // Si no encontramos, intentar con trim (por si hay espacios)
+        if (incidencias.length === 0) {
+          console.log(`⚠️ No se encontraron con búsqueda directa, intentando con trim...`);
+          const estudianteIdTrimmed = estudianteIdFinal.trim();
+          incidencias = await prisma.incidencia.findMany({
+            where: { estudianteId: estudianteIdTrimmed },
+            orderBy: { timestamp: 'desc' }
+          });
+          console.log(`📊 Encontradas ${incidencias.length} incidencias por estudianteId (con trim)`);
+        }
+        
+        // Si aún no encontramos, buscar todas y filtrar manualmente
+        if (incidencias.length === 0) {
+          console.log(`⚠️ No se encontraron con búsqueda normal, buscando todas y filtrando manualmente...`);
+          const todasIncidencias = await prisma.incidencia.findMany({
+            where: { estudianteId: { not: null } },
+            orderBy: { timestamp: 'desc' }
+          });
+          console.log(`📊 Total incidencias con estudianteId no null: ${todasIncidencias.length}`);
+          
+          // Filtrar manualmente
+          incidencias = todasIncidencias.filter(inc => {
+            const coincide = inc.estudianteId === estudianteIdFinal || 
+                           inc.estudianteId?.trim() === estudianteIdFinal.trim() ||
+                           inc.estudianteId === estudianteIdFinal.trim() ||
+                           inc.estudianteId?.trim() === estudianteIdFinal;
+            if (coincide) {
+              console.log(`✅ Incidencia encontrada por filtro manual:`, {
+                id: inc.id,
+                studentName: inc.studentName,
+                estudianteId: inc.estudianteId,
+                buscado: estudianteIdFinal
+              });
+            }
+            return coincide;
+          });
+          console.log(`📊 Encontradas ${incidencias.length} incidencias por filtro manual`);
+        }
         
         // Si no encontramos, verificar si hay algún problema con el tipo de dato
         if (incidencias.length === 0) {
