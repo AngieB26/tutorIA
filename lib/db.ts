@@ -1502,6 +1502,7 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
         console.log(`🔍 Longitud de estudianteIdFinal: ${estudianteIdFinal.length}`);
         
         // Buscar primero con el ID exacto
+        console.log(`🔍 Ejecutando query: prisma.incidencia.findMany({ where: { estudianteId: "${estudianteIdFinal}" } })`);
         incidencias = await prisma.incidencia.findMany({
           where: { estudianteId: estudianteIdFinal },
           orderBy: { timestamp: 'desc' }
@@ -1513,14 +1514,29 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
           console.log(`⚠️ No se encontraron incidencias. Verificando todas las incidencias con estudianteId...`);
           const todasConEstudianteId = await prisma.incidencia.findMany({
             where: { estudianteId: { not: null } },
-            take: 5
+            take: 10
           });
-          console.log(`📋 Primeras 5 incidencias con estudianteId no null:`, todasConEstudianteId.map(inc => ({
+          console.log(`📋 Total de incidencias con estudianteId no null en BD: ${todasConEstudianteId.length}`);
+          console.log(`📋 Primeras 10 incidencias con estudianteId no null:`, todasConEstudianteId.map(inc => ({
             id: inc.id,
             studentName: inc.studentName,
             estudianteId: inc.estudianteId,
-            tipoEstudianteId: typeof inc.estudianteId
+            tipoEstudianteId: typeof inc.estudianteId,
+            coincide: inc.estudianteId === estudianteIdFinal,
+            igualdadEstricta: inc.estudianteId === estudianteIdFinal,
+            igualdadLoose: inc.estudianteId == estudianteIdFinal
           })));
+          
+          // Buscar específicamente por este ID para ver si hay algún problema
+          console.log(`🔍 Buscando específicamente incidencias con estudianteId igual a: "${estudianteIdFinal}"`);
+          const busquedaEspecifica = await prisma.incidencia.findMany({
+            where: { 
+              estudianteId: {
+                equals: estudianteIdFinal
+              }
+            }
+          });
+          console.log(`📊 Incidencias encontradas con equals: ${busquedaEspecifica.length}`);
         }
         
         // Si no encontramos incidencias por ID, buscar también por nombre como fallback
