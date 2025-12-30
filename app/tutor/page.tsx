@@ -215,6 +215,49 @@ export default function TutorPage() {
     loadResumenes();
   }, [estudiantesFiltrados.map(e => e.nombre).join(','), esTutorDeLaSeccion, seccionSeleccionada?.grado, seccionSeleccionada?.seccion]);
 
+  // Cargar estudiantes con estado cuando cambia la sección seleccionada
+  useEffect(() => {
+    const loadEstudiantesConEstado = async () => {
+      if (!seccionSeleccionada || estudiantesFiltrados.length === 0) {
+        setEstudiantesConEstado([]);
+        return;
+      }
+
+      if (!esTutorDeLaSeccion) {
+        setEstudiantesConEstado(estudiantesFiltrados.map(est => ({ ...est, estado: null, iaResumen: null, estaCargandoIA: false })));
+        return;
+      }
+
+      const estudiantesPromises = estudiantesFiltrados.map(async (est) => {
+        const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+        const incidenciasRecientes = incidenciasEst.filter(inc => {
+          const fechaInc = new Date(inc.fecha);
+          const hace30Dias = new Date();
+          hace30Dias.setDate(hace30Dias.getDate() - 30);
+          return fechaInc >= hace30Dias;
+        });
+
+        const estado = incidenciasRecientes.length === 0 
+          ? 'normal' 
+          : incidenciasRecientes.length <= 2 
+            ? 'atencion' 
+            : 'alerta';
+
+        return {
+          ...est,
+          estado,
+          iaResumen: iaResumenes[est.nombre] || null,
+          estaCargandoIA: iaCargando[est.nombre] || false
+        };
+      });
+
+      const estudiantesConEstadoData = await Promise.all(estudiantesPromises);
+      setEstudiantesConEstado(estudiantesConEstadoData);
+    };
+
+    loadEstudiantesConEstado();
+  }, [seccionSeleccionada, estudiantesFiltrados, esTutorDeLaSeccion, iaResumenes, iaCargando]);
+
   const handleRegistrarAsistencia = (estudiante: EstudianteInfo) => {
     setSelectedStudent(estudiante);
     setViewMode('asistencia');
