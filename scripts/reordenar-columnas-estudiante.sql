@@ -6,6 +6,9 @@
 
 BEGIN;
 
+-- 0. Limpiar si existe una ejecución previa incompleta
+DROP TABLE IF EXISTS "Estudiante_new" CASCADE;
+
 -- 1. Crear nueva tabla con el orden correcto de columnas
 CREATE TABLE "Estudiante_new" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -53,9 +56,9 @@ SELECT
   "tardanzas", "createdAt", "updatedAt"
 FROM "Estudiante";
 
--- 3. Recrear los índices
-CREATE INDEX "Estudiante_grado_seccion_idx" ON "Estudiante_new"("grado", "seccion");
-CREATE INDEX "Estudiante_nombres_apellidos_idx" ON "Estudiante_new"("nombres", "apellidos");
+-- 3. Recrear los índices (si no existen)
+CREATE INDEX IF NOT EXISTS "Estudiante_grado_seccion_idx" ON "Estudiante_new"("grado", "seccion");
+CREATE INDEX IF NOT EXISTS "Estudiante_nombres_apellidos_idx" ON "Estudiante_new"("nombres", "apellidos");
 
 -- 4. Eliminar la tabla vieja (esto eliminará automáticamente las foreign keys)
 DROP TABLE "Estudiante" CASCADE;
@@ -65,17 +68,29 @@ ALTER TABLE "Estudiante_new" RENAME TO "Estudiante";
 
 -- 6. Recrear las foreign keys que fueron eliminadas por CASCADE
 -- Prisma genera estos nombres automáticamente, pero los recreamos explícitamente
-ALTER TABLE "Incidencia" ADD CONSTRAINT "Incidencia_estudianteId_fkey" 
-  FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE "Nota" ADD CONSTRAINT "Nota_estudianteId_fkey" 
-  FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE "RegistroAsistenciaEntry" ADD CONSTRAINT "RegistroAsistenciaEntry_estudianteId_fkey" 
-  FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE "EstudianteAtendido" ADD CONSTRAINT "EstudianteAtendido_estudianteId_fkey" 
-  FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Solo crear si no existen
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Incidencia_estudianteId_fkey') THEN
+    ALTER TABLE "Incidencia" ADD CONSTRAINT "Incidencia_estudianteId_fkey" 
+      FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Nota_estudianteId_fkey') THEN
+    ALTER TABLE "Nota" ADD CONSTRAINT "Nota_estudianteId_fkey" 
+      FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'RegistroAsistenciaEntry_estudianteId_fkey') THEN
+    ALTER TABLE "RegistroAsistenciaEntry" ADD CONSTRAINT "RegistroAsistenciaEntry_estudianteId_fkey" 
+      FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'EstudianteAtendido_estudianteId_fkey') THEN
+    ALTER TABLE "EstudianteAtendido" ADD CONSTRAINT "EstudianteAtendido_estudianteId_fkey" 
+      FOREIGN KEY ("estudianteId") REFERENCES "Estudiante"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- 7. Regenerar el cliente de Prisma para que reconozca el nuevo orden
 -- Ejecutar después: npx prisma generate
