@@ -155,8 +155,6 @@ model Clase {
   tutor      Tutor?  @relation(fields: [profesorId], references: [id])
   // Días de la semana (JSON array almacenado como texto)
   dias       String  @db.Text // JSON array de DiaSemana[]
-  // Periodos (JSON array almacenado como texto)
-  periodos   String  @db.Text // JSON array de number[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

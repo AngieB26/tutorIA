@@ -5212,8 +5212,7 @@ export default function DirectorPage() {
                                 grado: formularioCurso.grado,
                                 seccion: formularioCurso.seccion,
                                 profesor: formularioCurso.profesor,
-                                dias: formularioCurso.dias,
-                                periodos: []
+                                dias: formularioCurso.dias
                               });
                               // Recargar las clases directamente
                               const clasesActualizadas = await fetchClases();
@@ -5301,6 +5300,7 @@ export default function DirectorPage() {
                         <TableHead className="text-sm font-semibold">Grado</TableHead>
                         <TableHead className="text-sm font-semibold">Sección</TableHead>
                         <TableHead className="text-sm font-semibold">Profesor</TableHead>
+                        <TableHead className="text-sm font-semibold">Días</TableHead>
                         <TableHead className="text-sm font-semibold text-right">Acción</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -5315,7 +5315,7 @@ export default function DirectorPage() {
                         if (clasesFiltradas.length === 0) {
                           return (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                              <TableCell colSpan={6} className="text-center text-gray-500 py-8">
                                 {clases.length === 0
                                   ? 'No hay asignaciones registradas. Crea una nueva asignación.'
                                   : 'No hay asignaciones que coincidan con los filtros seleccionados.'
@@ -5355,6 +5355,19 @@ export default function DirectorPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                            </TableCell>
+                            <TableCell className="text-gray-900">
+                              {clase.dias && clase.dias.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {clase.dias.map((dia, idx) => (
+                                    <Badge key={idx} variant="secondary" className="text-xs capitalize">
+                                      {dia}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">Sin días</span>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button

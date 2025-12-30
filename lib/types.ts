@@ -114,7 +114,6 @@ export interface Clase {
   seccion: string; // Ej: A
   profesor: string; // Nombre del profesor asignado
   dias: DiaSemana[]; // Días en los que ocurre la clase
-  periodos: number[]; // Periodos posibles (1..n)
 }
 
 export interface RegistroAsistenciaClase {

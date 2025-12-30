@@ -721,7 +721,6 @@ export async function getClases(): Promise<Clase[]> {
 
     return clases.map(clase => {
       const dias: DiaSemana[] = clase.dias ? JSON.parse(clase.dias) : [];
-      const periodos: number[] = clase.periodos ? JSON.parse(clase.periodos) : [];
 
       return {
         id: clase.id,
@@ -730,7 +729,6 @@ export async function getClases(): Promise<Clase[]> {
         seccion: clase.seccion,
         profesor: clase.profesor,
         dias,
-        periodos,
       };
     });
   } catch (error) {
@@ -761,7 +759,6 @@ export async function saveClases(clases: Clase[]): Promise<void> {
           profesor: clase.profesor,
           profesorId: profesorId,
           dias: JSON.stringify(clase.dias),
-          periodos: JSON.stringify(clase.periodos || []),
         },
       });
     }
@@ -793,7 +790,6 @@ export async function addClase(clase: Omit<Clase, 'id'>): Promise<Clase> {
         profesor: newClase.profesor,
         profesorId: profesorId,
         dias: JSON.stringify(newClase.dias),
-        periodos: JSON.stringify(newClase.periodos || []),
       },
     });
 
