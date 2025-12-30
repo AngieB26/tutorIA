@@ -1498,11 +1498,30 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
       // Si tenemos el ID del estudiante, buscar directamente por estudianteId
       if (estudianteIdFinal) {
         console.log(`🔍 Buscando incidencias por estudianteId: ${estudianteIdFinal}`);
+        console.log(`🔍 Tipo de estudianteIdFinal: ${typeof estudianteIdFinal}`);
+        console.log(`🔍 Longitud de estudianteIdFinal: ${estudianteIdFinal.length}`);
+        
+        // Buscar primero con el ID exacto
         incidencias = await prisma.incidencia.findMany({
           where: { estudianteId: estudianteIdFinal },
           orderBy: { timestamp: 'desc' }
         });
         console.log(`📊 Encontradas ${incidencias.length} incidencias por estudianteId`);
+        
+        // Si no encontramos, verificar si hay algún problema con el tipo de dato
+        if (incidencias.length === 0) {
+          console.log(`⚠️ No se encontraron incidencias. Verificando todas las incidencias con estudianteId...`);
+          const todasConEstudianteId = await prisma.incidencia.findMany({
+            where: { estudianteId: { not: null } },
+            take: 5
+          });
+          console.log(`📋 Primeras 5 incidencias con estudianteId no null:`, todasConEstudianteId.map(inc => ({
+            id: inc.id,
+            studentName: inc.studentName,
+            estudianteId: inc.estudianteId,
+            tipoEstudianteId: typeof inc.estudianteId
+          })));
+        }
         
         // Si no encontramos incidencias por ID, buscar también por nombre como fallback
         // (para incidencias antiguas que no tienen estudianteId asignado)
