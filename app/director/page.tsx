@@ -746,7 +746,8 @@ export default function DirectorPage() {
     nombre: '',
     grado: '',
     seccion: '',
-    profesor: ''
+    profesor: '',
+    dias: [] as DiaSemana[]
   });
   const [mostrarAgregarGrado, setMostrarAgregarGrado] = useState(false);
   const [nuevoGradoInput, setNuevoGradoInput] = useState('');
@@ -5143,12 +5144,40 @@ export default function DirectorPage() {
                           </Select>
                         </div>
                       </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs font-semibold text-gray-700 mb-2">Días de la semana</label>
+                        <div className="flex flex-wrap gap-3">
+                          {(['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as DiaSemana[]).map((dia) => (
+                            <label key={dia} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={formularioCurso.dias.includes(dia)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormularioCurso({
+                                      ...formularioCurso,
+                                      dias: [...formularioCurso.dias, dia]
+                                    });
+                                  } else {
+                                    setFormularioCurso({
+                                      ...formularioCurso,
+                                      dias: formularioCurso.dias.filter(d => d !== dia)
+                                    });
+                                  }
+                                }}
+                                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                              />
+                              <span className="text-sm text-gray-700 capitalize">{dia}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                       <div className="flex gap-2 justify-end">
                         <Button
                           variant="outline"
                           onClick={() => {
                             setMostrarFormularioCurso(false);
-                            setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '' });
+                            setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '', dias: [] });
                           }}
                         >
                           Cancelar
@@ -5157,6 +5186,11 @@ export default function DirectorPage() {
                           onClick={async () => {
                             if (!formularioCurso.nombre.trim() || !formularioCurso.grado || !formularioCurso.seccion || !formularioCurso.profesor) {
                               toast.error('Por favor completa todos los campos');
+                              return;
+                            }
+                            
+                            if (formularioCurso.dias.length === 0) {
+                              toast.error('Por favor selecciona al menos un día de la semana');
                               return;
                             }
                             
@@ -5178,7 +5212,7 @@ export default function DirectorPage() {
                                 grado: formularioCurso.grado,
                                 seccion: formularioCurso.seccion,
                                 profesor: formularioCurso.profesor,
-                                dias: [],
+                                dias: formularioCurso.dias,
                                 periodos: []
                               });
                               // Recargar las clases directamente
@@ -5186,7 +5220,7 @@ export default function DirectorPage() {
                               setClases(clasesActualizadas);
                               setRefreshKey(prev => prev + 1);
                               setMostrarFormularioCurso(false);
-                              setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '' });
+                              setFormularioCurso({ nombre: '', grado: '', seccion: '', profesor: '', dias: [] });
                               toast.success('Asignación creada exitosamente');
                             } catch (error) {
                               toast.error('Error al crear la asignación');
