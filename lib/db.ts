@@ -145,16 +145,10 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
       throw new Error('Los campos nombres y apellidos son requeridos');
     }
 
-    // Buscar por nombres y apellidos (campos principales)
-    let existente = await prisma.estudiante.findFirst({
-      where: {
-        nombres: estudiante.nombres,
-        apellidos: estudiante.apellidos
-      }
-    });
-
-    // Si no se encuentra y hay nombreOriginal, intentar buscar por nombres y apellidos del nombre original
-    if (!existente && nombreOriginal && nombreOriginal.includes(' ')) {
+    // Si hay nombreOriginal, buscar primero por el nombre original (para actualizaciones)
+    // Esto es crítico cuando se cambia el nombre del estudiante
+    let existente = null;
+    if (nombreOriginal && nombreOriginal.includes(' ')) {
       const partes = nombreOriginal.trim().split(/\s+/);
       if (partes.length >= 2) {
         const apellidosOriginal = partes[partes.length - 1];
@@ -166,6 +160,17 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, nombreOrigi
           }
         });
       }
+    }
+    
+    // Si no se encuentra por nombre original, buscar por los nuevos nombres y apellidos
+    // (esto es para casos donde no hay nombreOriginal, como creación de nuevos estudiantes)
+    if (!existente) {
+      existente = await prisma.estudiante.findFirst({
+        where: {
+          nombres: estudiante.nombres,
+          apellidos: estudiante.apellidos
+        }
+      });
     }
 
     // Construir nombre completo desde nombres y apellidos
