@@ -1517,6 +1517,20 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
             }
           });
         }
+        // IMPORTANTE: También buscar incidencias que tengan estudianteId null pero studentName que coincida
+        // Esto es para incidencias antiguas que no tienen estudianteId asignado
+        condiciones.push({
+          AND: [
+            { estudianteId: null },
+            { studentName: { contains: estudiante.nombres, mode: 'insensitive' } }
+          ]
+        });
+        condiciones.push({
+          AND: [
+            { estudianteId: null },
+            { studentName: { contains: estudiante.apellidos, mode: 'insensitive' } }
+          ]
+        });
         console.log(`🔍 Buscando incidencias por estudianteId: ${estudiante.id}, nombre completo: "${nombreCompletoEstudiante}"`);
         console.log(`🔍 Total de condiciones de búsqueda: ${condiciones.length}`);
       } else if (isUUID) {
