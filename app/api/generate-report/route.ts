@@ -109,7 +109,9 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
       }, { status: 500 });
     }
 
-    console.log('Enviando request a Gemini...');
+    // Log para debugging (sin mostrar la key completa por seguridad)
+    console.log('🔑 API Key configurada:', geminiApiKey ? `${geminiApiKey.substring(0, 10)}...` : 'NO ENCONTRADA');
+    console.log('📡 Enviando request a Gemini con modelo: gemini-2.5-flash');
     
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
