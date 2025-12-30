@@ -784,27 +784,45 @@ export async function addClase(clase: Omit<Clase, 'id'>): Promise<Clase> {
       id: Date.now().toString() + Math.random().toString(36).slice(2, 7),
     };
 
+    console.log('📝 addClase - Datos recibidos:', {
+      nombre: newClase.nombre,
+      grado: newClase.grado,
+      seccion: newClase.seccion,
+      profesor: newClase.profesor,
+      dias: newClase.dias,
+      diasType: typeof newClase.dias,
+      diasIsArray: Array.isArray(newClase.dias)
+    });
+
     // Buscar profesorId por nombre
     const tutor = await prisma.tutor.findFirst({
       where: { nombre: newClase.profesor }
     });
     const profesorId = tutor?.id ?? null;
 
+    console.log('👤 Profesor encontrado:', { nombre: newClase.profesor, profesorId });
+
+    const dataToCreate = {
+      id: newClase.id,
+      nombre: newClase.nombre,
+      grado: newClase.grado,
+      seccion: newClase.seccion,
+      profesor: newClase.profesor,
+      profesorId: profesorId,
+      dias: JSON.stringify(newClase.dias),
+    };
+
+    console.log('💾 Datos a guardar en BD:', dataToCreate);
+
     await prisma.clase.create({
-      data: {
-        id: newClase.id,
-        nombre: newClase.nombre,
-        grado: newClase.grado,
-        seccion: newClase.seccion,
-        profesor: newClase.profesor,
-        profesorId: profesorId,
-        dias: JSON.stringify(newClase.dias),
-      } as any, // Temporal: periodos fue eliminado del schema pero Prisma Client aún lo espera
+      data: dataToCreate as any, // Temporal: periodos fue eliminado del schema pero Prisma Client aún lo espera
     });
+
+    console.log('✅ Clase creada exitosamente en BD');
 
     return newClase;
   } catch (error) {
-    console.error('Error agregando clase:', error);
+    console.error('❌ Error agregando clase:', error);
     throw error;
   }
 }
