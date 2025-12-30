@@ -1568,6 +1568,42 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
           studentName: inc.studentName,
           estudianteId: inc.estudianteId
         })));
+        
+        // Si encontramos al estudiante, buscar específicamente por su nombre
+        if (estudiante) {
+          const nombreCompletoEstudiante = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+          console.log(`🔍 Buscando específicamente por nombre: "${nombreCompletoEstudiante}"`);
+          const incidenciasPorNombre = await prisma.incidencia.findMany({
+            where: { studentName: nombreCompletoEstudiante }
+          });
+          console.log(`📊 Incidencias encontradas por nombre exacto: ${incidenciasPorNombre.length}`);
+          
+          // También buscar por estudianteId
+          console.log(`🔍 Buscando específicamente por estudianteId: "${estudiante.id}"`);
+          const incidenciasPorId = await prisma.incidencia.findMany({
+            where: { estudianteId: estudiante.id }
+          });
+          console.log(`📊 Incidencias encontradas por estudianteId: ${incidenciasPorId.length}`);
+          
+          // Buscar todas las incidencias que contengan el nombre o apellido
+          console.log(`🔍 Buscando por contains en studentName...`);
+          const incidenciasPorContains = await prisma.incidencia.findMany({
+            where: {
+              OR: [
+                { studentName: { contains: estudiante.nombres, mode: 'insensitive' } },
+                { studentName: { contains: estudiante.apellidos, mode: 'insensitive' } }
+              ]
+            }
+          });
+          console.log(`📊 Incidencias encontradas por contains: ${incidenciasPorContains.length}`);
+          if (incidenciasPorContains.length > 0) {
+            console.log(`📋 Incidencias encontradas por contains:`, incidenciasPorContains.map(inc => ({
+              id: inc.id,
+              studentName: inc.studentName,
+              estudianteId: inc.estudianteId
+            })));
+          }
+        }
       }
     } catch (error) {
       console.error(`❌ Error buscando incidencias:`, error);
