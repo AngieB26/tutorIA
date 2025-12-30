@@ -787,6 +787,26 @@ export default function DirectorPage() {
   const [estudianteEditForm, setEstudianteEditForm] = useState<Partial<EstudianteInfo>>({});
   const [estudianteNombreOriginal, setEstudianteNombreOriginal] = useState<string | null>(null);
   
+  // useEffect para asegurar que el formulario se cierre si estudianteEditandoAdmin tiene un valor pero no coincide con ningún estudiante
+  // IMPORTANTE: Este useEffect debe estar DESPUÉS de todas las declaraciones de estado que usa
+  useEffect(() => {
+    if (estudianteEditandoAdmin !== null && estudiantesInfo.length > 0) {
+      const estudianteEncontrado = estudiantesInfo.find((e: any) => {
+        const identificador = e.id || e.nombre;
+        return identificador === estudianteEditandoAdmin;
+      });
+      
+      // Si no se encuentra el estudiante que se está editando, cerrar el formulario
+      // Esto puede pasar si el estudiante fue actualizado y su identificador cambió
+      if (!estudianteEncontrado) {
+        console.log('⚠️ Estudiante en edición no encontrado, cerrando formulario...');
+        setEstudianteEditandoAdmin(null);
+        setEstudianteEditForm({});
+        setEstudianteNombreOriginal(null);
+      }
+    }
+  }, [estudiantesInfo, estudianteEditandoAdmin]);
+  
   // Estados para edición de profesores
   const [profesorEditandoAdmin, setProfesorEditandoAdmin] = useState<string | null>(null);
   const [profesorEditForm, setProfesorEditForm] = useState<Partial<Tutor>>({});
