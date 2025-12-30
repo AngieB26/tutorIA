@@ -759,7 +759,7 @@ export async function saveClases(clases: Clase[]): Promise<void> {
           profesor: clase.profesor,
           profesorId: profesorId,
           dias: JSON.stringify(clase.dias),
-        },
+        } as any, // Temporal: periodos fue eliminado del schema pero Prisma Client aún lo espera
       });
     }
   } catch (error) {
@@ -790,7 +790,7 @@ export async function addClase(clase: Omit<Clase, 'id'>): Promise<Clase> {
         profesor: newClase.profesor,
         profesorId: profesorId,
         dias: JSON.stringify(newClase.dias),
-      },
+      } as any, // Temporal: periodos fue eliminado del schema pero Prisma Client aún lo espera
     });
 
     return newClase;
