@@ -40,7 +40,8 @@ export async function getEstudiantesInfo(): Promise<EstudianteInfo[]> {
       
       return {
         id: est.id, // Incluir ID
-        nombre: nombreCompleto,
+        nombres: est.nombres,
+        apellidos: est.apellidos,
       grado: est.grado,
       seccion: est.seccion,
       edad: est.edad ?? undefined,
@@ -65,8 +66,6 @@ export async function getEstudiantesInfo(): Promise<EstudianteInfo[]> {
         email: est.apoderadoEmail ?? undefined,
         direccion: est.apoderadoDireccion ?? undefined,
       },
-        nombres: est.nombres,
-        apellidos: est.apellidos,
       asistencias: est.asistencias ?? undefined,
       ausencias: est.ausencias ?? undefined,
       tardanzas: est.tardanzas ?? undefined,
@@ -92,7 +91,6 @@ export async function getEstudianteInfoById(id: string): Promise<EstudianteInfo 
 
     return {
       id: estudiante.id,
-      nombre: nombreCompleto,
       nombres: estudiante.nombres,
       apellidos: estudiante.apellidos,
       grado: estudiante.grado,
@@ -154,7 +152,6 @@ export async function getEstudianteInfo(nombre: string): Promise<EstudianteInfo 
 
     return {
       id: estudiante.id, // Incluir ID
-      nombre: nombreCompleto,
       nombres: estudiante.nombres, // Incluir nombres separado
       apellidos: estudiante.apellidos, // Incluir apellidos separado
       grado: estudiante.grado,
@@ -444,7 +441,10 @@ export async function saveEstudiantesInfo(estudiantes: EstudianteInfo[], nombres
     // Para cada estudiante, crear o actualizar
     for (const est of estudiantes) {
       // Si hay un mapa de nombres originales, usarlo para buscar el registro existente
-      const nombreOriginal = nombresOriginales?.get(est.nombre);
+      const nombreCompleto = est.nombres && est.apellidos 
+        ? `${est.nombres} ${est.apellidos}`.trim()
+        : (est as any).nombre || '';
+      const nombreOriginal = nombresOriginales?.get(nombreCompleto);
       await saveEstudianteInfo(est, nombreOriginal);
     }
   } catch (error) {

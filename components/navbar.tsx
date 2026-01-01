@@ -30,6 +30,16 @@ export function Navbar() {
   const [mostrarNotificacionesDirector, setMostrarNotificacionesDirector] = useState(false);
   const [refreshKeyDirector, setRefreshKeyDirector] = useState(0);
 
+  // Helper function para obtener el nombre completo desde nombres y apellidos
+  const getNombreCompleto = (estudiante: any): string => {
+    if (estudiante.nombres && estudiante.apellidos) {
+      return `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+    }
+    // Fallback: si no hay nombres y apellidos, intentar usar nombre (si existe en runtime)
+    if (estudiante.nombre) return estudiante.nombre;
+    return estudiante.nombres || estudiante.apellidos || 'Sin nombre';
+  };
+
   useEffect(() => {
     setIsDirector(pathname === '/director');
     setIsProfesor(pathname === '/profesor');
@@ -84,7 +94,7 @@ export function Navbar() {
           
           console.log('📊 Procesando contadores de estudiantes desde la tabla Estudiante...');
           estudiantesData.forEach((estudiante: any) => {
-            const nombreCompleto = estudiante.nombre;
+            const nombreCompleto = getNombreCompleto(estudiante);
             // Usar los contadores de la tabla Estudiante si están disponibles
             const ausencias = estudiante.ausencias ?? 0;
             const tardanzas = estudiante.tardanzas ?? 0;
@@ -510,7 +520,7 @@ export function Navbar() {
 
   const handleRegistrarIncidencia = async (nombreEstudiante: string) => {
     // Encontrar los datos del estudiante con problemas
-    const estudianteProblema = estudiantesConProblemas.find(e => e.nombre === nombreEstudiante);
+    const estudianteProblema = estudiantesConProblemas.find(e => getNombreCompleto(e) === nombreEstudiante);
     
     // Determinar tipo y gravedad automáticamente
     let tipoIncidencia = 'asistencia'; // Por defecto asistencia (para ausencias)
@@ -532,7 +542,7 @@ export function Navbar() {
     
     // Remover el estudiante de la lista inmediatamente (antes de guardar)
     // Esto hace que desaparezca de las notificaciones de inmediato
-    setEstudiantesConProblemas(prev => prev.filter(e => e.nombre !== nombreEstudiante));
+    setEstudiantesConProblemas(prev => prev.filter(e => getNombreCompleto(e) !== nombreEstudiante));
     
     // Guardar los datos de prellenado en la base de datos
     await savePrellenadoIncidencia({
@@ -765,10 +775,10 @@ export function Navbar() {
                   ) : (
                     <div className="divide-y divide-gray-100">
                       {estudiantesConProblemas.map((item) => (
-                        <div key={item.nombre} className="p-4 hover:bg-gray-50 transition-colors border-l-4 border-l-red-500">
+                        <div key={getNombreCompleto(item)} className="p-4 hover:bg-gray-50 transition-colors border-l-4 border-l-red-500">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <p className="font-medium text-gray-900">{item.nombre}</p>
+                              <p className="font-medium text-gray-900">{getNombreCompleto(item)}</p>
                               {item.estudiante && (
                                 <p className="text-xs text-gray-500 mt-1">
                                   {item.estudiante.grado} {item.estudiante.seccion}
@@ -794,7 +804,7 @@ export function Navbar() {
                               size="sm"
                               variant="outline"
                               className="ml-2 bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
-                              onClick={() => handleRegistrarIncidencia(item.nombre)}
+                              onClick={() => handleRegistrarIncidencia(getNombreCompleto(item))}
                             >
                               Registrar Incidencia
                             </Button>

@@ -246,7 +246,13 @@ export function saveEstudiantesInfo(estudiantes: EstudianteInfo[]): void {
 
 export function getEstudianteInfo(nombre: string): EstudianteInfo | null {
   const estudiantes = getEstudiantesInfo();
-  return estudiantes.find(e => e.nombre === nombre) || null;
+  // Buscar por nombre completo construido desde nombres y apellidos
+  return estudiantes.find(e => {
+    const nombreCompleto = e.nombres && e.apellidos 
+      ? `${e.nombres} ${e.apellidos}`.trim()
+      : (e as any).nombre || e.nombres || e.apellidos || '';
+    return nombreCompleto === nombre;
+  }) || null;
 }
 
 export function getEstudiantesByGrado(grado?: string): EstudianteInfo[] {
@@ -590,30 +596,30 @@ export function seedInitialData(): void {
   if (existingEstudiantes.length === 0) {
   const estudiantesInfo: EstudianteInfo[] = [
     // 1ro Grado
-    { nombre: 'Ana García', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-05-15', contacto: { tutor: 'Pedro García', telefono: '555-1001', email: 'pedro.garcia@email.com' } },
-    { nombre: 'Luis Martínez', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-08-20', contacto: { tutor: 'Carmen Martínez', telefono: '555-1002', email: 'carmen.martinez@email.com' } },
-    { nombre: 'Sofía Rodríguez', grado: '1ro', seccion: 'B', edad: 12, fechaNacimiento: '2012-03-10', contacto: { tutor: 'Miguel Rodríguez', telefono: '555-1003', email: 'miguel.rodriguez@email.com' } },
-    { nombre: 'Daniel Vargas', grado: '1ro', seccion: 'B', edad: 12, fechaNacimiento: '2012-11-25', contacto: { tutor: 'Elena Vargas', telefono: '555-1004', email: 'elena.vargas@email.com' } },
+    { nombres: 'Ana', apellidos: 'García', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-05-15', contacto: { tutor: 'Pedro García', telefono: '555-1001', email: 'pedro.garcia@email.com' } },
+    { nombres: 'Luis', apellidos: 'Martínez', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-08-20', contacto: { tutor: 'Carmen Martínez', telefono: '555-1002', email: 'carmen.martinez@email.com' } },
+    { nombres: 'Sofía', apellidos: 'Rodríguez', grado: '1ro', seccion: 'B', edad: 12, fechaNacimiento: '2012-03-10', contacto: { tutor: 'Miguel Rodríguez', telefono: '555-1003', email: 'miguel.rodriguez@email.com' } },
+    { nombres: 'Daniel', apellidos: 'Vargas', grado: '1ro', seccion: 'B', edad: 12, fechaNacimiento: '2012-11-25', contacto: { tutor: 'Elena Vargas', telefono: '555-1004', email: 'elena.vargas@email.com' } },
     // 2do Grado
-    { nombre: 'María López', grado: '2do', seccion: 'A', edad: 13, fechaNacimiento: '2011-07-18', contacto: { tutor: 'Carlos López', telefono: '555-2001', email: 'carlos.lopez@email.com' } },
-    { nombre: 'Diego Fernández', grado: '2do', seccion: 'A', edad: 13, fechaNacimiento: '2011-09-12', contacto: { tutor: 'Laura Fernández', telefono: '555-2002', email: 'laura.fernandez@email.com' } },
-    { nombre: 'Valentina Torres', grado: '2do', seccion: 'B', edad: 13, fechaNacimiento: '2011-04-30', contacto: { tutor: 'Roberto Torres', telefono: '555-2003', email: 'roberto.torres@email.com' } },
-    { nombre: 'Alejandro Silva', grado: '2do', seccion: 'B', edad: 13, fechaNacimiento: '2011-12-05', contacto: { tutor: 'Patricia Silva', telefono: '555-2004', email: 'patricia.silva@email.com' } },
+    { nombres: 'María', apellidos: 'López', grado: '2do', seccion: 'A', edad: 13, fechaNacimiento: '2011-07-18', contacto: { tutor: 'Carlos López', telefono: '555-2001', email: 'carlos.lopez@email.com' } },
+    { nombres: 'Diego', apellidos: 'Fernández', grado: '2do', seccion: 'A', edad: 13, fechaNacimiento: '2011-09-12', contacto: { tutor: 'Laura Fernández', telefono: '555-2002', email: 'laura.fernandez@email.com' } },
+    { nombres: 'Valentina', apellidos: 'Torres', grado: '2do', seccion: 'B', edad: 13, fechaNacimiento: '2011-04-30', contacto: { tutor: 'Roberto Torres', telefono: '555-2003', email: 'roberto.torres@email.com' } },
+    { nombres: 'Alejandro', apellidos: 'Silva', grado: '2do', seccion: 'B', edad: 13, fechaNacimiento: '2011-12-05', contacto: { tutor: 'Patricia Silva', telefono: '555-2004', email: 'patricia.silva@email.com' } },
     // 3ro Grado
-    { nombre: 'Juan Pérez', grado: '3ro', seccion: 'A', edad: 14, fechaNacimiento: '2010-06-22', contacto: { tutor: 'María Pérez', telefono: '555-3001', email: 'maria.perez@email.com' } },
-    { nombre: 'Isabella Sánchez', grado: '3ro', seccion: 'A', edad: 14, fechaNacimiento: '2010-02-14', contacto: { tutor: 'Jorge Sánchez', telefono: '555-3002', email: 'jorge.sanchez@email.com' } },
-    { nombre: 'Mateo González', grado: '3ro', seccion: 'B', edad: 14, fechaNacimiento: '2010-10-08', contacto: { tutor: 'Patricia González', telefono: '555-3003', email: 'patricia.gonzalez@email.com' } },
-    { nombre: 'Lucía Ramírez', grado: '3ro', seccion: 'B', edad: 14, fechaNacimiento: '2010-01-19', contacto: { tutor: 'Fernando Ramírez', telefono: '555-3004', email: 'fernando.ramirez@email.com' } },
+    { nombres: 'Juan', apellidos: 'Pérez', grado: '3ro', seccion: 'A', edad: 14, fechaNacimiento: '2010-06-22', contacto: { tutor: 'María Pérez', telefono: '555-3001', email: 'maria.perez@email.com' } },
+    { nombres: 'Isabella', apellidos: 'Sánchez', grado: '3ro', seccion: 'A', edad: 14, fechaNacimiento: '2010-02-14', contacto: { tutor: 'Jorge Sánchez', telefono: '555-3002', email: 'jorge.sanchez@email.com' } },
+    { nombres: 'Mateo', apellidos: 'González', grado: '3ro', seccion: 'B', edad: 14, fechaNacimiento: '2010-10-08', contacto: { tutor: 'Patricia González', telefono: '555-3003', email: 'patricia.gonzalez@email.com' } },
+    { nombres: 'Lucía', apellidos: 'Ramírez', grado: '3ro', seccion: 'B', edad: 14, fechaNacimiento: '2010-01-19', contacto: { tutor: 'Fernando Ramírez', telefono: '555-3004', email: 'fernando.ramirez@email.com' } },
     // 4to Grado
-    { nombre: 'Carlos Ruiz', grado: '4to', seccion: 'A', edad: 15, fechaNacimiento: '2009-08-03', contacto: { tutor: 'Ana Ruiz', telefono: '555-4001', email: 'ana.ruiz@email.com' } },
-    { nombre: 'Camila Herrera', grado: '4to', seccion: 'A', edad: 15, fechaNacimiento: '2009-05-17', contacto: { tutor: 'Fernando Herrera', telefono: '555-4002', email: 'fernando.herrera@email.com' } },
-    { nombre: 'Sebastián Morales', grado: '4to', seccion: 'B', edad: 15, fechaNacimiento: '2009-11-28', contacto: { tutor: 'Diana Morales', telefono: '555-4003', email: 'diana.morales@email.com' } },
-    { nombre: 'Gabriela Castro', grado: '4to', seccion: 'B', edad: 15, fechaNacimiento: '2009-03-09', contacto: { tutor: 'Roberto Castro', telefono: '555-4004', email: 'roberto.castro@email.com' } },
+    { nombres: 'Carlos', apellidos: 'Ruiz', grado: '4to', seccion: 'A', edad: 15, fechaNacimiento: '2009-08-03', contacto: { tutor: 'Ana Ruiz', telefono: '555-4001', email: 'ana.ruiz@email.com' } },
+    { nombres: 'Camila', apellidos: 'Herrera', grado: '4to', seccion: 'A', edad: 15, fechaNacimiento: '2009-05-17', contacto: { tutor: 'Fernando Herrera', telefono: '555-4002', email: 'fernando.herrera@email.com' } },
+    { nombres: 'Sebastián', apellidos: 'Morales', grado: '4to', seccion: 'B', edad: 15, fechaNacimiento: '2009-11-28', contacto: { tutor: 'Diana Morales', telefono: '555-4003', email: 'diana.morales@email.com' } },
+    { nombres: 'Gabriela', apellidos: 'Castro', grado: '4to', seccion: 'B', edad: 15, fechaNacimiento: '2009-03-09', contacto: { tutor: 'Roberto Castro', telefono: '555-4004', email: 'roberto.castro@email.com' } },
     // 5to Grado
-    { nombre: 'Natalia Jiménez', grado: '5to', seccion: 'A', edad: 16, fechaNacimiento: '2008-07-21', contacto: { tutor: 'Alberto Jiménez', telefono: '555-5001', email: 'alberto.jimenez@email.com' } },
-    { nombre: 'Andrés Castro', grado: '5to', seccion: 'A', edad: 16, fechaNacimiento: '2008-09-14', contacto: { tutor: 'Mónica Castro', telefono: '555-5002', email: 'monica.castro@email.com' } },
-    { nombre: 'Fernanda Ortiz', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-12-01', contacto: { tutor: 'Carlos Ortiz', telefono: '555-5003', email: 'carlos.ortiz@email.com' } },
-    { nombre: 'Ricardo Méndez', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-04-16', contacto: { tutor: 'Sandra Méndez', telefono: '555-5004', email: 'sandra.mendez@email.com' } },
+    { nombres: 'Natalia', apellidos: 'Jiménez', grado: '5to', seccion: 'A', edad: 16, fechaNacimiento: '2008-07-21', contacto: { tutor: 'Alberto Jiménez', telefono: '555-5001', email: 'alberto.jimenez@email.com' } },
+    { nombres: 'Andrés', apellidos: 'Castro', grado: '5to', seccion: 'A', edad: 16, fechaNacimiento: '2008-09-14', contacto: { tutor: 'Mónica Castro', telefono: '555-5002', email: 'monica.castro@email.com' } },
+    { nombres: 'Fernanda', apellidos: 'Ortiz', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-12-01', contacto: { tutor: 'Carlos Ortiz', telefono: '555-5003', email: 'carlos.ortiz@email.com' } },
+    { nombres: 'Ricardo', apellidos: 'Méndez', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-04-16', contacto: { tutor: 'Sandra Méndez', telefono: '555-5004', email: 'sandra.mendez@email.com' } },
     ];
     
     saveEstudiantesInfo(estudiantesInfo);

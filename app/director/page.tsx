@@ -56,6 +56,16 @@ import * as XLSX from 'xlsx';
 
 
 export default function DirectorPage() {
+  // Helper function para obtener el nombre completo desde nombres y apellidos
+  const getNombreCompleto = (estudiante: EstudianteInfo): string => {
+    if (estudiante.nombres && estudiante.apellidos) {
+      return `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+    }
+    // Fallback: si no hay nombres y apellidos, intentar construir desde nombre (si existe en runtime)
+    const nombre = (estudiante as any).nombre;
+    if (nombre) return nombre;
+    return estudiante.nombres || estudiante.apellidos || 'Sin nombre';
+  };
   const router = useRouter();
   
   // Verificar autenticación al montar (solo en cliente)
@@ -525,9 +535,9 @@ export default function DirectorPage() {
           if (estudiante?.id) {
             console.log('✅ Estudiante encontrado por nombre, ID:', estudiante.id);
             setSelectedStudentId(estudiante.id);
-            setSelectedStudentName(estudiante.nombre);
+            setSelectedStudentName(getNombreCompleto(estudiante));
             idFinal = estudiante.id;
-            nombreFinal = estudiante.nombre;
+            nombreFinal = getNombreCompleto(estudiante);
           } else {
             console.warn('⚠️ Estudiante no encontrado por nombre:', nombre);
             // Intentar buscar en estudiantesInfo local
@@ -537,14 +547,14 @@ export default function DirectorPage() {
               if (esUUID && e.id) {
                 return e.id === nombre;
               }
-              return e.nombre === nombre;
+              return getNombreCompleto(e) === nombre;
             });
             if (estudianteLocal?.id) {
               console.log('✅ Estudiante encontrado en lista local, ID:', estudianteLocal.id);
               setSelectedStudentId(estudianteLocal.id);
-              setSelectedStudentName(estudianteLocal.nombre);
-              idFinal = estudianteLocal.id;
-              nombreFinal = estudianteLocal.nombre;
+            setSelectedStudentName(getNombreCompleto(estudianteLocal));
+            idFinal = estudianteLocal.id;
+            nombreFinal = getNombreCompleto(estudianteLocal);
             } else {
               setSelectedStudentId(null);
               setSelectedStudentName(nombre);
@@ -561,7 +571,7 @@ export default function DirectorPage() {
           setIncidenciasEstudiante(incidencias);
           } else {
             // Fallback: intentar buscar por ID en estudiantesInfo primero, luego por nombre
-            const estudianteLocal = estudiantesInfo.find(e => e.nombre === nombreFinal);
+            const estudianteLocal = estudiantesInfo.find(e => getNombreCompleto(e) === nombreFinal);
             if (estudianteLocal?.id) {
               console.log(`🔍 Buscando incidencias para estudiante ID (desde lista local): ${estudianteLocal.id}`);
               const incidencias = await getIncidenciasCompletasByStudent(estudianteLocal.id);
@@ -650,11 +660,12 @@ export default function DirectorPage() {
                   return false;
                 });
                 
-                console.log(`🔍 Estudiante: ${est.nombre} (ID: ${est.id || 'null'}) - Incidencias encontradas: ${inc ? inc.totalIncidencias : 0} (búsqueda por ID)`);
+                const nombreEst = getNombreCompleto(est as EstudianteInfo);
+                console.log(`🔍 Estudiante: ${nombreEst} (ID: ${est.id || 'null'}) - Incidencias encontradas: ${inc ? inc.totalIncidencias : 0} (búsqueda por ID)`);
                 
                 return {
                   id: est.id,
-                  nombre: est.nombre,
+                  nombre: nombreEst,
                   grado: est.grado || '',
                   seccion: est.seccion || '',
                   totalIncidencias: inc ? inc.totalIncidencias : 0,
@@ -701,11 +712,12 @@ export default function DirectorPage() {
             return false;
           });
           
-          console.log(`🔍 Estudiante: ${est.nombre} (ID: ${est.id || 'null'}) - Incidencias encontradas: ${inc ? inc.totalIncidencias : 0} (búsqueda por ID)`);
+          const nombreEst = getNombreCompleto(est as EstudianteInfo);
+          console.log(`🔍 Estudiante: ${nombreEst} (ID: ${est.id || 'null'}) - Incidencias encontradas: ${inc ? inc.totalIncidencias : 0} (búsqueda por ID)`);
           
           return {
             id: est.id,
-            nombre: est.nombre,
+            nombre: nombreEst,
             grado: est.grado || '',
             seccion: est.seccion || '',
             totalIncidencias: inc ? inc.totalIncidencias : 0,
@@ -848,7 +860,7 @@ export default function DirectorPage() {
   useEffect(() => {
     if (estudianteEditandoAdmin !== null && estudiantesInfo.length > 0) {
       const estudianteEncontrado = estudiantesInfo.find((e: any) => {
-        const identificador = e.id || e.nombre;
+        const identificador = e.id || getNombreCompleto(e);
         return identificador === estudianteEditandoAdmin;
       });
       
@@ -1600,8 +1612,8 @@ export default function DirectorPage() {
         // Unir ambas fuentes para asegurar que todos los estudiantes estén presentes
         // Usar IDs cuando estén disponibles, si no usar nombres
         const identificadoresUnicos = Array.from(new Set([
-          ...info.map((i: any) => i.id || i.nombre).filter(Boolean),
-          ...lista.map((e: any) => e.id || e.nombre).filter(Boolean)
+          ...info.map((i: any) => i.id || getNombreCompleto(i as EstudianteInfo)).filter(Boolean),
+          ...lista.map((e: any) => e.id || getNombreCompleto(e as EstudianteInfo)).filter(Boolean)
         ]));
         const listaFinal = identificadoresUnicos.map((identificador: string) => {
           // Intentar buscar por ID primero, si no por nombre
@@ -2378,7 +2390,7 @@ export default function DirectorPage() {
                     
                     // Obtener estudiantes existentes para verificar cuáles son nuevos y cuáles actualizados
                     const estudiantesExistentes = await fetchEstudiantes();
-                    const mapaEstudiantesExistentes = new Map(estudiantesExistentes.map(e => [e.nombre, e]));
+                    const mapaEstudiantesExistentes = new Map(estudiantesExistentes.map(e => [getNombreCompleto(e), e]));
                     
                     let nuevos = 0;
                     let actualizados = 0;
@@ -2388,20 +2400,22 @@ export default function DirectorPage() {
                     console.log('💾 Guardando estudiantes en la base de datos...');
                     for (const est of estudiantesImportados) {
                       try {
-                        const estudianteExistente = mapaEstudiantesExistentes.get(est.nombre);
+                        const nombreCompletoEstudiante = getNombreCompleto(est);
+                        const estudianteExistente = mapaEstudiantesExistentes.get(nombreCompletoEstudiante);
                         if (estudianteExistente) {
                           // El estudiante existe, actualizarlo usando su nombre como nombreOriginal
-                          console.log(`🔄 Actualizando estudiante: ${est.nombre}`);
-                          await saveEstudianteInfo(est, est.nombre);
+                          console.log(`🔄 Actualizando estudiante: ${nombreCompletoEstudiante}`);
+                          await saveEstudianteInfo(est, nombreCompletoEstudiante);
                         actualizados++;
                       } else {
                           // El estudiante no existe, crearlo
-                          console.log(`✨ Creando nuevo estudiante: ${est.nombre}`);
+                          console.log(`✨ Creando nuevo estudiante: ${nombreCompletoEstudiante}`);
                           await saveEstudianteInfo(est);
                         nuevos++;
                       }
                       } catch (error) {
-                        console.error(`❌ Error guardando estudiante ${est.nombre}:`, error);
+                        const nombreCompletoEstudiante = getNombreCompleto(est);
+                        console.error(`❌ Error guardando estudiante ${nombreCompletoEstudiante}:`, error);
                         // Continuar con los demás estudiantes aunque uno falle
                       }
                     }
@@ -3012,9 +3026,9 @@ export default function DirectorPage() {
                           if (estudianteConId.id && est.id) {
                             return est.id === estudianteConId.id;
                           }
-                          return est.nombre === e.nombre;
+                          return getNombreCompleto(est) === getNombreCompleto(e as EstudianteInfo);
                         });
-                        const nombreCompleto = e.nombre.toLowerCase();
+                        const nombreCompleto = getNombreCompleto(e as EstudianteInfo).toLowerCase();
                         const nombres = estudianteCompleto?.nombres?.toLowerCase() || '';
                         const apellidos = estudianteCompleto?.apellidos?.toLowerCase() || '';
                         return (!filtroGrado || e.grado === filtroGrado) && 
@@ -3035,14 +3049,14 @@ export default function DirectorPage() {
                             return e.id === estudianteConId.id;
                           }
                           // Si no, comparar por nombre (fallback)
-                          return e.nombre === estudiante.nombre;
+                          return getNombreCompleto(e) === getNombreCompleto(estudiante as EstudianteInfo);
                         });
-                        const nombres = estudianteCompleto?.nombres || estudiante.nombre?.split(' ').slice(0, -1).join(' ') || '-';
-                        const apellidos = estudianteCompleto?.apellidos || estudiante.nombre?.split(' ').slice(-1).join(' ') || '-';
+                        const nombres = estudianteCompleto?.nombres || (estudiante as any).nombre?.split(' ').slice(0, -1).join(' ') || '-';
+                        const apellidos = estudianteCompleto?.apellidos || (estudiante as any).nombre?.split(' ').slice(-1).join(' ') || '-';
                         const estudianteId = estudianteCompleto?.id || estudianteConId.id; // Obtener el ID del estudiante completo
                         
                         return (
-                        <TableRow key={estudianteId || estudiante.nombre} className="hover:bg-gray-50">
+                        <TableRow key={estudianteId || getNombreCompleto(estudiante)} className="hover:bg-gray-50">
                           <TableCell className="font-medium text-gray-900">{nombres}</TableCell>
                           <TableCell className="font-medium text-gray-900">{apellidos}</TableCell>
                           <TableCell className="text-gray-900">{estudiante.grado || '-'}</TableCell>
@@ -3056,7 +3070,7 @@ export default function DirectorPage() {
                           <TableCell className="text-right">
                             <Button
                               size="sm"
-                              onClick={() => handleVerPerfil(estudiante.nombre, estudianteId)}
+                              onClick={() => handleVerPerfil(getNombreCompleto(estudiante), estudianteId)}
                               className="gap-2"
                             >
                               <Eye className="h-4 w-4" />
@@ -4087,7 +4101,7 @@ export default function DirectorPage() {
                               // Buscar estudiante por ID si está disponible, si no por nombre
                               const estInfo = inc.studentId 
                                 ? estudiantesInfo.find((e: any) => e.id === inc.studentId) 
-                                : estudiantesInfo.find((e: any) => e.nombre === inc.studentName);
+                                : estudiantesInfo.find((e: any) => getNombreCompleto(e) === inc.studentName);
                               puntuacionPorEstudiante[claveEstudiante] = { 
                                 puntos: 0, 
                                 positivos: 0, 
@@ -4213,7 +4227,7 @@ export default function DirectorPage() {
                                 // Buscar estudiante por ID si está disponible, si no por nombre
                                 const estInfo = inc.studentId 
                                   ? estudiantesInfo.find((e: any) => e.id === inc.studentId) 
-                                  : estudiantesInfo.find((e: any) => e.nombre === inc.studentName);
+                                  : estudiantesInfo.find((e: any) => getNombreCompleto(e) === inc.studentName);
                                 gravesPorEstudiante[claveEstudiante] = { count: 1, ultima: inc.fecha, estudiante: estInfo || {} };
                               } else {
                                 gravesPorEstudiante[claveEstudiante].count++;
@@ -5327,7 +5341,6 @@ export default function DirectorPage() {
                             const estudianteCompleto: EstudianteInfo = {
                               nombres: nuevoEstudianteForm.nombres.trim(),
                               apellidos: nuevoEstudianteForm.apellidos.trim(),
-                              nombre: `${nuevoEstudianteForm.nombres.trim()} ${nuevoEstudianteForm.apellidos.trim()}`,
                               grado: nuevoEstudianteForm.grado,
                               seccion: nuevoEstudianteForm.seccion,
                               edad: nuevoEstudianteForm.edad,
@@ -5599,7 +5612,7 @@ export default function DirectorPage() {
                       (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
                       (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
                           (!busquedaAdminEstudiante || 
-                            e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()) ||
+                            getNombreCompleto(e).toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()) ||
                             (e.nombres && e.nombres.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase())) ||
                             (e.apellidos && e.apellidos.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
                           )
@@ -5631,13 +5644,13 @@ export default function DirectorPage() {
                           (!filtroAdminGrado || e.grado === filtroAdminGrado) &&
                           (!filtroAdminSeccion || e.seccion === filtroAdminSeccion) &&
                           (!busquedaAdminEstudiante || 
-                            e.nombre.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()) ||
+                            getNombreCompleto(e).toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()) ||
                             (e.nombres && e.nombres.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase())) ||
                             (e.apellidos && e.apellidos.toLowerCase().includes(busquedaAdminEstudiante.toLowerCase()))
                           )
                         ).map((estudiante) => {
                           // Usar ID para identificar qué estudiante está en edición (priorizar ID sobre nombre)
-                          const identificadorEstudiante = estudiante.id || estudiante.nombre;
+                          const identificadorEstudiante = estudiante.id || getNombreCompleto(estudiante);
                           // Verificar explícitamente si este estudiante está en modo edición
                           // También verificar si el formulario está cerrado (estudianteEditandoAdmin es null)
                           // IMPORTANTE: Si estudianteEditandoAdmin es null, el formulario está cerrado
@@ -5646,7 +5659,7 @@ export default function DirectorPage() {
                           
                           // Usar ID como key si está disponible, si no usar nombre (para mejor rendimiento de React)
                           // Incluir formularioCerradoKey para forzar re-render cuando se cierra el formulario
-                          const rowKey = `${estudiante.id || estudiante.nombre}-${formularioCerradoKey}`;
+                          const rowKey = `${estudiante.id || getNombreCompleto(estudiante)}-${formularioCerradoKey}`;
                           
                           return (
                             <TableRow key={rowKey}>
@@ -5654,12 +5667,12 @@ export default function DirectorPage() {
                                 {estudiante.fotoPerfil ? (
                                   <img 
                                     src={estudiante.fotoPerfil} 
-                                    alt={estudiante.nombre} 
+                                    alt={getNombreCompleto(estudiante)} 
                                     className="w-10 h-10 rounded-full object-cover border border-gray-300"
                                   />
                                 ) : (
                                   <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600 border border-gray-300">
-                                    {estudiante.nombres?.[0] || estudiante.nombre?.[0] || ''}{estudiante.apellidos?.[0] || estudiante.nombre?.split(' ')[1]?.[0] || ''}
+                                    {estudiante.nombres?.[0] || getNombreCompleto(estudiante)[0] || ''}{estudiante.apellidos?.[0] || getNombreCompleto(estudiante).split(' ')[1]?.[0] || ''}
                                   </div>
                                 )}
                               </TableCell>
@@ -5670,14 +5683,13 @@ export default function DirectorPage() {
                                     onChange={(e) => {
                                       const nombres = e.target.value;
                                       const apellidos = formData.apellidos || '';
-                                      const nombreCompleto = nombres && apellidos ? `${nombres} ${apellidos}`.trim() : nombres || apellidos || formData.nombre || '';
-                                      setEstudianteEditForm({...formData, nombres, nombre: nombreCompleto});
+                                      setEstudianteEditForm({...formData, nombres});
                                     }}
                                     className="w-full h-8 text-sm"
                                     placeholder="Nombres"
                                   />
                                 ) : (
-                                  estudiante.nombres || estudiante.nombre?.split(' ').slice(0, -1).join(' ') || '-'
+                                  estudiante.nombres || getNombreCompleto(estudiante).split(' ').slice(0, -1).join(' ') || '-'
                                 )}
                               </TableCell>
                               <TableCell className="font-medium text-gray-900">
@@ -5686,15 +5698,13 @@ export default function DirectorPage() {
                                     value={formData.apellidos || ''}
                                     onChange={(e) => {
                                       const apellidos = e.target.value;
-                                      const nombres = formData.nombres || '';
-                                      const nombreCompleto = nombres && apellidos ? `${nombres} ${apellidos}`.trim() : nombres || apellidos || formData.nombre || '';
-                                      setEstudianteEditForm({...formData, apellidos, nombre: nombreCompleto});
+                                      setEstudianteEditForm({...formData, apellidos});
                                     }}
                                     className="w-full h-8 text-sm"
                                     placeholder="Apellidos"
                                   />
                                 ) : (
-                                  estudiante.apellidos || estudiante.nombre?.split(' ').slice(-1).join(' ') || '-'
+                                  estudiante.apellidos || getNombreCompleto(estudiante).split(' ').slice(-1).join(' ') || '-'
                                 )}
                               </TableCell>
                               <TableCell className="text-gray-900">
@@ -5893,7 +5903,7 @@ export default function DirectorPage() {
                                               estudianteCompleto = await fetchEstudianteById(estudianteId);
                                             } else {
                                               // Fallback: intentar buscar por ID en estudiantesInfo primero, luego por nombre
-                                              const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
+                                              const nombreOriginal = estudianteNombreOriginal || getNombreCompleto(estudiante);
                                               console.log('📝 Intentando buscar estudiante por ID en lista local o por nombre:', nombreOriginal);
                                               
                                               // Primero intentar buscar en estudiantesInfo por ID si el nombre parece ser un UUID
@@ -6228,20 +6238,21 @@ export default function DirectorPage() {
                                         variant="outline"
                                         onClick={() => {
                                           // Usar ID si está disponible, si no usar nombre (para compatibilidad)
-                                          const identificador = estudiante.id || estudiante.nombre;
+                                          const identificador = estudiante.id || getNombreCompleto(estudiante);
                                           setEstudianteEditandoAdmin(identificador);
-                                          setEstudianteNombreOriginal(estudiante.nombre);
+                                          setEstudianteNombreOriginal(getNombreCompleto(estudiante));
                                           setEstudianteIdOriginal(estudiante.id || null);
                                           // Si no tiene nombres y apellidos separados, intentar separarlos del nombre
                                           let nombres = estudiante.nombres;
                                           let apellidos = estudiante.apellidos;
-                                          if (!nombres && !apellidos && estudiante.nombre) {
-                                            const partes = estudiante.nombre.trim().split(/\s+/);
+                                          if (!nombres && !apellidos) {
+                                            const nombreCompleto = getNombreCompleto(estudiante);
+                                            const partes = nombreCompleto.trim().split(/\s+/);
                                             if (partes.length > 1) {
                                               apellidos = partes[partes.length - 1];
                                               nombres = partes.slice(0, -1).join(' ');
                                             } else {
-                                              nombres = estudiante.nombre;
+                                              nombres = nombreCompleto;
                                               apellidos = '';
                                             }
                                           }
@@ -6255,10 +6266,10 @@ export default function DirectorPage() {
                                         size="sm"
                                         variant="outline"
                                         onClick={async () => {
-                                          if (confirm(`¿Estás seguro de eliminar a ${estudiante.nombre}?`)) {
+                                          if (confirm(`¿Estás seguro de eliminar a ${getNombreCompleto(estudiante)}?`)) {
                                             try {
                                               // Usar ID si está disponible (más confiable), si no usar nombre
-                                              const identificador = estudiante.id || estudiante.nombre;
+                                              const identificador = estudiante.id || getNombreCompleto(estudiante);
                                               const usarId = !!estudiante.id;
                                               await deleteEstudiante(identificador, usarId);
                                               // Filtrar por ID si está disponible, si no por nombre
@@ -6266,7 +6277,7 @@ export default function DirectorPage() {
                                                 if (estudiante.id && e.id) {
                                                   return e.id !== estudiante.id;
                                                 }
-                                                return e.nombre !== estudiante.nombre;
+                                                return getNombreCompleto(e) !== getNombreCompleto(estudiante);
                                               });
                                               setEstudiantesInfo(estudiantesFiltrados);
                                               setRefreshKey(prev => prev + 1);

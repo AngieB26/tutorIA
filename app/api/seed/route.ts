@@ -107,11 +107,8 @@ export async function POST() {
       { nombres: 'Ricardo', apellidos: 'Méndez', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-04-16', contacto: { tutor: 'Sandra Méndez', telefono: '555-5004', email: 'sandra.mendez@email.com' } },
     ];
     
-    // Construir el campo 'nombre' desde nombres y apellidos
-    const estudiantesInfo: EstudianteInfo[] = estudiantesInfoRaw.map(est => ({
-      ...est,
-      nombre: `${est.nombres} ${est.apellidos}`.trim()
-    }));
+    // Usar directamente el array sin construir campo 'nombre'
+    const estudiantesInfo: EstudianteInfo[] = estudiantesInfoRaw;
     console.log('💾 Guardando estudiantes...');
     await saveEstudiantesInfo(estudiantesInfo);
     console.log(`✅ ${estudiantesInfo.length} estudiantes guardados`);
