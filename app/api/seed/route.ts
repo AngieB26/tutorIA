@@ -79,7 +79,7 @@ export async function POST() {
     console.log('📝 No hay datos, ejecutando seed...');
 
     // 1. Seed Estudiantes
-    const estudiantesInfo: EstudianteInfo[] = [
+    const estudiantesInfoRaw = [
       // 1ro Grado
       { nombres: 'Ana', apellidos: 'García', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-05-15', contacto: { tutor: 'Pedro García', telefono: '555-1001', email: 'pedro.garcia@email.com' } },
       { nombres: 'Luis', apellidos: 'Martínez', grado: '1ro', seccion: 'A', edad: 12, fechaNacimiento: '2012-08-20', contacto: { tutor: 'Carmen Martínez', telefono: '555-1002', email: 'carmen.martinez@email.com' } },
@@ -106,6 +106,12 @@ export async function POST() {
       { nombres: 'Fernanda', apellidos: 'Ortiz', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-12-01', contacto: { tutor: 'Carlos Ortiz', telefono: '555-5003', email: 'carlos.ortiz@email.com' } },
       { nombres: 'Ricardo', apellidos: 'Méndez', grado: '5to', seccion: 'B', edad: 16, fechaNacimiento: '2008-04-16', contacto: { tutor: 'Sandra Méndez', telefono: '555-5004', email: 'sandra.mendez@email.com' } },
     ];
+    
+    // Construir el campo 'nombre' desde nombres y apellidos
+    const estudiantesInfo: EstudianteInfo[] = estudiantesInfoRaw.map(est => ({
+      ...est,
+      nombre: `${est.nombres} ${est.apellidos}`.trim()
+    }));
     console.log('💾 Guardando estudiantes...');
     await saveEstudiantesInfo(estudiantesInfo);
     console.log(`✅ ${estudiantesInfo.length} estudiantes guardados`);
