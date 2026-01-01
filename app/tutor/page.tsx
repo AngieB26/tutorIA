@@ -29,6 +29,17 @@ export default function TutorPage() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('lista');
   const [selectedStudent, setSelectedStudent] = useState<EstudianteInfo | null>(null);
+
+  // Helper function para obtener el nombre completo desde nombres y apellidos
+  const getNombreCompleto = (estudiante: EstudianteInfo): string => {
+    if (estudiante.nombres && estudiante.apellidos) {
+      return `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+    }
+    // Fallback: si no hay nombres y apellidos, intentar usar nombre (si existe en runtime)
+    const nombre = (estudiante as any).nombre;
+    if (nombre) return nombre;
+    return estudiante.nombres || estudiante.apellidos || 'Sin nombre';
+  };
   const [seccionSeleccionada, setSeccionSeleccionada] = useState<{grado: string, seccion: string} | null>(null);
   const [busquedaTutor, setBusquedaTutor] = useState<string>('');
   const [filtroGradoSeccion, setFiltroGradoSeccion] = useState<string>('');
@@ -118,7 +129,7 @@ export default function TutorPage() {
       const matchSeccion = est.grado === seccionSeleccionada.grado && 
                           est.seccion === seccionSeleccionada.seccion;
       const matchBusqueda = !busquedaEstudiante || 
-                           est.nombre.toLowerCase().includes(busquedaEstudiante.toLowerCase());
+                            getNombreCompleto(est).toLowerCase().includes(busquedaEstudiante.toLowerCase());
       return matchSeccion && matchBusqueda;
     });
   }, [estudiantes, seccionSeleccionada, busquedaEstudiante]);
@@ -154,15 +165,16 @@ export default function TutorPage() {
 
     const loadResumenes = async () => {
       for (const est of estudiantesFiltrados) {
+        const nombreEst = getNombreCompleto(est);
         // Solo cargar si no existe el resumen y no se está cargando (evitar llamadas duplicadas)
-        if (iaResumenes[est.nombre] || resumenesCargados.current.has(est.nombre)) {
-          console.log(`⏭️ Saltando ${est.nombre}: ya tiene resumen o está en proceso`);
+        if (iaResumenes[nombreEst] || resumenesCargados.current.has(nombreEst)) {
+          console.log(`⏭️ Saltando ${nombreEst}: ya tiene resumen o está en proceso`);
           continue;
         }
 
         try {
-          console.log(`🔄 Cargando resumen IA para: ${est.nombre}`);
-          const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+          console.log(`🔄 Cargando resumen IA para: ${nombreEst}`);
+          const incidenciasEst = await fetchIncidencias({ studentName: nombreEst });
           const incidenciasRecientes = incidenciasEst.filter(inc => {
             const fechaInc = new Date(inc.fecha);
             const hace30Dias = new Date();
@@ -170,36 +182,36 @@ export default function TutorPage() {
             return fechaInc >= hace30Dias;
           });
 
-          console.log(`📊 ${est.nombre}: ${incidenciasRecientes.length} incidencias recientes`);
+          console.log(`📊 ${nombreEst}: ${incidenciasRecientes.length} incidencias recientes`);
 
           // Marcar como que ya se está procesando
-          resumenesCargados.current.add(est.nombre);
+          resumenesCargados.current.add(nombreEst);
 
           // Marcar como cargando
-          setIaCargando(prev => ({ ...prev, [est.nombre]: true }));
+          setIaCargando(prev => ({ ...prev, [nombreEst]: true }));
 
           // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
           try {
-            console.log(`📡 Llamando API para ${est.nombre}...`);
+            console.log(`📡 Llamando API para ${nombreEst}...`);
             const res = await fetch('/api/generate-report', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                estudiante: est.nombre,
+                estudiante: nombreEst,
                 incidencias: incidenciasRecientes.length > 0 ? incidenciasRecientes : []
               })
             });
 
-            console.log(`📥 Respuesta API para ${est.nombre}:`, res.status, res.statusText);
+            console.log(`📥 Respuesta API para ${nombreEst}:`, res.status, res.statusText);
 
             if (!res.ok) {
               const errorText = await res.text();
-              console.error(`❌ Error HTTP para ${est.nombre}:`, res.status, errorText);
+              console.error(`❌ Error HTTP para ${nombreEst}:`, res.status, errorText);
               throw new Error(`Error ${res.status}: ${errorText}`);
             }
 
             const data = await res.json();
-            console.log(`✅ Datos recibidos para ${est.nombre}:`, { 
+            console.log(`✅ Datos recibidos para ${nombreEst}:`, { 
               tieneResumen: !!data.resumen, 
               resumenLength: data.resumen?.length || 0,
               tieneReport: !!data.report,
@@ -208,9 +220,9 @@ export default function TutorPage() {
 
             // Verificar si hay un error en la respuesta
             if (data.error) {
-              console.error(`❌ Error en respuesta API para ${est.nombre}:`, data.error, data.resumen);
+              console.error(`❌ Error en respuesta API para ${nombreEst}:`, data.error, data.resumen);
               // No guardar mensajes de error como resumen, mostrar mensaje genérico
-              setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error de configuración: verifica la API key de Google AI.' }));
+              setIaResumenes(prev => ({ ...prev, [nombreEst]: 'Error de configuración: verifica la API key de Google AI.' }));
               return;
             }
 
@@ -224,7 +236,7 @@ export default function TutorPage() {
                    resumenLower.includes('api key') || 
                    resumenLower.includes('configuración') ||
                    resumenLower.includes('conectar'))) {
-                console.warn(`⚠️ El resumen parece ser un mensaje de error para ${est.nombre}`);
+                console.warn(`⚠️ El resumen parece ser un mensaje de error para ${nombreEst}`);
                 resumen = 'Error de configuración: verifica la API key de Google AI.';
               } else {
                 // Tomar solo la primera línea o las primeras 150 caracteres del resumen
@@ -241,28 +253,29 @@ export default function TutorPage() {
                 : primeraLinea;
             } else {
               resumen = 'Sin análisis disponible.';
-              console.warn(`⚠️ No se encontró resumen válido para ${est.nombre}`);
+              console.warn(`⚠️ No se encontró resumen válido para ${nombreEst}`);
             }
 
-            console.log(`💾 Guardando resumen para ${est.nombre}:`, resumen.substring(0, 50) + '...');
-            setIaResumenes(prev => ({ ...prev, [est.nombre]: resumen }));
+            console.log(`💾 Guardando resumen para ${nombreEst}:`, resumen.substring(0, 50) + '...');
+            setIaResumenes(prev => ({ ...prev, [nombreEst]: resumen }));
           } catch (error) {
-            console.error(`❌ Error generando resumen IA para ${est.nombre}:`, error);
-            setIaResumenes(prev => ({ ...prev, [est.nombre]: 'Error al generar resumen de IA.' }));
+            console.error(`❌ Error generando resumen IA para ${nombreEst}:`, error);
+            setIaResumenes(prev => ({ ...prev, [nombreEst]: 'Error al generar resumen de IA.' }));
           } finally {
             setIaCargando(prev => {
               const nuevo = { ...prev };
-              delete nuevo[est.nombre];
+              delete nuevo[nombreEst];
               return nuevo;
             });
           }
         } catch (error) {
-          console.error(`❌ Error cargando incidencias para ${est.nombre}:`, error);
+          const nombreEst = getNombreCompleto(est);
+          console.error(`❌ Error cargando incidencias para ${nombreEst}:`, error);
           // Limpiar el estado de carga si hay error
-          resumenesCargados.current.delete(est.nombre);
+          resumenesCargados.current.delete(nombreEst);
           setIaCargando(prev => {
             const nuevo = { ...prev };
-            delete nuevo[est.nombre];
+            delete nuevo[nombreEst];
             return nuevo;
           });
         }
@@ -288,17 +301,19 @@ export default function TutorPage() {
       await Promise.all(
         estudiantesFiltrados.map(async (est) => {
           try {
-            const incidenciasEst = await fetchIncidencias({ studentName: est.nombre });
+            const nombreEst = getNombreCompleto(est);
+            const incidenciasEst = await fetchIncidencias({ studentName: nombreEst });
             const incidenciasRecientes = incidenciasEst.filter(inc => {
               const fechaInc = new Date(inc.fecha);
               const hace30Dias = new Date();
               hace30Dias.setDate(hace30Dias.getDate() - 30);
               return fechaInc >= hace30Dias;
             });
-            incidenciasMap[est.nombre] = incidenciasRecientes;
+            incidenciasMap[nombreEst] = incidenciasRecientes;
           } catch (error) {
-            console.error(`Error cargando incidencias para ${est.nombre}:`, error);
-            incidenciasMap[est.nombre] = [];
+            const nombreEst = getNombreCompleto(est);
+            console.error(`Error cargando incidencias para ${nombreEst}:`, error);
+            incidenciasMap[nombreEst] = [];
           }
         })
       );
@@ -321,7 +336,8 @@ export default function TutorPage() {
     }
 
     const estudiantesConEstadoData = estudiantesFiltrados.map((est) => {
-      const incidenciasRecientes = incidenciasPorEstudiante[est.nombre] || [];
+      const nombreEst = getNombreCompleto(est);
+      const incidenciasRecientes = incidenciasPorEstudiante[nombreEst] || [];
       const estado = incidenciasRecientes.length === 0 
         ? 'normal' 
         : incidenciasRecientes.length <= 2 
@@ -331,8 +347,8 @@ export default function TutorPage() {
       return {
         ...est,
         estado,
-        iaResumen: iaResumenes[est.nombre] || null,
-        estaCargandoIA: iaCargando[est.nombre] || false
+        iaResumen: iaResumenes[nombreEst] || null,
+        estaCargandoIA: iaCargando[nombreEst] || false
       };
     });
 
@@ -370,7 +386,7 @@ export default function TutorPage() {
 
       // Calcular incidencias activas (pendientes o en revisión)
       const todasIncidencias = await Promise.all(
-        estudiantesFiltrados.map(est => fetchIncidencias({ studentName: est.nombre }))
+        estudiantesFiltrados.map(est => fetchIncidencias({ studentName: getNombreCompleto(est) }))
       );
       const incidenciasActivas = todasIncidencias.flat().filter(inc => 
         inc.estado === 'Pendiente' || inc.estado === 'En revisión'
@@ -392,7 +408,7 @@ export default function TutorPage() {
     setFormData({
       ...formData,
       grado: estudiante.grado,
-      estudiante: estudiante.nombre,
+      estudiante: getNombreCompleto(estudiante),
       tipo: 'asistencia',
     });
   };
@@ -403,7 +419,7 @@ export default function TutorPage() {
     setFormData({
       ...formData,
       grado: estudiante.grado,
-      estudiante: estudiante.nombre,
+      estudiante: getNombreCompleto(estudiante),
       tipo: '' as TipoIncidencia | '',
     });
   };
@@ -778,7 +794,7 @@ export default function TutorPage() {
                         <TableRow key={estudiante.nombre} className="hover:bg-gray-50">
                           <TableCell className="font-medium text-gray-900 text-xs sm:text-sm">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                              <span>{estudiante.nombre}</span>
+                              <span>{getNombreCompleto(estudiante)}</span>
                               <span className="text-gray-500 text-xs sm:hidden">{estudiante.grado} {estudiante.seccion}</span>
                             </div>
                           </TableCell>
@@ -812,8 +828,8 @@ export default function TutorPage() {
                     <CardContent>
                       <div className="space-y-2">
                         {estudiantesConEstado.map(est => (
-                          <div key={est.nombre} className="text-sm text-gray-700 break-words">
-                            <span className="font-semibold block sm:inline">{est.nombre}:</span>{' '}
+                          <div key={getNombreCompleto(est)} className="text-sm text-gray-700 break-words">
+                            <span className="font-semibold block sm:inline">{getNombreCompleto(est)}:</span>{' '}
                             <span className="block sm:inline">
                               {est.estaCargandoIA ? (
                                 <span className="text-gray-500 italic">Generando resumen...</span>
@@ -854,7 +870,7 @@ export default function TutorPage() {
             )}
           </h1>
           <p className="text-sm sm:text-base text-gray-900 mt-1">
-            Estudiante: <span className="font-semibold">{selectedStudent?.nombre}</span> - {selectedStudent?.grado} {selectedStudent?.seccion}
+            Estudiante: <span className="font-semibold">{selectedStudent ? getNombreCompleto(selectedStudent) : ''}</span> - {selectedStudent?.grado} {selectedStudent?.seccion}
           </p>
         </div>
         <Button variant="outline" onClick={() => {
@@ -927,7 +943,7 @@ export default function TutorPage() {
                     {estudiantes
                       .filter(e => e.grado === formData.grado)
                       .map(est => (
-                        <SelectItem key={est.nombre} value={est.nombre}>{est.nombre}</SelectItem>
+                        <SelectItem key={getNombreCompleto(est)} value={getNombreCompleto(est)}>{getNombreCompleto(est)}</SelectItem>
                       ))}
                   </SelectContent>
                 </Select>
