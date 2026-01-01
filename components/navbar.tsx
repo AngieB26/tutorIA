@@ -43,72 +43,137 @@ export function Navbar() {
       console.log('✅ Cargando datos de notificaciones...');
       const loadData = async () => {
         try {
-          const [registrosAsistencia, estudiantes, tutores] = await Promise.all([
+          const [registrosAsistencia, estudiantes, tutores, incidencias] = await Promise.allSettled([
             fetchAsistenciaClases(),
             fetchEstudiantes(),
-            fetchTutores()
+            fetchTutores(),
+            fetchIncidencias()
           ]);
+          
+          // Manejar resultados exitosos o fallidos
+          const registrosAsistenciaData = registrosAsistencia.status === 'fulfilled' ? registrosAsistencia.value : [];
+          const estudiantesData = estudiantes.status === 'fulfilled' ? estudiantes.value : [];
+          const tutoresData = tutores.status === 'fulfilled' ? tutores.value : [];
+          const incidenciasData = incidencias.status === 'fulfilled' ? incidencias.value : [];
+          
+          // Si alguna petición falló, loguear pero continuar
+          if (registrosAsistencia.status === 'rejected') {
+            console.warn('⚠️ Error al obtener asistencia:', registrosAsistencia.reason);
+          }
+          if (estudiantes.status === 'rejected') {
+            console.warn('⚠️ Error al obtener estudiantes:', estudiantes.reason);
+          }
+          if (tutores.status === 'rejected') {
+            console.warn('⚠️ Error al obtener tutores:', tutores.reason);
+          }
+          if (incidencias.status === 'rejected') {
+            console.warn('⚠️ Error al obtener incidencias:', incidencias.reason);
+          }
         
           console.log('📦 Datos cargados:', {
-            registrosAsistencia: registrosAsistencia.length,
-            estudiantes: estudiantes.length,
-            tutores: tutores.length
+            registrosAsistencia: registrosAsistenciaData.length,
+            estudiantes: estudiantesData.length,
+            tutores: tutoresData.length,
+            incidencias: incidenciasData.length
           });
           
           
-          // Contar ausencias y tardanzas por estudiante (de TODOS los profesores)
+          // Usar los contadores de la tabla Estudiante (más confiable y refleja cambios directos en BD)
+          // Estos contadores se actualizan automáticamente cuando se guardan registros de asistencia
           const conteoPorEstudiante: Record<string, { ausencias: number; tardanzas: number; estudiante: any }> = {};
           
-          registrosAsistencia.forEach((registro: any) => {
-            Object.entries(registro.entries || {}).forEach(([nombreEstudiante, estado]: [string, any]) => {
-              if (!conteoPorEstudiante[nombreEstudiante]) {
-                const estudianteInfo = estudiantes.find((e: any) => e.nombre === nombreEstudiante);
-                conteoPorEstudiante[nombreEstudiante] = {
-                  ausencias: 0,
-                  tardanzas: 0,
-                  estudiante: estudianteInfo
-                };
-              }
-              
-              if (estado === 'ausente') {
-                conteoPorEstudiante[nombreEstudiante].ausencias++;
-              } else if (estado === 'tardanza') {
-                conteoPorEstudiante[nombreEstudiante].tardanzas++;
-              }
-            });
+          console.log('📊 Procesando contadores de estudiantes desde la tabla Estudiante...');
+          estudiantesData.forEach((estudiante: any) => {
+            const nombreCompleto = estudiante.nombre;
+            // Usar los contadores de la tabla Estudiante si están disponibles
+            const ausencias = estudiante.ausencias ?? 0;
+            const tardanzas = estudiante.tardanzas ?? 0;
+            
+            // Incluir todos los estudiantes, incluso si tienen 0 ausencias/tardanzas
+            // para tener el objeto estudiante disponible
+            conteoPorEstudiante[nombreCompleto] = {
+              ausencias,
+              tardanzas,
+              estudiante: estudiante
+            };
+            
+            if (ausencias > 0 || tardanzas > 0) {
+              console.log(`📊 Estudiante: ${nombreCompleto} - Ausencias: ${ausencias}, Tardanzas: ${tardanzas}`);
+            }
           });
+          
+          console.log('📊 Total estudiantes procesados:', Object.keys(conteoPorEstudiante).length);
           
           // Debug: mostrar conteo de todos los estudiantes
           console.log('📋 Conteo de estudiantes:', Object.entries(conteoPorEstudiante).map(([nombre, conteo]) => ({
             nombre,
             ausencias: conteo.ausencias,
-            tardanzas: conteo.tardanzas
+            tardanzas: conteo.tardanzas,
+            total: conteo.ausencias + conteo.tardanzas,
+            cumpleCriterio: conteo.ausencias >= 3 || conteo.tardanzas >= 3
           })));
           
-          // Obtener estudiantes atendidos hoy desde la base de datos
-          const hoy = new Date().toISOString().split('T')[0];
-          const estudiantesAtendidos = await getEstudiantesAtendidos();
-          const estudiantesAtendidosHoy = new Set(
-            estudiantesAtendidos
-              .filter((e: any) => e.fecha === hoy)
-              .map((e: any) => e.nombre)
-          );
+          // Crear un mapa de estudiantes que ya tienen incidencias de asistencia registradas
+          // Consideramos incidencias de tipo "asistencia" registradas hoy o recientemente (últimos 7 días)
+          const hoy = new Date();
+          const hace7Dias = new Date(hoy);
+          hace7Dias.setDate(hace7Dias.getDate() - 7);
           
-          console.log('👥 Estudiantes atendidos hoy:', Array.from(estudiantesAtendidosHoy));
+          const estudiantesConIncidenciaRegistrada = new Set<string>();
           
-          // Filtrar estudiantes con más de 3 ausencias o tardanzas
-          // Y excluir estudiantes que fueron atendidos hoy (por cualquier profesor)
+          incidenciasData.forEach((inc: any) => {
+            // Solo considerar incidencias de tipo "asistencia" (que son las relacionadas con ausencias/tardanzas)
+            if (inc.tipo === 'asistencia') {
+              const fechaIncidencia = new Date(inc.fecha);
+              // Si la incidencia es de hoy o de los últimos 7 días
+              if (fechaIncidencia >= hace7Dias) {
+                const nombreEstudiante = inc.studentName?.trim();
+                if (nombreEstudiante) {
+                  // Normalizar el nombre para comparación (case-insensitive, sin espacios extra)
+                  const nombreNormalizado = nombreEstudiante.toLowerCase().trim();
+                  
+                  // Verificar si la incidencia está resuelta (solo hay dos estados: Pendiente o Resuelta)
+                  const estaResuelta = inc.resuelta === true || inc.estado === 'Resuelta';
+                  
+                  // Excluir al estudiante si tiene una incidencia (resuelta o no resuelta)
+                  // Si está resuelta, el estudiante no debe aparecer porque el problema ya fue atendido
+                  estudiantesConIncidenciaRegistrada.add(nombreNormalizado);
+                  if (estaResuelta) {
+                    console.log(`✅ Estudiante con incidencia de asistencia RESUELTA: ${nombreEstudiante} (fecha: ${inc.fecha}, estado: ${inc.estado}) - Excluido de notificaciones (problema ya resuelto)`);
+                  } else {
+                    console.log(`✅ Estudiante con incidencia de asistencia NO resuelta: ${nombreEstudiante} (fecha: ${inc.fecha}, estado: ${inc.estado}) - Excluido de notificaciones (incidencia pendiente)`);
+                  }
+                }
+              }
+            }
+          });
+          
+          console.log('📋 Estudiantes con incidencia de asistencia ya registrada:', Array.from(estudiantesConIncidenciaRegistrada));
+          
+          // Filtrar estudiantes con 3 o más ausencias o tardanzas
+          // Excluir estudiantes que ya tienen una incidencia de asistencia NO resuelta registrada recientemente
+          // Si una incidencia está resuelta, el estudiante puede volver a aparecer si acumula 3+ ausencias/tardanzas
+          
           const problemas = Object.entries(conteoPorEstudiante)
             .filter(([nombre, conteo]) => {
-              // Excluir si fue atendido hoy por cualquier profesor
-              if (estudiantesAtendidosHoy.has(nombre)) {
-                console.log('🔕 Estudiante excluido de notificaciones (atendido hoy):', nombre);
-                return false;
-              }
-              // Incluir si tiene más de 3 ausencias o más de 3 tardanzas
-              const tieneProblemas = conteo.ausencias > 3 || conteo.tardanzas > 3;
+              const tieneProblemas = conteo.ausencias >= 3 || conteo.tardanzas >= 3;
               if (tieneProblemas) {
-                console.log('🔔 Estudiante con problemas:', nombre, { ausencias: conteo.ausencias, tardanzas: conteo.tardanzas });
+                // Normalizar el nombre para comparación (case-insensitive, sin espacios extra)
+                const nombreNormalizado = nombre.toLowerCase().trim();
+                const yaTieneIncidencia = estudiantesConIncidenciaRegistrada.has(nombreNormalizado);
+                console.log('🔔 Estudiante con problemas:', nombre, { 
+                  ausencias: conteo.ausencias, 
+                  tardanzas: conteo.tardanzas,
+                  yaTieneIncidenciaRegistrada: yaTieneIncidencia,
+                  nombreNormalizado: nombreNormalizado
+                });
+                
+                // Si ya tiene una incidencia de asistencia registrada recientemente, excluirlo
+                // Esto evita mostrar notificaciones duplicadas para el mismo problema
+                if (yaTieneIncidencia) {
+                  console.log(`🔕 Estudiante excluido de notificaciones (ya tiene incidencia de asistencia registrada): ${nombre}`);
+                  return false;
+                }
               }
               return tieneProblemas;
             })
@@ -121,7 +186,7 @@ export function Navbar() {
             }))
             .sort((a, b) => b.total - a.total);
           
-          console.log('📊 Total estudiantes con problemas (después de filtrar atendidos):', problemas.length);
+          console.log('📊 Total estudiantes con problemas:', problemas.length);
           console.log('📋 Lista de estudiantes con problemas:', problemas.map(p => p.nombre));
           setEstudiantesConProblemas(problemas);
         } catch (error) {
@@ -142,57 +207,103 @@ export function Navbar() {
     
     const actualizarDatos = async () => {
       try {
-        const [registrosAsistencia, estudiantes, tutores] = await Promise.all([
+        const [registrosAsistencia, estudiantes, tutores, incidencias] = await Promise.allSettled([
           fetchAsistenciaClases(),
           fetchEstudiantes(),
-          fetchTutores()
+          fetchTutores(),
+          fetchIncidencias()
         ]);
         
+        // Manejar resultados exitosos o fallidos
+        const registrosAsistenciaData = registrosAsistencia.status === 'fulfilled' ? registrosAsistencia.value : [];
+        const estudiantesData = estudiantes.status === 'fulfilled' ? estudiantes.value : [];
+        const tutoresData = tutores.status === 'fulfilled' ? tutores.value : [];
+        const incidenciasData = incidencias.status === 'fulfilled' ? incidencias.value : [];
         
-        // Contar ausencias y tardanzas por estudiante (de TODOS los profesores)
+        // Si alguna petición falló, loguear pero continuar
+        if (registrosAsistencia.status === 'rejected') {
+          console.warn('⚠️ Error al obtener asistencia:', registrosAsistencia.reason);
+        }
+        if (estudiantes.status === 'rejected') {
+          console.warn('⚠️ Error al obtener estudiantes:', estudiantes.reason);
+        }
+        if (tutores.status === 'rejected') {
+          console.warn('⚠️ Error al obtener tutores:', tutores.reason);
+        }
+        if (incidencias.status === 'rejected') {
+          console.warn('⚠️ Error al obtener incidencias:', incidencias.reason);
+        }
+        
+        // Usar los contadores de la tabla Estudiante (más confiable y refleja cambios directos en BD)
+        // Estos contadores se actualizan automáticamente cuando se guardan registros de asistencia
         const conteoPorEstudiante: Record<string, { ausencias: number; tardanzas: number; estudiante: any }> = {};
         
-        registrosAsistencia.forEach((registro: any) => {
-          Object.entries(registro.entries || {}).forEach(([nombreEstudiante, estado]: [string, any]) => {
-            if (!conteoPorEstudiante[nombreEstudiante]) {
-              const estudianteInfo = estudiantes.find((e: any) => e.nombre === nombreEstudiante);
-              conteoPorEstudiante[nombreEstudiante] = {
-                ausencias: 0,
-                tardanzas: 0,
-                estudiante: estudianteInfo
-              };
-            }
-            
-            if (estado === 'ausente') {
-              conteoPorEstudiante[nombreEstudiante].ausencias++;
-            } else if (estado === 'tardanza') {
-              conteoPorEstudiante[nombreEstudiante].tardanzas++;
-            }
-          });
+        estudiantesData.forEach((estudiante: any) => {
+          const nombreCompleto = estudiante.nombre;
+          // Usar los contadores de la tabla Estudiante si están disponibles
+          const ausencias = estudiante.ausencias ?? 0;
+          const tardanzas = estudiante.tardanzas ?? 0;
+          
+          // Incluir todos los estudiantes, incluso si tienen 0 ausencias/tardanzas
+          // para tener el objeto estudiante disponible
+          conteoPorEstudiante[nombreCompleto] = {
+            ausencias,
+            tardanzas,
+            estudiante: estudiante
+          };
         });
         
-        // Obtener estudiantes atendidos hoy desde la base de datos
-        const hoy = new Date().toISOString().split('T')[0];
-        const estudiantesAtendidos = await getEstudiantesAtendidos();
-        const estudiantesAtendidosHoy = new Set(
-          estudiantesAtendidos
-            .filter((e: any) => e.fecha === hoy)
-            .map((e: any) => e.nombre)
-        );
+        // Crear un mapa de estudiantes que ya tienen incidencias de asistencia registradas
+        // Consideramos incidencias de tipo "asistencia" registradas hoy o recientemente (últimos 7 días)
+        const hoy = new Date();
+        const hace7Dias = new Date(hoy);
+        hace7Dias.setDate(hace7Dias.getDate() - 7);
         
-        // Filtrar estudiantes con más de 3 ausencias o tardanzas
-        // Y excluir estudiantes que fueron atendidos hoy (por cualquier profesor)
+        const estudiantesConIncidenciaRegistrada = new Set<string>();
+        
+        incidenciasData.forEach((inc: any) => {
+          // Solo considerar incidencias de tipo "asistencia" (que son las relacionadas con ausencias/tardanzas)
+          if (inc.tipo === 'asistencia') {
+            const fechaIncidencia = new Date(inc.fecha);
+            // Si la incidencia es de hoy o de los últimos 7 días
+            if (fechaIncidencia >= hace7Dias) {
+              const nombreEstudiante = inc.studentName?.trim();
+              if (nombreEstudiante) {
+                // Normalizar el nombre para comparación (case-insensitive, sin espacios extra)
+                const nombreNormalizado = nombreEstudiante.toLowerCase().trim();
+                
+                // Excluir al estudiante si tiene una incidencia (resuelta o no resuelta)
+                // Si está resuelta, el estudiante no debe aparecer porque el problema ya fue atendido
+                estudiantesConIncidenciaRegistrada.add(nombreNormalizado);
+              }
+            }
+          }
+        });
+        
+        // Filtrar estudiantes con 3 o más ausencias o tardanzas
+        // Excluir estudiantes que ya tienen una incidencia de asistencia registrada recientemente (resuelta o no)
+        // Si una incidencia está resuelta, el estudiante no aparece porque el problema ya fue atendido
+        
         const problemas = Object.entries(conteoPorEstudiante)
           .filter(([nombre, conteo]) => {
-            // Excluir si fue atendido hoy por cualquier profesor
-            if (estudiantesAtendidosHoy.has(nombre)) {
-              console.log('🔕 Estudiante excluido de notificaciones (atendido hoy):', nombre);
-              return false;
-            }
-            // Incluir si tiene más de 3 ausencias o más de 3 tardanzas
-            const tieneProblemas = conteo.ausencias > 3 || conteo.tardanzas > 3;
+            const tieneProblemas = conteo.ausencias >= 3 || conteo.tardanzas >= 3;
             if (tieneProblemas) {
-              console.log('🔔 Estudiante con problemas:', nombre, { ausencias: conteo.ausencias, tardanzas: conteo.tardanzas });
+              // Normalizar el nombre para comparación (case-insensitive, sin espacios extra)
+              const nombreNormalizado = nombre.toLowerCase().trim();
+              const yaTieneIncidencia = estudiantesConIncidenciaRegistrada.has(nombreNormalizado);
+              console.log('🔔 Estudiante con problemas:', nombre, { 
+                ausencias: conteo.ausencias, 
+                tardanzas: conteo.tardanzas,
+                yaTieneIncidenciaRegistrada: yaTieneIncidencia,
+                nombreNormalizado: nombreNormalizado
+              });
+              
+              // Si ya tiene una incidencia de asistencia registrada recientemente, excluirlo
+              // Esto evita mostrar notificaciones duplicadas para el mismo problema
+              if (yaTieneIncidencia) {
+                console.log(`🔕 Estudiante excluido de notificaciones (ya tiene incidencia de asistencia registrada): ${nombre}`);
+                return false;
+              }
             }
             return tieneProblemas;
           })
@@ -205,7 +316,8 @@ export function Navbar() {
           }))
           .sort((a, b) => b.total - a.total);
         
-        console.log('📊 Total estudiantes con problemas (después de filtrar atendidos):', problemas.length);
+        console.log('📊 Total estudiantes con problemas:', problemas.length);
+        console.log('📋 Lista de estudiantes con problemas:', problemas.map(p => p.nombre));
         setEstudiantesConProblemas(problemas);
       } catch (error) {
         console.error('Error actualizando notificaciones:', error);
@@ -245,26 +357,47 @@ export function Navbar() {
     if (isDirector && typeof window !== 'undefined') {
       const actualizarNotificaciones = async () => {
         try {
-          // Cargar incidencias desde la base de datos
-          const todasIncidencias = await fetchIncidencias();
-          
-          // Cargar incidencias vistas desde la base de datos
+          // PRIMERO cargar incidencias vistas desde la BASE DE DATOS
+          // Esta función llama a /api/incidencias-vistas que consulta la tabla IncidenciaVista con Prisma
+          let idsVistas: string[] = [];
           try {
-            const ids = await getIncidenciasVistas('director');
-            setIncidenciasVistas(new Set(ids));
+            console.log('🔍 [Navbar] Consultando base de datos para incidencias vistas...');
+            idsVistas = await getIncidenciasVistas('director'); // ← LLAMADA A LA BASE DE DATOS
+            console.log('✅ [Navbar] IDs vistas desde BD:', idsVistas.length, idsVistas);
+            setIncidenciasVistas(new Set(idsVistas)); // Actualizar estado para futuras operaciones
           } catch (error) {
-            console.error('Error cargando incidencias vistas:', error);
+            console.error('❌ [Navbar] Error cargando incidencias vistas desde BD:', error);
           }
           
-          // Obtener nuevas incidencias (no vistas)
+          // Crear Set local temporal (solo en memoria) para usar en el filtro inmediatamente
+          // Esto evita problemas de timing con el estado de React
+          const setVistas = new Set(idsVistas); // ← Datos que vienen de la BASE DE DATOS
+          
+          // Luego cargar incidencias desde la base de datos
+          const todasIncidencias = await fetchIncidencias();
+          console.log(`📊 [Navbar] Total incidencias cargadas: ${todasIncidencias.length}`);
+          
+          // Obtener nuevas incidencias (no vistas) usando el Set que acabamos de crear
           const noVistas = todasIncidencias
-            .filter((inc: any) => inc.id && !incidenciasVistas.has(inc.id))
+            .filter((inc: any) => {
+              const tieneId = !!inc.id;
+              const noEstaVista = !setVistas.has(inc.id);
+              if (!tieneId) {
+                console.log(`⚠️ [Navbar] Incidencia sin ID encontrada:`, inc);
+              }
+              return tieneId && noEstaVista;
+            })
             .sort((a: any, b: any) => {
               const fechaA = new Date(a.timestamp || a.fecha || 0).getTime();
               const fechaB = new Date(b.timestamp || b.fecha || 0).getTime();
               return fechaB - fechaA; // Más recientes primero
             })
             .slice(0, 10); // Máximo 10 notificaciones
+          
+          console.log(`✅ [Navbar] Incidencias no vistas encontradas: ${noVistas.length}`);
+          noVistas.forEach((inc: any) => {
+            console.log(`  - ID: ${inc.id}, Estudiante: ${inc.studentName}, Fecha: ${inc.fecha}`);
+          });
           
           setNuevasIncidencias(noVistas);
         } catch (error) {
@@ -292,11 +425,15 @@ export function Navbar() {
       const handleIncidenciaRegistrada = (e: Event) => {
         const customEvent = e as CustomEvent;
         const nuevaId = customEvent.detail?.id;
+        console.log(`🔔 [Navbar] Evento incidenciaRegistrada recibido con ID:`, nuevaId);
         if (nuevaId && typeof nuevaId === 'string') {
+          console.log(`✅ [Navbar] Actualizando notificaciones después de nueva incidencia...`);
           setTimeout(() => {
             setRefreshKeyDirector(prev => prev + 1);
             actualizarNotificaciones();
           }, 200);
+        } else {
+          console.warn(`⚠️ [Navbar] ID de incidencia inválido o faltante:`, nuevaId);
         }
       };
 
@@ -392,6 +529,10 @@ export function Navbar() {
         gravedadIncidencia = 'grave';
       }
     }
+    
+    // Remover el estudiante de la lista inmediatamente (antes de guardar)
+    // Esto hace que desaparezca de las notificaciones de inmediato
+    setEstudiantesConProblemas(prev => prev.filter(e => e.nombre !== nombreEstudiante));
     
     // Guardar los datos de prellenado en la base de datos
     await savePrellenadoIncidencia({
@@ -529,7 +670,34 @@ export function Navbar() {
                                   </p>
                                 )}
                                 <p className="text-xs text-gray-500 mt-1">
-                                  {incidencia.fecha || 'Sin fecha'}
+                                  {(() => {
+                                    if (incidencia.timestamp) {
+                                      const fecha = new Date(incidencia.timestamp);
+                                      return fecha.toLocaleString('es-ES', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      });
+                                    }
+                                    if (incidencia.fecha) {
+                                      // Si la fecha incluye hora (formato ISO)
+                                      const fecha = new Date(incidencia.fecha);
+                                      if (!isNaN(fecha.getTime())) {
+                                        return fecha.toLocaleString('es-ES', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        });
+                                      }
+                                      // Si solo es fecha sin hora, mostrar fecha y hora actual o por defecto
+                                      return `${incidencia.fecha} - Sin hora`;
+                                    }
+                                    return 'Sin fecha';
+                                  })()}
                                 </p>
                               </div>
                               <Button
@@ -577,7 +745,10 @@ export function Navbar() {
               {mostrarNotificaciones && (
                 <div className="notificaciones-dropdown-navbar absolute right-0 top-12 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
                   <div className="p-3 sm:p-4 border-b border-gray-200 flex items-center justify-between gap-2">
-                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Estudiantes que requieren atención</h3>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Estudiantes que requieren atención</h3>
+                      <p className="text-xs text-gray-500 mt-1">Con 3 o más ausencias o tardanzas</p>
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -589,12 +760,12 @@ export function Navbar() {
                   </div>
                   {estudiantesConProblemas.length === 0 ? (
                     <div className="p-6 text-center text-gray-500">
-                      <p>No hay estudiantes con más de 3 ausencias o tardanzas</p>
+                      <p>No hay estudiantes con 3 o más ausencias o tardanzas</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-100">
                       {estudiantesConProblemas.map((item) => (
-                        <div key={item.nombre} className="p-4 hover:bg-gray-50 transition-colors">
+                        <div key={item.nombre} className="p-4 hover:bg-gray-50 transition-colors border-l-4 border-l-red-500">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <p className="font-medium text-gray-900">{item.nombre}</p>
@@ -615,14 +786,17 @@ export function Navbar() {
                                   </Badge>
                                 )}
                               </div>
+                              <p className="text-xs text-red-600 font-medium mt-2">
+                                ⚠️ Se recomienda registrar una incidencia
+                              </p>
                             </div>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="ml-2"
+                              className="ml-2 bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
                               onClick={() => handleRegistrarIncidencia(item.nombre)}
                             >
-                              Registrar
+                              Registrar Incidencia
                             </Button>
                           </div>
                         </div>
