@@ -1026,12 +1026,12 @@ export default function ProfesorPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Estudiante</label>
                   <Combobox
-                    options={estudiantes.map(e => e.nombre)}
+                    options={estudiantes.map(e => getNombreCompleto(e)).filter(n => n && n.trim() !== '')}
                     value={incEstudiante}
                     onChange={(nombre) => {
                       setIncEstudiante(nombre);
                       // Buscar el ID del estudiante cuando se selecciona
-                      const estudianteSeleccionado = estudiantes.find(e => e.nombre === nombre);
+                      const estudianteSeleccionado = estudiantes.find(e => getNombreCompleto(e) === nombre);
                       setIncEstudianteId(estudianteSeleccionado?.id || null);
                     }}
                     placeholder="Buscar o seleccionar estudiante"

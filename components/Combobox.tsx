@@ -3,9 +3,13 @@ import React, { useState } from 'react';
 
 export function Combobox({ options, value, onChange, placeholder }: { options: string[], value: string, onChange: (v: string) => void, placeholder?: string }) {
   const [query, setQuery] = useState('');
+  
+  // Filtrar elementos undefined/null y validar que sean strings
+  const validOptions = options.filter(o => o != null && typeof o === 'string' && o.trim() !== '');
+  
   const filtered = query
-    ? options.filter(o => o.toLowerCase().includes(query.toLowerCase()))
-    : options;
+    ? validOptions.filter(o => o.toLowerCase().includes(query.toLowerCase()))
+    : validOptions;
   return (
     <div className="relative">
       <input
