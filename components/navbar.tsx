@@ -166,10 +166,16 @@ export function Navbar() {
           
           const problemas = Object.entries(conteoPorEstudiante)
             .filter(([nombre, conteo]) => {
+              // Validar que nombre y estudiante existan
+              if (!nombre || !conteo.estudiante) {
+                console.warn('⚠️ Estudiante sin nombre o datos completos, excluido:', { nombre, tieneEstudiante: !!conteo.estudiante });
+                return false;
+              }
+              
               const tieneProblemas = conteo.ausencias >= 3 || conteo.tardanzas >= 3;
               if (tieneProblemas) {
                 // Normalizar el nombre para comparación (case-insensitive, sin espacios extra)
-                const nombreNormalizado = nombre.toLowerCase().trim();
+                const nombreNormalizado = (nombre || '').toLowerCase().trim();
                 const yaTieneIncidencia = estudiantesConIncidenciaRegistrada.has(nombreNormalizado);
                 console.log('🔔 Estudiante con problemas:', nombre, { 
                   ausencias: conteo.ausencias, 
@@ -188,12 +194,13 @@ export function Navbar() {
               return tieneProblemas;
             })
             .map(([nombre, conteo]) => ({
-              nombre,
+              nombre: nombre || 'Sin nombre',
               ausencias: conteo.ausencias,
               tardanzas: conteo.tardanzas,
               total: conteo.ausencias + conteo.tardanzas,
               estudiante: conteo.estudiante
             }))
+            .filter(item => item.estudiante) // Filtrar cualquier elemento que no tenga estudiante
             .sort((a, b) => b.total - a.total);
           
           console.log('📊 Total estudiantes con problemas:', problemas.length);
@@ -296,10 +303,16 @@ export function Navbar() {
         
         const problemas = Object.entries(conteoPorEstudiante)
           .filter(([nombre, conteo]) => {
+            // Validar que nombre y estudiante existan
+            if (!nombre || !conteo.estudiante) {
+              console.warn('⚠️ Estudiante sin nombre o datos completos, excluido:', { nombre, tieneEstudiante: !!conteo.estudiante });
+              return false;
+            }
+            
             const tieneProblemas = conteo.ausencias >= 3 || conteo.tardanzas >= 3;
             if (tieneProblemas) {
               // Normalizar el nombre para comparación (case-insensitive, sin espacios extra)
-              const nombreNormalizado = nombre.toLowerCase().trim();
+              const nombreNormalizado = (nombre || '').toLowerCase().trim();
               const yaTieneIncidencia = estudiantesConIncidenciaRegistrada.has(nombreNormalizado);
               console.log('🔔 Estudiante con problemas:', nombre, { 
                 ausencias: conteo.ausencias, 
@@ -318,12 +331,13 @@ export function Navbar() {
             return tieneProblemas;
           })
           .map(([nombre, conteo]) => ({
-            nombre,
+            nombre: nombre || 'Sin nombre',
             ausencias: conteo.ausencias,
             tardanzas: conteo.tardanzas,
             total: conteo.ausencias + conteo.tardanzas,
             estudiante: conteo.estudiante
           }))
+          .filter(item => item.estudiante) // Filtrar cualquier elemento que no tenga estudiante
           .sort((a, b) => b.total - a.total);
         
         console.log('📊 Total estudiantes con problemas:', problemas.length);
@@ -520,7 +534,10 @@ export function Navbar() {
 
   const handleRegistrarIncidencia = async (nombreEstudiante: string) => {
     // Encontrar los datos del estudiante con problemas
-    const estudianteProblema = estudiantesConProblemas.find(e => getNombreCompleto(e) === nombreEstudiante);
+    const estudianteProblema = estudiantesConProblemas.find(e => {
+      if (!e.estudiante) return false;
+      return getNombreCompleto(e.estudiante) === nombreEstudiante || e.nombre === nombreEstudiante;
+    });
     
     // Determinar tipo y gravedad automáticamente
     let tipoIncidencia = 'asistencia'; // Por defecto asistencia (para ausencias)
@@ -542,7 +559,11 @@ export function Navbar() {
     
     // Remover el estudiante de la lista inmediatamente (antes de guardar)
     // Esto hace que desaparezca de las notificaciones de inmediato
-    setEstudiantesConProblemas(prev => prev.filter(e => getNombreCompleto(e) !== nombreEstudiante));
+    setEstudiantesConProblemas(prev => prev.filter(e => {
+      if (!e.estudiante) return true; // Mantener elementos sin estudiante (serán filtrados después)
+      const nombreCompleto = getNombreCompleto(e.estudiante);
+      return nombreCompleto !== nombreEstudiante && e.nombre !== nombreEstudiante;
+    }));
     
     // Guardar los datos de prellenado en la base de datos
     await savePrellenadoIncidencia({
@@ -774,43 +795,48 @@ export function Navbar() {
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-100">
-                      {estudiantesConProblemas.map((item) => (
-                        <div key={getNombreCompleto(item)} className="p-4 hover:bg-gray-50 transition-colors border-l-4 border-l-red-500">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium text-gray-900">{getNombreCompleto(item)}</p>
-                              {item.estudiante && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {item.estudiante.grado} {item.estudiante.seccion}
-                                </p>
-                              )}
-                              <div className="flex gap-4 mt-2">
-                                {item.ausencias >= 3 && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    {item.ausencias} ausencias
-                                  </Badge>
-                                )}
-                                {item.tardanzas >= 3 && (
-                                  <Badge className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white">
-                                    {item.tardanzas} tardanzas
-                                  </Badge>
-                                )}
+                      {estudiantesConProblemas
+                        .filter(item => item.estudiante) // Filtrar elementos sin estudiante
+                        .map((item) => {
+                          const nombreCompleto = item.estudiante ? getNombreCompleto(item.estudiante) : item.nombre;
+                          return (
+                            <div key={nombreCompleto} className="p-4 hover:bg-gray-50 transition-colors border-l-4 border-l-red-500">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">{nombreCompleto}</p>
+                                  {item.estudiante && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {item.estudiante.grado} {item.estudiante.seccion}
+                                    </p>
+                                  )}
+                                  <div className="flex gap-4 mt-2">
+                                    {item.ausencias >= 3 && (
+                                      <Badge variant="destructive" className="text-xs">
+                                        {item.ausencias} ausencias
+                                      </Badge>
+                                    )}
+                                    {item.tardanzas >= 3 && (
+                                      <Badge className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white">
+                                        {item.tardanzas} tardanzas
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-red-600 font-medium mt-2">
+                                    ⚠️ Se recomienda registrar una incidencia
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="ml-2 bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
+                                  onClick={() => handleRegistrarIncidencia(nombreCompleto)}
+                                >
+                                  Registrar Incidencia
+                                </Button>
                               </div>
-                              <p className="text-xs text-red-600 font-medium mt-2">
-                                ⚠️ Se recomienda registrar una incidencia
-                              </p>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="ml-2 bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
-                              onClick={() => handleRegistrarIncidencia(getNombreCompleto(item))}
-                            >
-                              Registrar Incidencia
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                          );
+                        })}
                     </div>
                   )}
                 </div>
