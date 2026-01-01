@@ -42,6 +42,7 @@ import {
 
 import { Calendar, FileText, Upload, AlertTriangle, Bell } from 'lucide-react';
 import { validateRequired, validateDateNotFuture, validateDescription, validateAsistenciaEntries, validateEmail, validatePhone } from '@/lib/validation';
+import { EstudianteInfo } from '@/lib/types';
 
 /* =====================================================
    COMPONENTE
@@ -49,6 +50,17 @@ import { validateRequired, validateDateNotFuture, validateDescription, validateA
 export default function ProfesorPage() {
   // Buscador de estudiantes
   const [estudianteSearch, setEstudianteSearch] = useState('');
+
+  // Helper function para obtener el nombre completo desde nombres y apellidos
+  const getNombreCompleto = (estudiante: EstudianteInfo): string => {
+    if (estudiante.nombres && estudiante.apellidos) {
+      return `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+    }
+    // Fallback: si no hay nombres y apellidos, intentar usar nombre (si existe en runtime)
+    const nombre = (estudiante as any).nombre;
+    if (nombre) return nombre;
+    return estudiante.nombres || estudiante.apellidos || 'Sin nombre';
+  };
   /* ---------- navegación ---------- */
   const [viewMode, setViewMode] =
     useState<'inicio' | 'asistencia' | 'incidencia'>('inicio');
@@ -186,7 +198,8 @@ export default function ProfesorPage() {
 
         // Mapear información de estudiantes
         estudiantes.forEach(est => {
-          estudianteInfo[est.nombre] = {
+          const nombreEst = getNombreCompleto(est);
+          estudianteInfo[nombreEst] = {
             grado: est.grado || '',
             seccion: est.seccion || ''
           };
@@ -885,55 +898,56 @@ export default function ProfesorPage() {
                   ) : (
                     estudiantesClase
                       .filter(est =>
-                        !estudianteSearch || est.nombre.toLowerCase().includes(estudianteSearch.toLowerCase())
+                        !estudianteSearch || getNombreCompleto(est).toLowerCase().includes(estudianteSearch.toLowerCase())
                       )
                       .map((est, idx, arr) => {
-                        const estado = asistencia[est.nombre] || '';
+                        const nombreEst = getNombreCompleto(est);
+                        const estado = asistencia[nombreEst] || '';
                         return (
                           <div
-                            key={est.nombre}
+                            key={nombreEst}
                             className={`grid grid-cols-4 items-center py-2 ${idx !== arr.length - 1 ? 'border-b border-gray-200' : ''}`}
                           >
-                            <span className="truncate pr-2 text-xs text-gray-700">{est.nombre}</span>
+                            <span className="truncate pr-2 text-xs text-gray-700">{nombreEst}</span>
                             <div className="flex justify-center">
                               <input
                                 type="radio"
-                                id={`presente-${est.nombre}`}
-                                name={`a-${est.nombre}`}
+                                id={`presente-${nombreEst}`}
+                                name={`a-${nombreEst}`}
                                 className="hidden peer/presente"
                                 checked={estado === 'presente'}
                                 disabled={!isToday}
-                                onChange={() => setAsistencia(a => ({ ...a, [est.nombre]: 'presente' }))}
+                                onChange={() => setAsistencia(a => ({ ...a, [nombreEst]: 'presente' }))}
                               />
-                              <label htmlFor={`presente-${est.nombre}`} className={`cursor-pointer px-4 py-1 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-blue-100 transition peer-checked/presente:bg-blue-600 peer-checked/presente:text-white peer-checked/presente:border-blue-600 font-medium shadow-sm text-xs ${!isToday ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                              <label htmlFor={`presente-${nombreEst}`} className={`cursor-pointer px-4 py-1 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-blue-100 transition peer-checked/presente:bg-blue-600 peer-checked/presente:text-white peer-checked/presente:border-blue-600 font-medium shadow-sm text-xs ${!isToday ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                 Presente
                               </label>
                             </div>
                             <div className="flex justify-center">
                               <input
                                 type="radio"
-                                id={`tardanza-${est.nombre}`}
-                                name={`a-${est.nombre}`}
+                                id={`tardanza-${nombreEst}`}
+                                name={`a-${nombreEst}`}
                                 className="hidden peer/tardanza"
                                 checked={estado === 'tardanza'}
                                 disabled={!isToday}
-                                onChange={() => setAsistencia(a => ({ ...a, [est.nombre]: 'tardanza' }))}
+                                onChange={() => setAsistencia(a => ({ ...a, [nombreEst]: 'tardanza' }))}
                               />
-                              <label htmlFor={`tardanza-${est.nombre}`} className={`cursor-pointer px-4 py-1 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-yellow-100 transition peer-checked/tardanza:bg-yellow-400 peer-checked/tardanza:text-white peer-checked/tardanza:border-yellow-400 font-medium shadow-sm text-xs ${!isToday ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                              <label htmlFor={`tardanza-${nombreEst}`} className={`cursor-pointer px-4 py-1 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-yellow-100 transition peer-checked/tardanza:bg-yellow-400 peer-checked/tardanza:text-white peer-checked/tardanza:border-yellow-400 font-medium shadow-sm text-xs ${!isToday ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                 Tardanza
                               </label>
                             </div>
                             <div className="flex justify-center">
                               <input
                                 type="radio"
-                                id={`ausente-${est.nombre}`}
-                                name={`a-${est.nombre}`}
+                                id={`ausente-${nombreEst}`}
+                                name={`a-${nombreEst}`}
                                 className="hidden peer/ausente"
                                 checked={estado === 'ausente'}
                                 disabled={!isToday}
-                                onChange={() => setAsistencia(a => ({ ...a, [est.nombre]: 'ausente' }))}
+                                onChange={() => setAsistencia(a => ({ ...a, [nombreEst]: 'ausente' }))}
                               />
-                              <label htmlFor={`ausente-${est.nombre}`} className={`cursor-pointer px-4 py-1 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-red-100 transition peer-checked/ausente:bg-red-400 peer-checked/ausente:text-white peer-checked/ausente:border-red-400 font-medium shadow-sm text-xs ${!isToday ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                              <label htmlFor={`ausente-${nombreEst}`} className={`cursor-pointer px-4 py-1 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-red-100 transition peer-checked/ausente:bg-red-400 peer-checked/ausente:text-white peer-checked/ausente:border-red-400 font-medium shadow-sm text-xs ${!isToday ? 'opacity-60 cursor-not-allowed' : ''}`}>
                                 Ausente
                               </label>
                             </div>
