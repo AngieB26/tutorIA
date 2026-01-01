@@ -4,7 +4,8 @@ import {
   getAsistenciaClases,
   addRegistroAsistenciaClase,
   saveAsistenciaClases,
-  findRegistroAsistencia
+  findRegistroAsistencia,
+  actualizarContadoresAsistencia
 } from '@/lib/db';
 import { DiaSemana } from '@/lib/types';
 
@@ -75,6 +76,30 @@ export async function PUT(req: NextRequest) {
     console.error('Error guardando asistencias:', error);
     return NextResponse.json(
       { error: 'Error al guardar asistencias', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/asistencia?action=recalcular - Recalcular contadores de asistencia
+export async function PATCH(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get('action');
+    
+    if (action === 'recalcular') {
+      await actualizarContadoresAsistencia();
+      return NextResponse.json({ success: true, message: 'Contadores de asistencia recalculados correctamente' });
+    }
+    
+    return NextResponse.json(
+      { error: 'Acción no válida. Use ?action=recalcular' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Error recalculando contadores:', error);
+    return NextResponse.json(
+      { error: 'Error al recalcular contadores', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

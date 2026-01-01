@@ -41,35 +41,35 @@ export async function getEstudiantesInfo(): Promise<EstudianteInfo[]> {
       return {
         id: est.id, // Incluir ID
         nombre: nombreCompleto,
-        grado: est.grado,
-        seccion: est.seccion,
-        edad: est.edad ?? undefined,
-        fechaNacimiento: est.fechaNacimiento ?? undefined,
-        fotoPerfil: est.fotoPerfil ?? undefined,
-        contacto: {
-          telefono: est.contactoTelefono ?? undefined,
-          email: est.contactoEmail ?? undefined,
-          nombre: est.contactoNombre ?? undefined,
-          tutor: est.tutorNombre ?? undefined,
-        },
-        tutor: {
-          nombre: est.tutorNombre ?? undefined,
-          telefono: est.tutorTelefono ?? undefined,
-          email: est.tutorEmail ?? undefined,
-        },
-        apoderado: {
-          nombre: est.apoderadoNombre ?? undefined,
-          parentesco: est.apoderadoParentesco ?? undefined,
-          telefono: est.apoderadoTelefono ?? undefined,
-          telefonoAlternativo: est.apoderadoTelefonoAlt ?? undefined,
-          email: est.apoderadoEmail ?? undefined,
-          direccion: est.apoderadoDireccion ?? undefined,
-        },
+      grado: est.grado,
+      seccion: est.seccion,
+      edad: est.edad ?? undefined,
+      fechaNacimiento: est.fechaNacimiento ?? undefined,
+      fotoPerfil: est.fotoPerfil ?? undefined,
+      contacto: {
+        telefono: est.contactoTelefono ?? undefined,
+        email: est.contactoEmail ?? undefined,
+        nombre: est.contactoNombre ?? undefined,
+        tutor: est.tutorNombre ?? undefined,
+      },
+      tutor: {
+        nombre: est.tutorNombre ?? undefined,
+        telefono: est.tutorTelefono ?? undefined,
+        email: est.tutorEmail ?? undefined,
+      },
+      apoderado: {
+        nombre: est.apoderadoNombre ?? undefined,
+        parentesco: est.apoderadoParentesco ?? undefined,
+        telefono: est.apoderadoTelefono ?? undefined,
+        telefonoAlternativo: est.apoderadoTelefonoAlt ?? undefined,
+        email: est.apoderadoEmail ?? undefined,
+        direccion: est.apoderadoDireccion ?? undefined,
+      },
         nombres: est.nombres,
         apellidos: est.apellidos,
-        asistencias: est.asistencias ?? undefined,
-        ausencias: est.ausencias ?? undefined,
-        tardanzas: est.tardanzas ?? undefined,
+      asistencias: est.asistencias ?? undefined,
+      ausencias: est.ausencias ?? undefined,
+      tardanzas: est.tardanzas ?? undefined,
       };
     });
   } catch (error) {
@@ -208,7 +208,7 @@ export async function saveEstudianteInfo(estudiante: EstudianteInfo, estudianteI
       existente = await prisma.estudiante.findUnique({
         where: { id: estudianteId }
       });
-      if (existente) {
+    if (existente) {
         console.log(`✅ Estudiante encontrado por ID: ${existente.id}`);
       }
     }
@@ -453,12 +453,21 @@ export async function saveEstudiantesInfo(estudiantes: EstudianteInfo[], nombres
   }
 }
 
-export async function deleteEstudiante(nombre: string): Promise<void> {
+export async function deleteEstudiante(nombreOrId: string, useId: boolean = false): Promise<void> {
   try {
-    // Buscar por nombres y apellidos separados
+    if (useId) {
+      // Si se especifica que es un ID, eliminar directamente por ID
+      await prisma.estudiante.delete({
+        where: { id: nombreOrId }
+      });
+      console.log(`✅ Estudiante con ID ${nombreOrId} eliminado de la base de datos`);
+      return;
+    }
+
+    // Buscar por nombres y apellidos separados (comportamiento original para compatibilidad)
     let estudiante = null;
-    if (nombre.includes(' ')) {
-      const partes = nombre.trim().split(/\s+/);
+    if (nombreOrId.includes(' ')) {
+      const partes = nombreOrId.trim().split(/\s+/);
       if (partes.length >= 2) {
         const apellidos = partes[partes.length - 1];
         const nombres = partes.slice(0, -1).join(' ');
@@ -475,7 +484,9 @@ export async function deleteEstudiante(nombre: string): Promise<void> {
       await prisma.estudiante.delete({
         where: { id: estudiante.id }
       });
-      console.log(`✅ Estudiante ${nombre} eliminado de la base de datos`);
+      console.log(`✅ Estudiante ${nombreOrId} eliminado de la base de datos`);
+    } else {
+      throw new Error(`Estudiante ${nombreOrId} no encontrado`);
     }
   } catch (error) {
     console.error('Error eliminando estudiante:', error);
@@ -530,6 +541,7 @@ export async function getIncidencias(): Promise<Incidencia[]> {
       return {
         id: inc.id,
         studentName: inc.studentName,
+        studentId: inc.estudianteId ?? undefined, // Incluir ID del estudiante cuando esté disponible
         tipo: inc.tipo as TipoIncidencia,
         subtipo: inc.subtipo as any,
         gravedad: inc.gravedad as Gravedad,
@@ -591,9 +603,10 @@ export async function saveIncidencias(incidencias: Incidencia[]): Promise<void> 
         mapEstudianteGradoSeccion.set(nombreCompleto, { grado: est.grado, seccion: est.seccion });
       }
     });
-
+    
     for (const inc of incidencias) {
-      const estudianteId = mapEstudianteId.get(inc.studentName) ?? null;
+      // Priorizar studentId si está disponible en el objeto incidencia, si no buscar por nombre
+      const estudianteId = inc.studentId || (mapEstudianteId.get(inc.studentName) ?? null);
       const profesorId = mapTutorId.get(inc.profesor) ?? null; // Profesor que registra
       
       // Buscar tutor de la sección del estudiante
@@ -649,12 +662,12 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       : null;
 
     // Determinar el estado inicial según el tipo de incidencia
-    // Las incidencias positivas tienen estado 'normal', las demás 'Pendiente'
+    // Las incidencias positivas tienen estado 'Resuelta' ya que no requieren seguimiento, las demás 'Pendiente'
     let estadoInicial: EstadoIncidencia;
     if (newIncidencia.estado) {
       estadoInicial = newIncidencia.estado;
     } else if (newIncidencia.tipo === 'positivo') {
-      estadoInicial = 'normal';
+      estadoInicial = 'Resuelta';
     } else {
       estadoInicial = 'Pendiente';
     }
@@ -673,78 +686,105 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
     }
 
     // Buscar estudianteId por nombres y apellidos
+    // PRIORIDAD: Si viene studentId, usarlo directamente (más confiable)
     let estudiante = null;
-    console.log(`🔍 Buscando estudiante para incidencia: "${newIncidencia.studentName}"`);
+    let estudianteId = null;
     
-    if (newIncidencia.studentName && newIncidencia.studentName.trim()) {
-      const partes = newIncidencia.studentName.trim().split(/\s+/);
-      if (partes.length >= 2) {
-        const apellidos = partes[partes.length - 1];
-        const nombres = partes.slice(0, -1).join(' ');
-        console.log(`  - Nombres: "${nombres}", Apellidos: "${apellidos}"`);
-        
-        // Buscar con coincidencia exacta primero
-        estudiante = await prisma.estudiante.findFirst({
-          where: {
-            nombres: nombres,
-            apellidos: apellidos
-          }
-        });
-        
-        // Si no se encuentra con coincidencia exacta, buscar con contains (insensitive)
-        if (!estudiante) {
-          console.log(`  - No encontrado con coincidencia exacta, buscando con contains...`);
-          estudiante = await prisma.estudiante.findFirst({
-            where: {
-              nombres: { contains: nombres, mode: 'insensitive' },
-              apellidos: { contains: apellidos, mode: 'insensitive' }
-            }
-          });
-        }
-        
-        // Si aún no se encuentra, buscar solo por nombres o apellidos
-        if (!estudiante) {
-          console.log(`  - No encontrado con contains, buscando por nombres o apellidos...`);
-          estudiante = await prisma.estudiante.findFirst({
-            where: {
-              OR: [
-                { nombres: { contains: nombres, mode: 'insensitive' } },
-                { apellidos: { contains: apellidos, mode: 'insensitive' } },
-                { nombres: { contains: newIncidencia.studentName, mode: 'insensitive' } },
-                { apellidos: { contains: newIncidencia.studentName, mode: 'insensitive' } }
-              ]
-            }
-          });
-        }
+    // Si el frontend envía studentId, usarlo directamente (más confiable que buscar por nombre)
+    if (newIncidencia.studentId) {
+      console.log(`🔍 Usando studentId proporcionado: "${newIncidencia.studentId}"`);
+      estudiante = await prisma.estudiante.findUnique({
+        where: { id: newIncidencia.studentId }
+      });
+      if (estudiante) {
+        estudianteId = estudiante.id;
+        console.log(`✅ Estudiante encontrado por ID: ${estudiante.nombres} ${estudiante.apellidos}`);
       } else {
-        // Si solo hay una parte, buscar en nombres o apellidos
-        console.log(`  - Solo una parte, buscando en nombres o apellidos: "${partes[0]}"`);
-        estudiante = await prisma.estudiante.findFirst({
-          where: {
-            OR: [
-              { nombres: { contains: partes[0], mode: 'insensitive' } },
-              { apellidos: { contains: partes[0], mode: 'insensitive' } }
-            ]
-          }
-        });
+        console.log(`⚠️ Estudiante no encontrado por ID: "${newIncidencia.studentId}". Buscando por nombre...`);
       }
+    }
+    
+    // Si no se encontró por ID, buscar por nombre
+    if (!estudiante) {
+      const studentNameTrimmed = newIncidencia.studentName?.trim();
+      console.log(`🔍 Buscando estudiante por nombre: "${studentNameTrimmed}"`);
+      
+      if (studentNameTrimmed) {
+        // Método 1: Buscar por nombre completo exacto (comparando nombre completo construido)
+        // Esto es útil si el nombre viene exactamente como está en la BD
+        const todosEstudiantes = await prisma.estudiante.findMany();
+        estudiante = todosEstudiantes.find(est => {
+          const nombreCompletoBD = `${est.nombres} ${est.apellidos}`.trim();
+          return nombreCompletoBD.toLowerCase() === studentNameTrimmed.toLowerCase();
+        });
+        
+        if (estudiante) {
+          console.log(`  ✅ Encontrado por nombre completo exacto: ID=${estudiante.id}`);
+        } else {
+          // Método 2: Buscar dividiendo en nombres y apellidos
+          const partes = studentNameTrimmed.split(/\s+/).filter(p => p.length > 0);
+          if (partes.length >= 2) {
+            const apellidos = partes[partes.length - 1];
+            const nombres = partes.slice(0, -1).join(' ');
+            console.log(`  - Intentando búsqueda por partes: Nombres="${nombres}", Apellidos="${apellidos}"`);
+            
+            // Buscar con coincidencia exacta (case-insensitive)
+            estudiante = await prisma.estudiante.findFirst({
+              where: {
+                nombres: { equals: nombres, mode: 'insensitive' },
+                apellidos: { equals: apellidos, mode: 'insensitive' }
+              }
+            });
+            
+            if (estudiante) {
+              console.log(`  ✅ Encontrado por nombres/apellidos exactos: ID=${estudiante.id}`);
+            } else {
+              // Método 3: Buscar por nombre completo usando contains (más flexible pero aún preciso)
+              // Solo si el nombre completo contiene el nombre del estudiante o viceversa
+              estudiante = todosEstudiantes.find(est => {
+                const nombreCompletoBD = `${est.nombres} ${est.apellidos}`.trim().toLowerCase();
+                const nombreBuscado = studentNameTrimmed.toLowerCase();
+                // Coincidencia si el nombre completo de BD contiene el buscado o viceversa
+                // Pero solo si la diferencia es pequeña (para evitar coincidencias incorrectas)
+                return nombreCompletoBD === nombreBuscado ||
+                       (nombreCompletoBD.includes(nombreBuscado) && 
+                        Math.abs(nombreCompletoBD.length - nombreBuscado.length) <= 3) ||
+                       (nombreBuscado.includes(nombreCompletoBD) && 
+                        Math.abs(nombreCompletoBD.length - nombreBuscado.length) <= 3);
+              });
+              
+              if (estudiante) {
+                console.log(`  ✅ Encontrado por coincidencia flexible: ID=${estudiante.id}`);
+              } else {
+                console.log(`  ⚠️ No encontrado con ningún método. Se guardará con nombre original.`);
+              }
+            }
+          } else {
+            console.log(`  ⚠️ Nombre incompleto (solo una parte: "${partes[0]}"). No se puede buscar de forma segura.`);
+          }
+        }
+      }
+    }
+    
+    // Si aún no tenemos el ID, intentar obtenerlo del estudiante encontrado
+    if (!estudianteId && estudiante) {
+      estudianteId = estudiante.id;
     }
     
     if (estudiante) {
       console.log(`✅ Estudiante encontrado: ID=${estudiante.id}, Nombre completo: ${estudiante.nombres} ${estudiante.apellidos}`);
     } else {
-      console.log(`⚠️ Estudiante NO encontrado para: "${newIncidencia.studentName}"`);
+      console.log(`⚠️ Estudiante NO encontrado. Se guardará con el nombre original.`);
     }
     
-    const estudianteId = estudiante?.id ?? null;
-    
-    // Normalizar el nombre del estudiante: si encontramos al estudiante, usar su nombre completo normalizado
-    // Esto asegura que el studentName en la incidencia coincida con el formato usado en la BD
+    // SOLO normalizar el nombre si encontramos al estudiante con coincidencia exacta
+    // Si no encontramos al estudiante, usar el nombre original que envió el usuario
+    // Esto evita que se guarde con el nombre de otro estudiante por error
     const studentNameNormalizado = estudiante 
       ? `${estudiante.nombres} ${estudiante.apellidos}`.trim()
       : newIncidencia.studentName.trim();
     
-    console.log(`📝 Nombre normalizado para incidencia: "${studentNameNormalizado}" (original: "${newIncidencia.studentName}")`);
+    console.log(`📝 Nombre para incidencia: "${studentNameNormalizado}" (original: "${newIncidencia.studentName}")`);
 
     // Buscar profesorId por nombre (el campo profesor contiene el nombre del profesor que registra)
     const profesorQueRegistra = await prisma.tutor.findFirst({
@@ -757,6 +797,9 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
     if (estudiante?.grado && estudiante?.seccion) {
       const tutorSeccion = await getTutorGradoSeccion(estudiante.grado, estudiante.seccion);
       tutorNombre = tutorSeccion?.tutorNombre ?? null;
+      console.log(`🔍 Tutor encontrado para ${estudiante.grado}° ${estudiante.seccion}:`, tutorNombre);
+    } else {
+      console.log(`⚠️ No se pudo obtener tutor: estudiante sin grado/sección`);
     }
 
     console.log('📝 Guardando nueva incidencia:', {
@@ -779,7 +822,7 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
       estudianteIdTipo: typeof estudianteId,
       estudianteIdLength: estudianteId?.length
     });
-    
+
     await prisma.incidencia.create({
       data: {
         id: newIncidencia.id,
@@ -796,9 +839,31 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
         lugar: newIncidencia.lugar ?? null,
         timestamp: BigInt(newIncidencia.timestamp),
         derivacion: derivacionValue,
-        resuelta: false, // Siempre false al crear
-        fechaResolucion: null, // Siempre null al crear
-        resueltaPor: null, // Siempre null al crear
+        resuelta: newIncidencia.tipo === 'positivo' ? true : (newIncidencia.resuelta ?? false), // Las positivas se marcan como resueltas automáticamente
+        fechaResolucion: newIncidencia.tipo === 'positivo' ? new Date().toISOString() : null, // Para positivas, usar fecha actual
+        resueltaPor: (() => {
+          // Para incidencias positivas, determinar quién la resolvió
+          if (newIncidencia.tipo === 'positivo') {
+            // Si hay derivación, usar el nombre del área derivada
+            if (derivacionValue) {
+              const labelDerivacion: Record<string, string> = {
+                psicologia: 'Psicología',
+                director: 'Director',
+                enfermeria: 'Enfermería',
+                coordinacion: 'Coordinación',
+                orientacion: 'Orientación'
+              };
+              return labelDerivacion[derivacionValue] || derivacionValue;
+            }
+            // Si no hay derivación pero hay tutorNombre, usar el tutor
+            if (tutorNombre) {
+              return tutorNombre;
+            }
+            // Si no hay ni derivación ni tutor, usar el profesor que la registró
+            return newIncidencia.profesor || 'Sistema';
+          }
+          return null; // Para otras incidencias, null hasta que se resuelvan
+        })(),
         estado: estadoInicial, // 'normal' para positivas, 'Pendiente' para las demás
         historialEstado: JSON.stringify(historialEstado), // Siempre inicializar historial
       },
@@ -921,9 +986,9 @@ export async function updateTutor(tutor: Tutor): Promise<void> {
     });
 
     const data = {
-      nombre: tutor.nombre,
-      email: tutor.email ?? null,
-      telefono: tutor.telefono ?? null,
+          nombre: tutor.nombre,
+          email: tutor.email ?? null,
+          telefono: tutor.telefono ?? null,
     };
 
     if (existente) {
@@ -1121,13 +1186,13 @@ export async function addClase(clase: Omit<Clase, 'id'>): Promise<Clase> {
     console.log('👤 Profesor encontrado:', { nombre: newClase.profesor, profesorId });
 
     const dataToCreate = {
-      id: newClase.id,
-      nombre: newClase.nombre,
-      grado: newClase.grado,
-      seccion: newClase.seccion,
-      profesor: newClase.profesor,
+        id: newClase.id,
+        nombre: newClase.nombre,
+        grado: newClase.grado,
+        seccion: newClase.seccion,
+        profesor: newClase.profesor,
       profesorId: profesorId,
-      dias: JSON.stringify(newClase.dias),
+        dias: JSON.stringify(newClase.dias),
     };
 
     console.log('💾 Datos a guardar en BD:', dataToCreate);
@@ -1844,6 +1909,7 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
           const incidenciaMapeada = {
             id: inc.id,
             studentName: inc.studentName || '',
+            studentId: inc.estudianteId ?? undefined, // Incluir ID del estudiante cuando esté disponible
             tipo: inc.tipo as any,
             subtipo: inc.subtipo as any,
             gravedad: inc.gravedad as any,
@@ -1942,7 +2008,7 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
     try {
       console.log(`🔄 Intentando fallback para: "${studentNameOrId}"`);
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentNameOrId);
-      const incidencias = await getIncidencias();
+  const incidencias = await getIncidencias();
       const filtradas = incidencias.filter(inc => {
         if (isUUID) {
           // Si es un ID, buscar por estudianteId si está disponible
@@ -1962,29 +2028,102 @@ export async function getIncidenciasCompletasByStudent(studentNameOrId: string):
   }
 }
 
-export async function getListaEstudiantes(): Promise<Array<{ nombre: string; totalIncidencias: number; ultimaIncidencia: string }>> {
+export async function getListaEstudiantes(): Promise<Array<{ nombre: string; totalIncidencias: number; ultimaIncidencia: string; studentId?: string }>> {
   const incidencias = await getIncidencias();
-  const estudiantesMap = new Map<string, { incidencias: Incidencia[] }>();
+  console.log(`📊 getListaEstudiantes: Procesando ${incidencias.length} incidencias`);
   
-  incidencias.forEach(inc => {
-    if (!estudiantesMap.has(inc.studentName)) {
-      estudiantesMap.set(inc.studentName, { incidencias: [] });
-    }
-    estudiantesMap.get(inc.studentName)!.incidencias.push(inc);
+  // Obtener todos los estudiantes de la BD para mapear nombres a IDs
+  const todosEstudiantes = await prisma.estudiante.findMany();
+  const nombreToStudentIdMap = new Map<string, string>(); // nombre normalizado -> studentId
+  
+  // Crear mapa de nombres a studentId desde la BD
+  todosEstudiantes.forEach(est => {
+    const nombreCompleto = `${est.nombres} ${est.apellidos}`.trim();
+    const nombreNormalizado = nombreCompleto.toLowerCase();
+    nombreToStudentIdMap.set(nombreNormalizado, est.id);
+    // También mapear solo nombres o apellidos si es necesario
+    nombreToStudentIdMap.set(est.nombres.toLowerCase(), est.id);
+    nombreToStudentIdMap.set(est.apellidos.toLowerCase(), est.id);
   });
   
-  return Array.from(estudiantesMap.entries())
-    .map(([nombre, data]) => {
-      const incidenciasOrdenadas = data.incidencias.sort((a, b) => 
-        new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-      );
+  // Agrupar incidencias SOLO por studentId (prioridad absoluta)
+  // Si no hay studentId, intentar encontrarlo por nombre desde la BD
+  const estudiantesMap = new Map<string, { incidencias: Incidencia[]; nombre: string; studentId: string }>();
+  
+  incidencias.forEach(inc => {
+    let studentIdFinal: string | undefined = inc.studentId;
+    
+    // Si no tiene studentId, intentar encontrarlo por nombre en la BD
+    if (!studentIdFinal && inc.studentName) {
+      const nombreNormalizado = inc.studentName.trim().toLowerCase();
+      studentIdFinal = nombreToStudentIdMap.get(nombreNormalizado);
+      
+      // Si no se encuentra con el nombre completo, intentar buscar en la BD directamente
+      if (!studentIdFinal) {
+        const partes = inc.studentName.trim().split(/\s+/);
+        if (partes.length >= 2) {
+          const apellidos = partes[partes.length - 1];
+          const nombres = partes.slice(0, -1).join(' ');
+          const estudianteEncontrado = todosEstudiantes.find(est => {
+            const nombreCompletoBD = `${est.nombres} ${est.apellidos}`.trim().toLowerCase();
+            return nombreCompletoBD === nombreNormalizado ||
+                   (est.nombres.toLowerCase() === nombres.toLowerCase() &&
+                    est.apellidos.toLowerCase() === apellidos.toLowerCase());
+          });
+          if (estudianteEncontrado) {
+            studentIdFinal = estudianteEncontrado.id;
+          }
+        }
+      }
+    }
+    
+    // Si aún no tenemos studentId, usar el nombre como clave temporal (solo para agrupar)
+    // Pero esto debería ser raro si la BD está bien sincronizada
+    const clave = studentIdFinal || `nombre_${inc.studentName.trim().toLowerCase()}`;
+    
+    if (!estudiantesMap.has(clave)) {
+      estudiantesMap.set(clave, { 
+        incidencias: [],
+        nombre: inc.studentName,
+        studentId: studentIdFinal || '' // Si no hay ID, dejar vacío (pero debería haberlo)
+      });
+    }
+    estudiantesMap.get(clave)!.incidencias.push(inc);
+    
+    // Actualizar el nombre si es más completo
+    const entrada = estudiantesMap.get(clave)!;
+    if (inc.studentName && inc.studentName.trim().length > entrada.nombre.trim().length) {
+      entrada.nombre = inc.studentName;
+    }
+    // Asegurar que tenemos el studentId si alguna incidencia lo tiene
+    if (studentIdFinal && !entrada.studentId) {
+      entrada.studentId = studentIdFinal;
+    }
+  });
+  
+  const resultado = Array.from(estudiantesMap.values())
+    .filter(data => data.studentId) // SOLO retornar estudiantes que tienen studentId (usar ID, no nombre)
+    .map((data) => {
+      const incidenciasOrdenadas = data.incidencias.sort((a, b) => {
+        const fechaA = a.timestamp ? new Date(a.timestamp).getTime() : new Date(a.fecha).getTime();
+        const fechaB = b.timestamp ? new Date(b.timestamp).getTime() : new Date(b.fecha).getTime();
+        return fechaB - fechaA;
+      });
       return {
-        nombre,
+        nombre: data.nombre,
         totalIncidencias: data.incidencias.length,
         ultimaIncidencia: incidenciasOrdenadas[0]?.fecha || '',
+        studentId: data.studentId, // SIEMPRE incluir studentId (requerido)
       };
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  
+  console.log(`✅ getListaEstudiantes: Retornando ${resultado.length} estudiantes con incidencias (solo con studentId)`);
+  resultado.forEach(est => {
+    console.log(`  - ${est.nombre}: ${est.totalIncidencias} incidencias (studentId: ${est.studentId})`);
+  });
+  
+  return resultado;
 }
 
 // Función para corregir incidencias existentes: actualizar estudianteId y normalizar studentName
@@ -2178,6 +2317,9 @@ export async function saveAsistenciaClases(registros: RegistroAsistenciaClase[])
         },
       });
     }
+
+    // Actualizar contadores de asistencia, ausencias y tardanzas en la tabla Estudiante
+    await actualizarContadoresAsistencia();
   } catch (error) {
     console.error('Error guardando asistencia clases:', error);
     throw error;
@@ -2257,6 +2399,9 @@ export async function addRegistroAsistenciaClase(
       });
     }
 
+    // Actualizar contadores de asistencia, ausencias y tardanzas en la tabla Estudiante
+    await actualizarContadoresAsistencia();
+
     return {
       ...rec,
       id: registroId,
@@ -2264,6 +2409,68 @@ export async function addRegistroAsistenciaClase(
     };
   } catch (error) {
     console.error('Error agregando registro de asistencia:', error);
+    throw error;
+  }
+}
+
+// Función para actualizar los contadores de asistencia, ausencias y tardanzas en la tabla Estudiante
+export async function actualizarContadoresAsistencia(): Promise<void> {
+  try {
+    console.log('🔄 Actualizando contadores de asistencia en la tabla Estudiante...');
+    
+    // Obtener todos los estudiantes
+    const estudiantes = await prisma.estudiante.findMany();
+    
+    // Obtener todos los registros de asistencia con sus entries
+    const registrosAsistencia = await prisma.registroAsistenciaClase.findMany({
+      include: { entries: true }
+    });
+
+    // Contar asistencias, ausencias y tardanzas por estudiante
+    const conteos: Record<string, { asistencias: number; ausencias: number; tardanzas: number }> = {};
+
+    // Inicializar contadores para todos los estudiantes
+    estudiantes.forEach(est => {
+      const nombreCompleto = `${est.nombres} ${est.apellidos}`.trim();
+      conteos[nombreCompleto] = { asistencias: 0, ausencias: 0, tardanzas: 0 };
+    });
+
+    // Contar en todos los registros
+    registrosAsistencia.forEach(registro => {
+      registro.entries.forEach(entry => {
+        const nombreEstudiante = entry.studentName;
+        if (!conteos[nombreEstudiante]) {
+          conteos[nombreEstudiante] = { asistencias: 0, ausencias: 0, tardanzas: 0 };
+        }
+        
+        if (entry.estado === 'presente') {
+          conteos[nombreEstudiante].asistencias++;
+        } else if (entry.estado === 'ausente') {
+          conteos[nombreEstudiante].ausencias++;
+        } else if (entry.estado === 'tardanza') {
+          conteos[nombreEstudiante].tardanzas++;
+        }
+      });
+    });
+
+    // Actualizar los contadores en la base de datos
+    for (const estudiante of estudiantes) {
+      const nombreCompleto = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+      const conteo = conteos[nombreCompleto] || { asistencias: 0, ausencias: 0, tardanzas: 0 };
+      
+      await prisma.estudiante.update({
+        where: { id: estudiante.id },
+        data: {
+          asistencias: conteo.asistencias,
+          ausencias: conteo.ausencias,
+          tardanzas: conteo.tardanzas,
+        },
+      });
+    }
+
+    console.log('✅ Contadores de asistencia actualizados correctamente');
+  } catch (error) {
+    console.error('❌ Error actualizando contadores de asistencia:', error);
     throw error;
   }
 }
@@ -2549,14 +2756,17 @@ export async function getEstudiantesAtendidosByProfesor(profesor: string, fecha?
 
 export async function getIncidenciasVistas(usuario: string = 'director'): Promise<Set<string>> {
   try {
+    console.log(`📊 [BD] Consultando incidencias vistas para usuario: ${usuario}`);
     const vistas = await prisma.incidenciaVista.findMany({
       where: { usuario },
       select: { incidenciaId: true }
     });
     
-    return new Set(vistas.map(v => v.incidenciaId));
+    const ids = vistas.map(v => v.incidenciaId);
+    console.log(`✅ [BD] Incidencias vistas encontradas: ${ids.length}`, ids);
+    return new Set(ids);
   } catch (error) {
-    console.error('Error obteniendo incidencias vistas:', error);
+    console.error('❌ [BD] Error obteniendo incidencias vistas:', error);
     return new Set();
   }
 }

@@ -40,78 +40,174 @@ Formato: Solo una línea, sin encabezados, positivo y alentador.`;
       // HACER 3 LLAMADAS SEPARADAS para evitar que se mezclen las secciones
       
       if (estudiante === 'Reporte General') {
-        // Calcular estadísticas adicionales para las alertas
+        // SEPARAR INCIDENCIAS POSITIVAS Y NEGATIVAS
+        const incidenciasPositivas = incidencias.filter((i: any) => i.tipo === 'positivo');
+        const incidenciasNegativas = incidencias.filter((i: any) => i.tipo !== 'positivo');
+        const totalPositivas = incidenciasPositivas.length;
+        const totalNegativas = incidenciasNegativas.length;
+        
+        // Calcular estadísticas adicionales para las alertas (SOLO incidencias negativas)
         const estudiantesUnicos = new Set(incidencias.map((i: any) => i.studentName));
         const profesoresUnicos = new Set(incidencias.map((i: any) => i.profesor).filter(Boolean));
-        const incidenciasGraves = incidencias.filter((i: any) => i.gravedad === 'grave').length;
+        
+        // Incidencias graves SOLO de las negativas (excluir positivas)
+        // IMPORTANTE: Las incidencias positivas pueden tener gravedad "grave" pero NO se cuentan aquí
+        // porque NO requieren atención. Solo contamos las negativas graves.
+        const incidenciasGraves = incidenciasNegativas.filter((i: any) => i.gravedad === 'grave').length;
+        const totalGravesIncluyendoPositivas = incidencias.filter((i: any) => i.gravedad === 'grave').length;
+        // Porcentaje: (Incidencias NEGATIVAS + GRAVES) / TOTAL de incidencias (incluye positivas) × 100
+        const totalIncidencias = incidencias.length;
         const porcentajeGraves = totalIncidencias > 0 ? ((incidenciasGraves / totalIncidencias) * 100).toFixed(1) : '0';
         
-        // Contar incidencias por estudiante
-        const porEstudiante: Record<string, number> = {};
-        incidencias.forEach((inc: any) => {
-          porEstudiante[inc.studentName] = (porEstudiante[inc.studentName] || 0) + 1;
+        // Log para verificación (puede ser útil para debugging)
+        console.log(`📊 Incidencias graves: ${totalGravesIncluyendoPositivas} total (${incidenciasGraves} NEGATIVAS graves, ${totalGravesIncluyendoPositivas - incidenciasGraves} POSITIVAS graves que NO se cuentan)`);
+        
+        // Contar incidencias NEGATIVAS por estudiante (para alertas de riesgo)
+        const porEstudianteNegativas: Record<string, number> = {};
+        incidenciasNegativas.forEach((inc: any) => {
+          porEstudianteNegativas[inc.studentName] = (porEstudianteNegativas[inc.studentName] || 0) + 1;
         });
-        const estudiantesRiesgo = Object.entries(porEstudiante)
+        const estudiantesRiesgo = Object.entries(porEstudianteNegativas)
           .filter(([_, count]) => count >= 5)
           .sort(([_, a], [__, b]) => b - a)
           .slice(0, 10);
         
-        // Contar incidencias positivas por estudiante
+        // Contar incidencias POSITIVAS por estudiante (para reconocimientos)
         const porEstudiantePositivo: Record<string, number> = {};
-        incidencias.forEach((inc: any) => {
-          if (inc.tipo === 'positivo') {
-            porEstudiantePositivo[inc.studentName] = (porEstudiantePositivo[inc.studentName] || 0) + 1;
-          }
+        incidenciasPositivas.forEach((inc: any) => {
+          porEstudiantePositivo[inc.studentName] = (porEstudiantePositivo[inc.studentName] || 0) + 1;
         });
         const estudiantesDestacados = Object.entries(porEstudiantePositivo)
           .sort(([_, a], [__, b]) => b - a)
           .slice(0, 10);
         
-        // Contar incidencias por profesor
-        const porProfesor: Record<string, number> = {};
+        // Contar incidencias por profesor (separar positivas y negativas)
+        const porProfesorNegativas: Record<string, number> = {};
+        const porProfesorPositivas: Record<string, number> = {};
         incidencias.forEach((inc: any) => {
-          if (inc.profesor) porProfesor[inc.profesor] = (porProfesor[inc.profesor] || 0) + 1;
+          if (inc.profesor) {
+            if (inc.tipo === 'positivo') {
+              porProfesorPositivas[inc.profesor] = (porProfesorPositivas[inc.profesor] || 0) + 1;
+            } else {
+              porProfesorNegativas[inc.profesor] = (porProfesorNegativas[inc.profesor] || 0) + 1;
+            }
+          }
         });
-        const promedioProfesor = profesoresUnicos.size > 0 ? totalIncidencias / profesoresUnicos.size : 0;
-        const profesoresFueraPromedio = Object.entries(porProfesor)
+        const promedioProfesor = profesoresUnicos.size > 0 ? totalNegativas / profesoresUnicos.size : 0;
+        const profesoresFueraPromedio = Object.entries(porProfesorNegativas)
           .filter(([_, count]) => promedioProfesor > 0 && count > promedioProfesor * 1.5)
           .sort(([_, a], [__, b]) => b - a)
           .slice(0, 5);
         
-        const datosEstadisticos = `${totalIncidencias} incidencias totales | Tipos: ${Object.entries(porTipo).map(([tipo, count]) => `${tipo}:${count}`).join(', ')} | Gravedades: ${Object.entries(porGravedad).map(([grav, count]) => `${grav}:${count}`).join(', ')} | Estudiantes únicos: ${estudiantesUnicos.size} | Profesores únicos: ${profesoresUnicos.size}`;
+        // Estadísticas por tipo (solo negativas para alertas)
+        const porTipoNegativas: Record<string, number> = {};
+        incidenciasNegativas.forEach((inc: any) => {
+          porTipoNegativas[inc.tipo || 'otro'] = (porTipoNegativas[inc.tipo || 'otro'] || 0) + 1;
+        });
+        
+        // Estadísticas por gravedad (solo negativas)
+        const porGravedadNegativas: Record<string, number> = {};
+        incidenciasNegativas.forEach((inc: any) => {
+          porGravedadNegativas[inc.gravedad || 'moderada'] = (porGravedadNegativas[inc.gravedad || 'moderada'] || 0) + 1;
+        });
+        
+        const datosEstadisticos = `Total: ${totalIncidencias} incidencias (${totalPositivas} POSITIVAS/Reconocimientos, ${totalNegativas} NEGATIVAS/Problemas) | Tipos negativas: ${Object.entries(porTipoNegativas).map(([tipo, count]) => `${tipo}:${count}`).join(', ')} | Gravedades negativas: ${Object.entries(porGravedadNegativas).map(([grav, count]) => `${grav}:${count}`).join(', ')} | Estudiantes únicos: ${estudiantesUnicos.size} | Profesores únicos: ${profesoresUnicos.size}`;
         
         // Preparar prompts separados y guardarlos
         reporteGeneralPrompts = {
-          resumen: `Genera SOLO un resumen ejecutivo (2-3 líneas) sobre el análisis general del estado de incidencias, tendencias principales y situación institucional.
+          resumen: `REGLAS OBLIGATORIAS DE REDACCION - LEER ANTES DE ESCRIBIR:
 
-Datos: ${datosEstadisticos}
+⚠️ REGLA #1: NUNCA digas solo "incidencias graves". SIEMPRE di "incidencias NEGATIVAS graves" o "problemas graves".
+⚠️ REGLA #2: NUNCA digas solo "incidencias". SIEMPRE di "incidencias POSITIVAS" o "incidencias NEGATIVAS" o "problemas".
+⚠️ REGLA #3: Si mencionas tipos (asistencia, conducta, académica), SIEMPRE di "incidencias NEGATIVAS de [tipo]" o "problemas de [tipo]".
+⚠️ REGLA #4: Si mencionas reconocimientos, SIEMPRE di "incidencias POSITIVAS".
 
-IMPORTANTE: Solo genera el resumen, sin títulos, sin alertas, sin recomendaciones. Solo texto descriptivo directo.`,
+EJEMPLOS OBLIGATORIOS A SEGUIR:
+✅ CORRECTO: "Se detectaron 4 incidencias: 1 positiva (reconocimiento) y 3 negativas (problemas). Dos incidencias NEGATIVAS fueron catalogadas como graves, lo que sugiere la necesidad de revisar protocolos."
+✅ CORRECTO: "Se registraron problemas de asistencia y conducta que requieren atención."
+✅ CORRECTO: "Las incidencias NEGATIVAS graves sugieren la necesidad de revisar protocolos institucionales."
+✅ CORRECTO: "Se detectaron ${totalNegativas} incidencias NEGATIVAS, principalmente de asistencia y conducta, afectando a estudiantes y requiriendo intervención. Dos incidencias NEGATIVAS fueron catalogadas como graves."
+
+❌ INCORRECTO: "Dos incidencias fueron catalogadas como graves" (falta especificar NEGATIVAS)
+❌ INCORRECTO: "Se detectaron incidencias de asistencia" (falta especificar NEGATIVAS)
+❌ INCORRECTO: "El porcentaje de incidencias graves es alto" (falta especificar NEGATIVAS)
+❌ INCORRECTO: "Se detectaron 4 incidencias, principalmente de asistencia y conducta. Dos incidencias fueron catalogadas como graves." (falta especificar NEGATIVAS en ambas menciones)
+
+CONTEXTO:
+- INCIDENCIAS POSITIVAS (${totalPositivas}): Son reconocimientos. NO requieren atención, son aspectos positivos.
+- INCIDENCIAS NEGATIVAS (${totalNegativas}): Son problemas que SÍ requieren atención: conducta, asistencia, académica.
+- El resumen debe enfocarse PRINCIPALMENTE en las incidencias NEGATIVAS (problemas que requieren atención).
+
+Datos completos: ${datosEstadisticos}
+
+INSTRUCCIONES FINALES:
+- Genera SOLO un resumen ejecutivo (2-3 líneas) sobre el análisis general del estado de incidencias
+- Enfócate en problemas que requieren atención (incidencias NEGATIVAS)
+- Menciona brevemente las positivas como contexto positivo
+- Sin títulos, sin alertas, sin recomendaciones
+- Solo texto descriptivo directo
+- RECUERDA: Cada vez que menciones "incidencias", DEBES agregar "POSITIVAS" o "NEGATIVAS" o usar "problemas"`,
           
-          alertas: `Identifica y describe las alertas más importantes basándote en los datos. 
+          alertas: `REGLAS OBLIGATORIAS DE REDACCION - LEER ANTES DE ESCRIBIR:
 
-Datos específicos:
-- Estudiantes con alto número de incidencias (5 o más): ${estudiantesRiesgo.length > 0 ? estudiantesRiesgo.map(([nombre, count]) => `${nombre} (${count})`).join(', ') : 'Ninguno'}
-- Profesores con reportes superiores al promedio: ${profesoresFueraPromedio.length > 0 ? profesoresFueraPromedio.map(([nombre, count]) => `${nombre} (${count})`).join(', ') : 'Ninguno'}
-- Porcentaje de incidencias graves: ${porcentajeGraves}% (${incidenciasGraves} de ${totalIncidencias})
-- Tipo de incidencia predominante: ${Object.entries(porTipo).sort(([_, a], [__, b]) => b - a)[0]?.[0] || 'N/A'}
+⚠️ REGLA #1: NUNCA digas solo "incidencias graves". SIEMPRE di "incidencias NEGATIVAS graves" o "problemas graves".
+⚠️ REGLA #2: NUNCA digas solo "incidencias". SIEMPRE di "incidencias NEGATIVAS" o "problemas".
+⚠️ REGLA #3: NUNCA digas "porcentaje de incidencias". SIEMPRE di "porcentaje de incidencias NEGATIVAS" o "porcentaje de problemas".
+⚠️ REGLA #4: NUNCA digas "incidencias de [tipo]". SIEMPRE di "incidencias NEGATIVAS de [tipo]" o "problemas de [tipo]".
+
+EJEMPLOS OBLIGATORIOS A SEGUIR:
+✅ CORRECTO: "El porcentaje de incidencias NEGATIVAS graves (50%) requiere atención"
+✅ CORRECTO: "El alto porcentaje de problemas graves (50%) requiere atención"
+✅ CORRECTO: "Las incidencias NEGATIVAS de asistencia son las más frecuentes"
+✅ CORRECTO: "Los problemas de asistencia requieren atención"
+
+❌ INCORRECTO: "El porcentaje de incidencias graves (50%) requiere atención"
+❌ INCORRECTO: "Las incidencias de asistencia son las más frecuentes"
+❌ INCORRECTO: "El porcentaje de incidencias requiere atención"
+
+CONTEXTO:
+- Las incidencias POSITIVAS (${totalPositivas}) son reconocimientos y NO requieren atención, por lo tanto NO generan alertas
+- SOLO las incidencias NEGATIVAS (${totalNegativas}) son problemas que SÍ requieren atención y generan alertas
+- Analiza ÚNICAMENTE problemas: conducta, asistencia, académica
+
+Datos de INCIDENCIAS NEGATIVAS que requieren atención (${totalNegativas} total):
+- Estudiantes con alto número de incidencias NEGATIVAS (5 o más): ${estudiantesRiesgo.length > 0 ? estudiantesRiesgo.map(([nombre, count]) => `${nombre} (${count} negativas)`).join(', ') : 'Ninguno'}
+- Profesores con reportes NEGATIVOS superiores al promedio: ${profesoresFueraPromedio.length > 0 ? profesoresFueraPromedio.map(([nombre, count]) => `${nombre} (${count} negativas)`).join(', ') : 'Ninguno'}
+- Incidencias NEGATIVAS GRAVES: ${incidenciasGraves} de ${totalIncidencias} incidencias totales (${porcentajeGraves}% del total)
+- IMPORTANTE: Existen ${totalGravesIncluyendoPositivas} incidencias graves en total, pero SOLO ${incidenciasGraves} son NEGATIVAS graves (las que requieren atención). Las ${totalGravesIncluyendoPositivas - incidenciasGraves} incidencias POSITIVAS graves NO se cuentan porque son reconocimientos y NO requieren atención.
+- Tipo de incidencia NEGATIVA predominante: ${Object.entries(porTipoNegativas).sort(([_, a], [__, b]) => b - a)[0]?.[0] || 'N/A'}
 
 Datos generales: ${datosEstadisticos}
 
-IMPORTANTE: 
-- Si no hay alertas críticas, indica que el estado general es positivo y los indicadores están dentro de rangos normales
+INSTRUCCIONES FINALES:
+- Identifica y describe las alertas más importantes basándote EXCLUSIVAMENTE en las INCIDENCIAS NEGATIVAS
+- Si no hay alertas críticas en las negativas, indica que el estado general es positivo
 - NO uses markdown, asteriscos, guiones, ni ningún formato especial
 - Solo texto plano y directo
 - Describe cada alerta en una o dos líneas, de forma clara y concisa
-- Sin títulos, sin resumen, sin recomendaciones`,
+- Sin títulos, sin resumen, sin recomendaciones
+- RECUERDA: Cada vez que menciones "incidencias", DEBES agregar "NEGATIVAS" o usar "problemas"`,
           
-          recomendaciones: `Genera 3-4 recomendaciones breves y específicas basándote en los datos de incidencias.
+          recomendaciones: `Genera 3-4 recomendaciones breves y específicas basándote en los datos.
 
-Datos: ${datosEstadisticos}
+CRÍTICO: Distingue claramente:
+- INCIDENCIAS POSITIVAS (${totalPositivas}): Son reconocimientos. NO requieren atención, pero es bueno incrementarlas como práctica positiva.
+- INCIDENCIAS NEGATIVAS (${totalNegativas}): Son problemas (conducta, asistencia, académica) que SÍ requieren atención y deben reducirse.
+
+REGLAS OBLIGATORIAS DE REDACCION:
+- SIEMPRE especifica el tipo: "incidencias POSITIVAS" o "incidencias NEGATIVAS" o "problemas"
+- NUNCA digas solo "incidencias" sin especificar si son positivas o negativas
+- Si mencionas gravedad, SIEMPRE di "incidencias NEGATIVAS graves" o "problemas graves", NUNCA solo "incidencias graves"
+- Si mencionas tipos (asistencia, conducta, académica), SIEMPRE di "incidencias NEGATIVAS de [tipo]" o "problemas de [tipo]"
+- Si recomiendas incrementar reconocimientos, di "incidencias POSITIVAS"
+- Si recomiendas reducir problemas, di "incidencias NEGATIVAS" o "problemas"
+
+Datos completos: ${datosEstadisticos}
 
 IMPORTANTE: 
-- Las recomendaciones "positivas" DEBEN INCREMENTARSE
-- Las incidencias de "ausencia", "conducta" y "académica" se deben PREVENIR o REDUCIR
+- El FOCO PRINCIPAL debe estar en REDUCIR las incidencias NEGATIVAS (problemas que requieren atención)
+- Las incidencias POSITIVAS NO requieren atención, pero puedes recomendar incrementarlas como práctica positiva
+- Prioriza recomendaciones para reducir problemas (negativas) sobre incrementar reconocimientos (positivas)
 - Escribe UNA recomendación por línea
 - Cada línea debe ser una recomendación completa e independiente
 - NO uses números, guiones, asteriscos ni ningún marcador al inicio
@@ -352,7 +448,7 @@ IMPORTANTE: Máximo 2 líneas por sección. Sin asteriscos ni markdown.`;
         });
         
         console.log(`📥 Respuesta HTTP para ${modelo.nombre}:`, geminiRes.status, geminiRes.statusText);
-        
+    
         if (geminiRes.ok) {
           modeloUsado = modelo.nombre;
           console.log(`✅ Modelo ${modelo.nombre} funcionó correctamente`);

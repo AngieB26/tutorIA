@@ -1,7 +1,7 @@
 'use client';
 
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Fragment } from 'react';
 import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles, User, AlertTriangle, CheckCircle, Calendar, BarChart3, CheckCircle2, X, Eye, FileText, TrendingUp, Shield, Target, AlertCircle, Download, Users, Upload, Plus, Trash2, Edit2, Bell, RefreshCw } from 'lucide-react';
+import { Sparkles, User, AlertTriangle, CheckCircle, Calendar, BarChart3, CheckCircle2, X, Eye, FileText, TrendingUp, Shield, Target, AlertCircle, Download, Users, Upload, Plus, Trash2, Edit2, Bell, RefreshCw, Phone, Mail, GraduationCap, UserCircle, MapPin } from 'lucide-react';
 import { 
   fetchIncidencias,
   getIncidenciasDerivadas,
@@ -45,9 +45,11 @@ import {
   getIncidenciasVistas,
   marcarIncidenciaVista,
   marcarIncidenciasVistas,
+  recalcularContadoresAsistencia,
 } from '@/lib/api';
 import { Incidencia, ReporteIA, TipoDerivacion, Gravedad, TipoIncidencia, EstudianteInfo, Tutor, Clase, DiaSemana } from '@/lib/types';
 import { getTipoColor, getTipoLabel, getGravedadColor, getGravedadLabel } from '@/lib/utils';
+import { validateEmail, validatePhone, validateRequired, validateName, validateAge } from '@/lib/validation';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
@@ -428,6 +430,7 @@ export default function DirectorPage() {
 
   // Estados para incidencias derivadas
   const [incidenciasDerivadas, setIncidenciasDerivadas] = useState<Incidencia[]>([]);
+  const [reporteGeneralTab, setReporteGeneralTab] = useState<'resumen' | 'detallado' | 'graficos'>('resumen');
   const [filtroDerivacion, setFiltroDerivacion] = useState<TipoDerivacion | 'todas'>('todas');
 
   // Estado y handler para mostrar el modal de detalle de incidencia
@@ -444,7 +447,11 @@ export default function DirectorPage() {
       const res = await fetch('/api/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incidencias: incidenciasEstudiante, estudiante: selectedStudentName })
+        body: JSON.stringify({ 
+          incidencias: incidenciasEstudiante, 
+          estudiante: selectedStudentName,
+          estudianteId: selectedStudentId // Incluir ID para identificación precisa
+        })
       });
       if (!res.ok) throw new Error('Error al generar el reporte');
       const data = await res.json();
@@ -524,7 +531,14 @@ export default function DirectorPage() {
           } else {
             console.warn('⚠️ Estudiante no encontrado por nombre:', nombre);
             // Intentar buscar en estudiantesInfo local
-            const estudianteLocal = estudiantesInfo.find(e => e.nombre === nombre);
+            // Primero intentar buscar por ID si el nombre parece ser un UUID, si no por nombre
+            const esUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nombre);
+            const estudianteLocal = estudiantesInfo.find(e => {
+              if (esUUID && e.id) {
+                return e.id === nombre;
+              }
+              return e.nombre === nombre;
+            });
             if (estudianteLocal?.id) {
               console.log('✅ Estudiante encontrado en lista local, ID:', estudianteLocal.id);
               setSelectedStudentId(estudianteLocal.id);
@@ -546,10 +560,19 @@ export default function DirectorPage() {
             console.log(`📋 Detalles de incidencias:`, incidencias);
           setIncidenciasEstudiante(incidencias);
           } else {
-            console.log(`🔍 Buscando incidencias para estudiante nombre: ${nombreFinal}`);
-            const incidencias = await getIncidenciasCompletasByStudent(nombreFinal);
-            console.log(`📊 Incidencias recibidas del API: ${incidencias.length}`);
-            setIncidenciasEstudiante(incidencias);
+            // Fallback: intentar buscar por ID en estudiantesInfo primero, luego por nombre
+            const estudianteLocal = estudiantesInfo.find(e => e.nombre === nombreFinal);
+            if (estudianteLocal?.id) {
+              console.log(`🔍 Buscando incidencias para estudiante ID (desde lista local): ${estudianteLocal.id}`);
+              const incidencias = await getIncidenciasCompletasByStudent(estudianteLocal.id);
+              console.log(`📊 Incidencias recibidas del API: ${incidencias.length}`);
+              setIncidenciasEstudiante(incidencias);
+            } else {
+              console.log(`🔍 Buscando incidencias para estudiante nombre: ${nombreFinal}`);
+              const incidencias = await getIncidenciasCompletasByStudent(nombreFinal);
+              console.log(`📊 Incidencias recibidas del API: ${incidencias.length}`);
+              setIncidenciasEstudiante(incidencias);
+            }
           }
         } catch (error) {
           console.error('❌ Error cargando incidencias del estudiante:', error);
@@ -575,28 +598,62 @@ export default function DirectorPage() {
   const [activeTab, setActiveTab] = useState<TabType>('derivadas');
   const [refreshKey, setRefreshKey] = useState(0); // Para forzar re-render después de importar
   
-  // Cargar lista completa de estudiantes al montar y cuando cambie refreshKey
+  const [adminSubTab, setAdminSubTab] = useState<'estudiantes' | 'profesores' | 'grados' | 'cursos'>('estudiantes');
+  const [estudiantesInfo, setEstudiantesInfo] = useState<EstudianteInfo[]>([]);
+  const [tutores, setTutores] = useState<Tutor[]>([]);
+  const [clases, setClases] = useState<Clase[]>([]);
+  const [grados, setGrados] = useState<string[]>([]);
+  const [secciones, setSecciones] = useState<string[]>([]);
+
+  // OPTIMIZACIÓN: Cargar todos los datos en paralelo en un solo useEffect
   useEffect(() => {
-    const loadData = async () => {
+    const loadAllData = async () => {
       try {
-        const info = await fetchEstudiantes();
-        console.log('Estudiantes cargados:', info.length, info);
-        
+        // Cargar todos los datos independientes en paralelo
+        const [
+          estudiantesData,
+          tutoresData,
+          clasesData,
+          gradosData,
+          seccionesData,
+          asignacionesData,
+          incidenciasData
+        ] = await Promise.all([
+          fetchEstudiantes(),
+          fetchTutores(),
+          fetchClases(),
+          getGrados(),
+          getSecciones(),
+          fetchTutoresGradoSeccion(), // OPTIMIZACIÓN: Cargar todas las asignaciones de una vez
+          getListaEstudiantes()
+        ]);
+
         // Si no hay estudiantes, ejecutar seed
-        if (info.length === 0) {
+        if (estudiantesData.length === 0) {
           console.log('No hay estudiantes, ejecutando seed...');
           try {
             const seedResponse = await fetch('/api/seed', { method: 'POST' });
             const seedData = await seedResponse.json();
-            console.log('Respuesta del seed:', seedData);
             if (seedData.success) {
               // Recargar estudiantes después del seed
-              const infoAfterSeed = await fetchEstudiantes();
-              console.log('Estudiantes después del seed:', infoAfterSeed.length);
-              const incidencias = await getListaEstudiantes();
-              const listaCompleta = infoAfterSeed.map((est: { nombre: string; grado?: string; seccion?: string }) => {
-                const inc = incidencias.find(i => i.nombre === est.nombre);
+              const estudiantesAfterSeed = await fetchEstudiantes();
+              const incidenciasAfterSeed = await getListaEstudiantes();
+              
+              const listaCompleta = estudiantesAfterSeed.map((est: any) => {
+                // Buscar incidencia SOLO por ID (no usar nombre)
+                const inc = incidenciasAfterSeed.find(i => {
+                  // REQUERIDO: Tanto el estudiante como la incidencia deben tener ID
+                  if (est.id && i.studentId) {
+                    return i.studentId === est.id;
+                  }
+                  // Si no hay ID en alguno, no hacer match (usar ID, no nombre)
+                  return false;
+                });
+                
+                console.log(`🔍 Estudiante: ${est.nombre} (ID: ${est.id || 'null'}) - Incidencias encontradas: ${inc ? inc.totalIncidencias : 0} (búsqueda por ID)`);
+                
                 return {
+                  id: est.id,
                   nombre: est.nombre,
                   grado: est.grado || '',
                   seccion: est.seccion || '',
@@ -605,18 +662,49 @@ export default function DirectorPage() {
                 };
               });
               setListaEstudiantes(listaCompleta);
+              setEstudiantesInfo(estudiantesAfterSeed);
               return;
             }
           } catch (seedError) {
             console.error('Error ejecutando seed:', seedError);
           }
         }
-        
-        const incidencias = await getListaEstudiantes();
-        // Unir ambos: si el estudiante no tiene incidencias, poner 0 y N/A
-        const listaCompleta = info.map((est: { nombre: string; grado?: string; seccion?: string }) => {
-          const inc = incidencias.find(i => i.nombre === est.nombre);
+
+        // Procesar datos
+        console.log('Estudiantes cargados:', estudiantesData.length);
+        setEstudiantesInfo(estudiantesData);
+        setTutores(tutoresData);
+        setClases(clasesData);
+        setGrados(gradosData);
+        setSecciones(seccionesData);
+
+        // Procesar asignaciones: convertir array a objeto Record
+        const asignacionesObj: Record<string, any> = {};
+        asignacionesData.forEach((asignacion: any) => {
+          if (asignacion.grado && asignacion.seccion) {
+            const key = `${asignacion.grado}-${asignacion.seccion}`;
+            asignacionesObj[key] = asignacion;
+          }
+        });
+        setAsignacionesTutores(asignacionesObj);
+
+        // Procesar lista de estudiantes con incidencias
+        // SOLO buscar por ID (no usar nombre)
+        const listaCompleta = estudiantesData.map((est: any) => {
+          // Buscar incidencia SOLO por ID (no usar nombre)
+          const inc = incidenciasData.find(i => {
+            // REQUERIDO: Tanto el estudiante como la incidencia deben tener ID
+            if (est.id && i.studentId) {
+              return i.studentId === est.id;
+            }
+            // Si no hay ID en alguno, no hacer match (usar ID, no nombre)
+            return false;
+          });
+          
+          console.log(`🔍 Estudiante: ${est.nombre} (ID: ${est.id || 'null'}) - Incidencias encontradas: ${inc ? inc.totalIncidencias : 0} (búsqueda por ID)`);
+          
           return {
+            id: est.id,
             nombre: est.nombre,
             grado: est.grado || '',
             seccion: est.seccion || '',
@@ -624,109 +712,20 @@ export default function DirectorPage() {
             ultimaIncidencia: inc ? inc.ultimaIncidencia : 'N/A',
           };
         });
-        console.log('Lista completa de estudiantes:', listaCompleta.length, listaCompleta);
         setListaEstudiantes(listaCompleta);
       } catch (error) {
-        console.error('Error cargando lista de estudiantes:', error);
+        console.error('Error cargando datos:', error);
+        // Establecer valores por defecto en caso de error
+        setEstudiantesInfo([]);
+        setTutores([]);
+        setClases([]);
+        setGrados(['1ro', '2do', '3ro', '4to', '5to']);
+        setSecciones(['A', 'B', 'C']);
+        setAsignacionesTutores({});
         setListaEstudiantes([]);
       }
     };
-    loadData();
-  }, [refreshKey]);
-  
-  const [adminSubTab, setAdminSubTab] = useState<'estudiantes' | 'profesores' | 'grados' | 'cursos'>('estudiantes');
-  const [estudiantesInfo, setEstudiantesInfo] = useState<EstudianteInfo[]>([]);
-  const [tutores, setTutores] = useState<Tutor[]>([]);
-  const [clases, setClases] = useState<Clase[]>([]);
-  const [grados, setGrados] = useState<string[]>([]);
-  const [secciones, setSecciones] = useState<string[]>([]);
-
-  // Cargar estudiantes al inicio y cuando cambie refreshKey
-  useEffect(() => {
-    const loadEstudiantes = async () => {
-      try {
-        const estudiantes = await fetchEstudiantes();
-        console.log('EstudiantesInfo cargados:', estudiantes.length, estudiantes);
-        setEstudiantesInfo(estudiantes);
-      } catch (error) {
-        console.error('Error cargando estudiantes:', error);
-        setEstudiantesInfo([]);
-      }
-    };
-    loadEstudiantes();
-  }, [refreshKey]);
-
-  // Cargar tutores al inicio y cuando cambie refreshKey
-  useEffect(() => {
-    const loadTutores = async () => {
-      try {
-        const tutoresData = await fetchTutores();
-        setTutores(tutoresData);
-      } catch (error) {
-        console.error('Error cargando tutores:', error);
-        setTutores([]);
-      }
-    };
-    loadTutores();
-  }, [refreshKey]);
-
-  // Cargar asignaciones de tutores por grado y sección
-  useEffect(() => {
-    const loadAsignaciones = async () => {
-      try {
-        const grados = await getGrados();
-        const secciones = await getSecciones();
-        const asignaciones: Record<string, any> = {};
-        
-        for (const grado of grados) {
-          for (const seccion of secciones) {
-            const key = `${grado}-${seccion}`;
-            const asignacion = await getTutorGradoSeccion(grado, seccion);
-            if (asignacion) {
-              asignaciones[key] = asignacion;
-            }
-          }
-        }
-        
-        setAsignacionesTutores(asignaciones);
-      } catch (error) {
-        console.error('Error cargando asignaciones:', error);
-        setAsignacionesTutores({});
-      }
-    };
-    loadAsignaciones();
-  }, [refreshKey]);
-
-  // Cargar clases al inicio y cuando cambie refreshKey
-  useEffect(() => {
-    const loadClases = async () => {
-      try {
-        const clasesData = await fetchClases();
-        console.log('📚 Clases cargadas:', clasesData.length, clasesData.map(c => ({ nombre: c.nombre, dias: c.dias, diasType: typeof c.dias, diasIsArray: Array.isArray(c.dias) })));
-        setClases(clasesData);
-      } catch (error) {
-        console.error('Error cargando clases:', error);
-        setClases([]);
-      }
-    };
-    loadClases();
-  }, [refreshKey]);
-
-  // Cargar grados y secciones al inicio y cuando cambie refreshKey
-  useEffect(() => {
-    const loadGradosSecciones = async () => {
-      try {
-        const gradosData = await getGrados();
-        const seccionesData = await getSecciones();
-        setGrados(gradosData);
-        setSecciones(seccionesData);
-      } catch (error) {
-        console.error('Error cargando grados y secciones:', error);
-        setGrados(['1ro', '2do', '3ro', '4to', '5to']);
-        setSecciones(['A', 'B', 'C']);
-      }
-    };
-    loadGradosSecciones();
+    loadAllData();
   }, [refreshKey]);
 
   // Cargar incidencias derivadas al inicio y cuando cambie refreshKey o filtroDerivacion
@@ -817,10 +816,32 @@ export default function DirectorPage() {
   const [filtroAdminGrado, setFiltroAdminGrado] = useState('');
   const [filtroAdminSeccion, setFiltroAdminSeccion] = useState('');
   const [busquedaAdminEstudiante, setBusquedaAdminEstudiante] = useState('');
-  const [estudianteEditandoAdmin, setEstudianteEditandoAdmin] = useState<string | null>(null);
+  const [estudianteEditandoAdmin, setEstudianteEditandoAdmin] = useState<string | null>(null); // Almacena ID cuando está disponible, si no nombre
   const [formularioCerradoKey, setFormularioCerradoKey] = useState(0); // Key para forzar re-render
   const [estudianteEditForm, setEstudianteEditForm] = useState<Partial<EstudianteInfo>>({});
   const [estudianteNombreOriginal, setEstudianteNombreOriginal] = useState<string | null>(null);
+  const [estudianteIdOriginal, setEstudianteIdOriginal] = useState<string | null>(null); // ID original para tracking completo
+  
+  // Estados para formulario de nuevo estudiante
+  const [mostrarFormularioNuevoEstudiante, setMostrarFormularioNuevoEstudiante] = useState(false);
+  const [nuevoEstudianteForm, setNuevoEstudianteForm] = useState<Partial<EstudianteInfo>>({
+    nombres: '',
+    apellidos: '',
+    grado: '',
+    seccion: '',
+    edad: undefined,
+    fechaNacimiento: '',
+    contacto: { telefono: '', email: '', nombre: '' },
+    tutor: { nombre: '', telefono: '', email: '' },
+    apoderado: {
+      nombre: '',
+      parentesco: '',
+      telefono: '',
+      telefonoAlternativo: '',
+      email: '',
+      direccion: ''
+    }
+  });
   
   // useEffect para asegurar que el formulario se cierre si estudianteEditandoAdmin tiene un valor pero no coincide con ningún estudiante
   // IMPORTANTE: Este useEffect debe estar DESPUÉS de todas las declaraciones de estado que usa
@@ -838,6 +859,7 @@ export default function DirectorPage() {
         setEstudianteEditandoAdmin(null);
         setEstudianteEditForm({});
         setEstudianteNombreOriginal(null);
+        setEstudianteIdOriginal(null);
       }
     }
   }, [estudiantesInfo, estudianteEditandoAdmin]);
@@ -857,6 +879,7 @@ export default function DirectorPage() {
   const [archivoExcelProfesores, setArchivoExcelProfesores] = useState<File | null>(null);
   const [datosExcelEstudiantes, setDatosExcelEstudiantes] = useState<any[]>([]);
   const [datosExcelProfesores, setDatosExcelProfesores] = useState<any[]>([]);
+  const [mensajeImportacion, setMensajeImportacion] = useState<{ tipo: 'success' | 'error'; mensaje: string; detalles?: string } | null>(null);
   
   // Filtros para administración de grados y secciones
   const [filtroTutoresGrado, setFiltroTutoresGrado] = useState('');
@@ -874,6 +897,14 @@ export default function DirectorPage() {
   // Estados para notificaciones
   const [incidenciasVistas, setIncidenciasVistas] = useState<Set<string>>(new Set());
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
+
+  // Estados para lista de estudiantes (declarados antes del useEffect que los usa)
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudentName, setSelectedStudentName] = useState<string | null>(null); // Para mostrar en UI
+
+  // Estados para filtros de fecha (declarados antes del useEffect que los usa)
+  const [fechaInicio, setFechaInicio] = useState<string>('');
+  const [fechaFin, setFechaFin] = useState<string>('');
 
   // Cargar incidencias vistas desde la base de datos al montar
   useEffect(() => {
@@ -903,7 +934,7 @@ export default function DirectorPage() {
     };
     loadIncidencias();
   }, [refreshKey, activeTab]); // Agregar activeTab para recargar cuando se cambia al tab de incidencias
-
+  
   // Actualizar incidencias cuando se cambia al tab de incidencias
   useEffect(() => {
     if (activeTab === 'incidencias') {
@@ -937,35 +968,17 @@ export default function DirectorPage() {
                 }
                 return prev;
               });
-          } catch (error) {
+      } catch (error) {
           console.error('Error actualizando incidencias periódicamente:', error);
-        }
+      }
       }, 5000); // Actualizar cada 5 segundos
 
       return () => clearInterval(interval);
     }
   }, [activeTab]);
   
-  // Cargar incidencias vistas desde localStorage solo una vez al montar (respaldo, aunque ya se carga en la inicialización)
-  useEffect(() => {
-    // Solo cargar si el estado está vacío (por si acaso no se cargó en la inicialización)
-    if (incidenciasVistas.size === 0 && typeof window !== 'undefined') {
-      try {
-        const vistasStr = localStorage.getItem('incidencias_vistas');
-        if (vistasStr) {
-          const vistasArray = JSON.parse(vistasStr);
-          // Validar que sean strings válidos y filtrar valores nulos/undefined
-          const idsValidos = vistasArray.filter((id: any) => id && typeof id === 'string' && id.trim() !== '');
-          if (idsValidos.length > 0) {
-            console.log('📥 Incidencias vistas cargadas desde localStorage en useEffect (respaldo):', idsValidos.length);
-            setIncidenciasVistas(new Set(idsValidos));
-          }
-        }
-      } catch (error) {
-        console.error('Error cargando incidencias vistas:', error);
-      }
-    }
-  }, []); // Solo se ejecuta una vez al montar
+  // Las incidencias vistas se cargan desde la BASE DE DATOS en el useEffect de arriba (línea ~880)
+  // Ya no se usa localStorage - todo se maneja desde la base de datos // Solo se ejecuta una vez al montar
   
   // Cerrar dropdown de notificaciones al hacer clic fuera
   useEffect(() => {
@@ -1011,14 +1024,23 @@ export default function DirectorPage() {
       if (nuevaId && typeof nuevaId === 'string') {
         console.log('📢 Nueva incidencia registrada, recargando lista para mostrar en notificaciones:', nuevaId);
         // NO marcar como vista automáticamente - debe aparecer en notificaciones
-        // Solo recargar las incidencias para que aparezca la nueva
+        // Recargar las incidencias generales inmediatamente para actualizar métricas
+        try {
+          // Recargar incidencias generales según los filtros actuales
+          const nuevasIncidencias = fechaInicio && fechaFin
+            ? await fetchIncidencias({ fechaInicio, fechaFin })
+            : await fetchIncidencias();
+          setIncidenciasGenerales(nuevasIncidencias);
+          console.log('✅ Incidencias generales actualizadas:', nuevasIncidencias.length);
+        } catch (error) {
+          console.error('❌ Error recargando incidencias generales:', error);
+        }
+        
         setTimeout(() => {
           setRefreshKey(prev => {
             console.log('🔄 Actualizando refreshKey para mostrar nueva incidencia:', prev + 1);
             return prev + 1;
           });
-          // El useEffect que maneja fechaInicio/fechaFin se encargará de actualizar incidenciasGenerales
-          // Solo necesitamos disparar un re-render
         }, 200);
         
         // Si estamos viendo el perfil de un estudiante, recargar sus incidencias
@@ -1041,9 +1063,20 @@ export default function DirectorPage() {
     };
 
     // Handler para cuando se actualiza una incidencia (cambio de estado, etc.)
-    const handleIncidenciaActualizada = (e: Event) => {
+    const handleIncidenciaActualizada = async (e: Event) => {
       const customEvent = e as CustomEvent;
       console.log('🔔 Evento incidenciaActualizada recibido:', customEvent.detail);
+      // Recargar incidencias generales inmediatamente para actualizar métricas
+      try {
+        // Recargar incidencias generales según los filtros actuales
+        const nuevasIncidencias = fechaInicio && fechaFin
+          ? await fetchIncidencias({ fechaInicio, fechaFin })
+          : await fetchIncidencias();
+        setIncidenciasGenerales(nuevasIncidencias);
+        console.log('✅ Incidencias generales actualizadas por cambio:', nuevasIncidencias.length);
+      } catch (error) {
+        console.error('❌ Error recargando incidencias generales:', error);
+      }
       // Recargar incidencias cuando se actualiza una incidencia
       setTimeout(() => {
         setRefreshKey(prev => {
@@ -1106,7 +1139,7 @@ export default function DirectorPage() {
       window.removeEventListener('abrirIncidenciaDesdeNotificacionNavbar', handleAbrirIncidenciaDesdeNavbar as EventListener);
       window.removeEventListener('incidenciaActualizada', handleIncidenciaActualizada as EventListener);
     };
-  }, [incidencias]);
+  }, [incidencias, selectedStudentId, selectedStudentName, fechaInicio, fechaFin]);
   
   // Obtener nuevas incidencias (no vistas) - usar useMemo para evitar recálculos innecesarios
   const nuevasIncidencias = useMemo(() => {
@@ -1157,9 +1190,7 @@ export default function DirectorPage() {
   const [ordenFecha, setOrdenFecha] = useState<'reciente' | 'antiguo'>('reciente');
   
   // Estados para lista de estudiantes
-  const [listaEstudiantes, setListaEstudiantes] = useState<Array<{ nombre: string; totalIncidencias: number; ultimaIncidencia: string; grado: string; seccion: string }>>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [selectedStudentName, setSelectedStudentName] = useState<string | null>(null); // Para mostrar en UI
+  const [listaEstudiantes, setListaEstudiantes] = useState<Array<{ id?: string; nombre: string; totalIncidencias: number; ultimaIncidencia: string; grado: string; seccion: string }>>([]);
   const [incidenciasEstudiante, setIncidenciasEstudiante] = useState<Incidencia[]>([]);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reporte, setReporte] = useState<ReporteIA | null>(null);
@@ -1207,6 +1238,21 @@ export default function DirectorPage() {
               }
             }
             setInfoEdit(estudianteInfo);
+            // Si los contadores están como null, recalcular automáticamente
+            if ((estudianteInfo.asistencias === null || estudianteInfo.asistencias === undefined) &&
+                (estudianteInfo.ausencias === null || estudianteInfo.ausencias === undefined) &&
+                (estudianteInfo.tardanzas === null || estudianteInfo.tardanzas === undefined)) {
+              try {
+                await recalcularContadoresAsistencia();
+                // Recargar información del estudiante después de recalcular
+                const estudianteActualizado = await fetchEstudianteById(selectedStudentId);
+                if (estudianteActualizado) {
+                  setInfoEdit(estudianteActualizado);
+                }
+              } catch (error) {
+                console.error('Error recalculando contadores automáticamente:', error);
+              }
+            }
             setFotoPreview(estudianteInfo?.fotoPerfil || '');
             setEditando(false);
           }
@@ -1258,6 +1304,97 @@ export default function DirectorPage() {
         toast.error('No hay información para guardar');
         setGuardandoEstudiante(false);
         return;
+      }
+
+      // Validaciones
+      if (infoEdit.nombres) {
+        const nombreValidation = validateName(infoEdit.nombres, 'El nombre');
+        if (!nombreValidation.isValid) {
+          toast.error(nombreValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.apellidos) {
+        const apellidoValidation = validateName(infoEdit.apellidos, 'El apellido');
+        if (!apellidoValidation.isValid) {
+          toast.error(apellidoValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.edad) {
+        const edadValidation = validateAge(infoEdit.edad);
+        if (!edadValidation.isValid) {
+          toast.error(edadValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.contacto?.email) {
+        const emailValidation = validateEmail(infoEdit.contacto.email);
+        if (!emailValidation.isValid) {
+          toast.error(emailValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.contacto?.telefono) {
+        const phoneValidation = validatePhone(infoEdit.contacto.telefono);
+        if (!phoneValidation.isValid) {
+          toast.error(phoneValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.tutor?.email) {
+        const emailValidation = validateEmail(infoEdit.tutor.email);
+        if (!emailValidation.isValid) {
+          toast.error(emailValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.tutor?.telefono) {
+        const phoneValidation = validatePhone(infoEdit.tutor.telefono);
+        if (!phoneValidation.isValid) {
+          toast.error(phoneValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.apoderado?.email) {
+        const emailValidation = validateEmail(infoEdit.apoderado.email);
+        if (!emailValidation.isValid) {
+          toast.error(emailValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.apoderado?.telefono) {
+        const phoneValidation = validatePhone(infoEdit.apoderado.telefono);
+        if (!phoneValidation.isValid) {
+          toast.error(phoneValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
+      }
+
+      if (infoEdit.apoderado?.telefonoAlternativo) {
+        const phoneValidation = validatePhone(infoEdit.apoderado.telefonoAlternativo);
+        if (!phoneValidation.isValid) {
+          toast.error(phoneValidation.error);
+          setGuardandoEstudiante(false);
+          return;
+        }
       }
 
       console.log('📝 Datos a guardar:', infoEdit);
@@ -1440,9 +1577,9 @@ export default function DirectorPage() {
       // Esperar un momento adicional para asegurar que las incidencias se actualizaron en la BD
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Recargar incidencias con el nuevo nombre (siempre, para asegurar que estén actualizadas)
-      console.log(`🔄 Recargando incidencias con nombre: "${nombreCompletoNuevo}"`);
-      const nuevasIncidencias = await getIncidenciasCompletasByStudent(nombreCompletoNuevo);
+      // Recargar incidencias usando el ID del estudiante (más confiable que el nombre)
+      console.log(`🔄 Recargando incidencias con ID: "${estudianteId}"`);
+      const nuevasIncidencias = await getIncidenciasCompletasByStudent(estudianteId);
       
       setIncidenciasEstudiante(nuevasIncidencias);
       console.log(`✅ ${nuevasIncidencias.length} incidencias recargadas`);
@@ -1461,14 +1598,36 @@ export default function DirectorPage() {
         const lista = await getListaEstudiantes();
         const info = await fetchEstudiantes();
         // Unir ambas fuentes para asegurar que todos los estudiantes estén presentes
-        const nombresUnicos = Array.from(new Set([
-          ...info.map((i: any) => i.nombre),
-          ...lista.map((e: any) => e.nombre)
+        // Usar IDs cuando estén disponibles, si no usar nombres
+        const identificadoresUnicos = Array.from(new Set([
+          ...info.map((i: any) => i.id || i.nombre).filter(Boolean),
+          ...lista.map((e: any) => e.id || e.nombre).filter(Boolean)
         ]));
-        const listaFinal = nombresUnicos.map((nombre: string) => {
-          const estInfo = info.find((i: any) => i.nombre === nombre);
-          const inc = lista.find((e: any) => e.nombre === nombre);
+        const listaFinal = identificadoresUnicos.map((identificador: string) => {
+          // Intentar buscar por ID primero, si no por nombre
+          const esUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identificador);
+          const estInfo = info.find((i: any) => {
+            if (esUUID && i.id) {
+              return i.id === identificador;
+            }
+            return i.id === identificador || i.nombre === identificador;
+          });
+          const inc = lista.find((e: any) => {
+            // SOLO buscar por ID (no usar nombre)
+            // Si el identificador es un UUID, buscar por studentId primero
+            if (esUUID && e.studentId) {
+              return e.studentId === identificador;
+            }
+            // Si el identificador es un UUID y tenemos id en la lista, buscar por id
+            if (esUUID && e.id) {
+              return e.id === identificador;
+            }
+            // Si no es UUID, buscar por id (no por nombre)
+            return e.id === identificador;
+          });
+          const nombre = estInfo?.nombre || inc?.nombre || identificador;
           return {
+            id: estInfo?.id || (inc as any)?.id,
             nombre,
             grado: estInfo?.grado || (inc as any)?.grado || '',
             seccion: estInfo?.seccion || (inc as any)?.seccion || '',
@@ -1499,8 +1658,6 @@ export default function DirectorPage() {
   };
   
   // Estados para reporte general
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
   const [incidenciasGenerales, setIncidenciasGenerales] = useState<Incidencia[]>([]);
   const [generatingGeneralReport, setGeneratingGeneralReport] = useState(false);
   const [reporteGeneral, setReporteGeneral] = useState<ReporteIA | null>(null);
@@ -1555,14 +1712,49 @@ export default function DirectorPage() {
   };
 
   // --- Handler para generar el análisis general con IA ---
-  const generateGeneralReport = async (incidencias: Incidencia[]) => {
+  const generateGeneralReport = async (incidencias?: Incidencia[]) => {
     setGeneratingGeneralReport(true);
     setReporteGeneral(null);
     try {
+      // Recargar incidencias desde la base de datos en tiempo real antes de generar el reporte
+      // Esto asegura que el análisis use los mismos datos que los gráficos y otros componentes
+      let incidenciasActualizadas: Incidencia[];
+      if (fechaInicio && fechaFin) {
+        // Si hay filtros de fecha, usar esos filtros
+        incidenciasActualizadas = await fetchIncidencias({ fechaInicio, fechaFin });
+      } else {
+        // Si no hay filtros, cargar todas las incidencias
+        incidenciasActualizadas = await fetchIncidencias();
+      }
+      
+      // Actualizar el estado con las incidencias más recientes de forma síncrona
+      // Esto asegura que todos los componentes (gráficos, estadísticas, etc.) usen los mismos datos
+      flushSync(() => {
+        setIncidenciasGenerales(incidenciasActualizadas);
+      });
+      
+      // Usar las incidencias actualizadas para el análisis
+      // Estas son exactamente las mismas que ahora están en el estado incidenciasGenerales
+      // Todos los componentes (gráficos, estadísticas, etc.) usarán estos mismos datos
+      const incidenciasParaAnalisis = incidenciasActualizadas;
+      
+      console.log('📊 Generando análisis con', incidenciasParaAnalisis.length, 'incidencias actualizadas en tiempo real');
+      console.log('📊 Datos sincronizados: análisis, gráficos y componentes usan los mismos datos');
+      console.log('📊 Estadísticas:', {
+        total: incidenciasParaAnalisis.length,
+        porTipo: {
+          asistencia: incidenciasParaAnalisis.filter(i => i.tipo === 'asistencia').length,
+          conducta: incidenciasParaAnalisis.filter(i => i.tipo === 'conducta').length,
+          academica: incidenciasParaAnalisis.filter(i => i.tipo === 'academica').length,
+          positivo: incidenciasParaAnalisis.filter(i => i.tipo === 'positivo').length,
+        },
+        graves: incidenciasParaAnalisis.filter(i => i.gravedad === 'grave' && i.tipo !== 'positivo').length
+      });
+      
       const res = await fetch('/api/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incidencias, estudiante: 'Reporte General' })
+        body: JSON.stringify({ incidencias: incidenciasParaAnalisis, estudiante: 'Reporte General' })
       });
       if (!res.ok) throw new Error('Error al generar el reporte');
       const data = await res.json();
@@ -1596,8 +1788,9 @@ export default function DirectorPage() {
       // Pequeño delay para evitar regeneraciones muy frecuentes
       const timeoutId = setTimeout(() => {
         // Verificar que aún estamos en la pestaña correcta y no se está generando
+        // No pasar parámetros, la función recargará los datos en tiempo real
         if (!generatingGeneralReport && activeTab === 'general' && typeof generateGeneralReport === 'function') {
-          generateGeneralReport(incidenciasGenerales);
+          generateGeneralReport();
         }
       }, 1500);
       return () => clearTimeout(timeoutId);
@@ -1607,91 +1800,170 @@ export default function DirectorPage() {
 
   // --- Handler para exportar reporte a PDF ---
   const handleExportPDF = async () => {
+    let contenedorTemporal: HTMLElement | null = null;
+    
     try {
-      const element = document.getElementById('reporte-general-export');
-      if (!element) {
-        toast.error('No se encontró el contenido para exportar');
+      toast.loading('Generando PDF con todas las secciones...', { id: 'export-pdf' });
+      
+      // Crear un contenedor temporal oculto para capturar todas las pestañas
+      contenedorTemporal = document.createElement('div');
+      contenedorTemporal.style.position = 'absolute';
+      contenedorTemporal.style.left = '-9999px';
+      contenedorTemporal.style.top = '0';
+      contenedorTemporal.style.width = '800px';
+      contenedorTemporal.style.backgroundColor = '#ffffff';
+      document.body.appendChild(contenedorTemporal);
+
+      // Obtener los elementos de cada pestaña
+      const resumenElement = document.getElementById('reporte-resumen-export');
+      const detalladoElement = document.getElementById('reporte-detallado-export');
+      const graficosElement = document.getElementById('reporte-graficos-export');
+      
+      if (!resumenElement || !detalladoElement || !graficosElement) {
+        if (contenedorTemporal && document.body.contains(contenedorTemporal)) {
+          document.body.removeChild(contenedorTemporal);
+        }
+        toast.error('No se encontró el contenido para exportar', { id: 'export-pdf' });
         return;
       }
 
-      toast.loading('Generando PDF...', { id: 'export-pdf' });
-      
-      // Configuración para html2canvas
-      const canvas = await html2canvas(element, {
-        scale: 2, // Resolución balanceada
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
+      // Guardar estados originales de display para restaurarlos después
+      const originalDisplays = {
+        resumen: resumenElement.style.display,
+        detallado: detalladoElement.style.display,
+        graficos: graficosElement.style.display
+      };
+
+      // Temporalmente mostrar todos los elementos para que html2canvas los capture
+      resumenElement.style.display = 'block';
+      detalladoElement.style.display = 'block';
+      graficosElement.style.display = 'block';
+
+      // Clonar y mostrar todos los elementos en el contenedor temporal
+      const clones = [
+        { element: resumenElement.cloneNode(true) as HTMLElement, titulo: 'RESUMEN EJECUTIVO' },
+        { element: detalladoElement.cloneNode(true) as HTMLElement, titulo: 'ANÁLISIS DETALLADO' },
+        { element: graficosElement.cloneNode(true) as HTMLElement, titulo: 'GRÁFICOS Y TENDENCIAS' }
+      ];
+
+      clones.forEach(clone => {
+        clone.element.style.display = 'block';
+        clone.element.style.visibility = 'visible';
+        clone.element.style.opacity = '1';
+        clone.element.style.position = 'relative';
+        if (contenedorTemporal) {
+          contenedorTemporal.appendChild(clone.element);
+        }
       });
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      
-      // Calcular dimensiones del PDF
+      // Restaurar estados originales de display
+      resumenElement.style.display = originalDisplays.resumen || '';
+      detalladoElement.style.display = originalDisplays.detallado || '';
+      graficosElement.style.display = originalDisplays.graficos || '';
+
+      // Esperar un momento para que se rendericen los elementos
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = 210; // A4 width in mm
       const pdfHeight = 297; // A4 height in mm
       const margin = 10; // Margen en mm
       const contentWidth = pdfWidth - (2 * margin);
       const contentHeight = pdfHeight - (2 * margin);
-      
-      // Calcular dimensiones de la imagen escalada para que quepa en el ancho disponible
-      const imgWidth = contentWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // Si la imagen cabe en una página
-      if (imgHeight <= contentHeight) {
-        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-      } else {
-        // Dividir en múltiples páginas
-        // Calcular el factor de escala entre el canvas y el PDF
+
+      let yPosition = margin;
+      let isFirstPage = true;
+
+      for (const seccion of clones) {
+        // Agregar título de sección
+        if (!isFirstPage || yPosition > margin + 20) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(seccion.titulo, margin, yPosition);
+        yPosition += 10;
+
+        // Capturar la sección
+        const canvas = await html2canvas(seccion.element, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const imgWidth = contentWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
         const pixelsPerMm = canvas.height / imgHeight;
         const contentHeightInPixels = contentHeight * pixelsPerMm;
         const totalPages = Math.ceil(imgHeight / contentHeight);
-        
-        for (let page = 0; page < totalPages; page++) {
-          if (page > 0) {
-            pdf.addPage();
-          }
-          
-          // Calcular qué parte de la imagen (en píxeles) mostrar en esta página
-          const sourceYInPixels = page * contentHeightInPixels;
-          const sourceHeightInPixels = Math.min(contentHeightInPixels, canvas.height - sourceYInPixels);
-          
-          // Crear un canvas temporal para esta porción de la imagen
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = canvas.width;
-          tempCanvas.height = sourceHeightInPixels;
-          const tempCtx = tempCanvas.getContext('2d');
-          
-          if (tempCtx) {
-            // Dibujar la porción correspondiente de la imagen original
-            tempCtx.drawImage(
-              canvas,
-              0, sourceYInPixels,                    // Source: inicio en la imagen original
-              canvas.width, sourceHeightInPixels,    // Source: tamaño de la porción
-              0, 0,                                  // Destination: posición en el canvas temporal
-              canvas.width, sourceHeightInPixels     // Destination: tamaño en el canvas temporal
-            );
+
+        // Si la sección cabe en la página actual
+        if (yPosition + imgHeight <= pdfHeight - margin) {
+          pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
+          yPosition += imgHeight + 10;
+        } else {
+          // Dividir en múltiples páginas
+          for (let page = 0; page < totalPages; page++) {
+            if (page > 0 || yPosition > margin + 20) {
+              pdf.addPage();
+              yPosition = margin;
+            }
             
-            const pageImgData = tempCanvas.toDataURL('image/png', 1.0);
-            const pageImgHeight = (sourceHeightInPixels * imgWidth) / canvas.width;
-            pdf.addImage(pageImgData, 'PNG', margin, margin, imgWidth, pageImgHeight);
+            const sourceYInPixels = page * contentHeightInPixels;
+            const sourceHeightInPixels = Math.min(contentHeightInPixels, canvas.height - sourceYInPixels);
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = sourceHeightInPixels;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            if (tempCtx) {
+              tempCtx.drawImage(
+                canvas,
+                0, sourceYInPixels,
+                canvas.width, sourceHeightInPixels,
+                0, 0,
+                canvas.width, sourceHeightInPixels
+              );
+              
+              const pageImgData = tempCanvas.toDataURL('image/png', 1.0);
+              const pageImgHeight = (sourceHeightInPixels * imgWidth) / canvas.width;
+              pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgWidth, pageImgHeight);
+              yPosition += pageImgHeight + 10;
+            }
           }
         }
+        
+        isFirstPage = false;
       }
 
       // Generar nombre del archivo con fecha
       const fecha = new Date().toISOString().split('T')[0];
-      const nombreArchivo = `Reporte_General_${fecha}.pdf`;
+      const nombreArchivo = `Reporte_General_Completo_${fecha}.pdf`;
       
       // Descargar PDF
       pdf.save(nombreArchivo);
       
-      toast.success('PDF generado exitosamente', { id: 'export-pdf' });
+      toast.success('PDF generado exitosamente con todas las secciones', { id: 'export-pdf' });
     } catch (error) {
       console.error('Error generando PDF:', error);
-      toast.error('Error al generar el PDF', { id: 'export-pdf' });
+      toast.error('Error al generar el PDF. Verifica la consola para más detalles.', { id: 'export-pdf' });
+    } finally {
+      // Siempre limpiar el contenedor temporal
+      if (contenedorTemporal && document.body.contains(contenedorTemporal)) {
+        document.body.removeChild(contenedorTemporal);
+      }
+      // Asegurar que los elementos originales vuelvan a su estado correcto
+      const resumenElement = document.getElementById('reporte-resumen-export');
+      const detalladoElement = document.getElementById('reporte-detallado-export');
+      const graficosElement = document.getElementById('reporte-graficos-export');
+      if (resumenElement) resumenElement.style.display = reporteGeneralTab === 'resumen' ? 'block' : 'none';
+      if (detalladoElement) detalladoElement.style.display = reporteGeneralTab === 'detallado' ? 'block' : 'none';
+      if (graficosElement) graficosElement.style.display = reporteGeneralTab === 'graficos' ? 'block' : 'none';
     }
   };
 
@@ -1849,7 +2121,7 @@ export default function DirectorPage() {
                 </div>
                 {/* Grado */}
                 <div className="flex items-center gap-3">
-                  <label className="w-40 text-sm font-semibold text-gray-700">Grado *</label>
+                  <label className="w-40 text-sm font-semibold text-gray-700">Grado</label>
                   <Select value={mapeoEstudiantes['grado'] || 'none'} onValueChange={(value) => setMapeoEstudiantes({...mapeoEstudiantes, grado: value === 'none' ? '' : value})}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Selecciona una columna" />
@@ -1864,7 +2136,7 @@ export default function DirectorPage() {
                 </div>
                 {/* Sección */}
                 <div className="flex items-center gap-3">
-                  <label className="w-40 text-sm font-semibold text-gray-700">Sección *</label>
+                  <label className="w-40 text-sm font-semibold text-gray-700">Sección</label>
                   <Select value={mapeoEstudiantes['seccion'] || ''} onValueChange={(value) => setMapeoEstudiantes({...mapeoEstudiantes, seccion: value})}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Selecciona una columna" />
@@ -2032,25 +2304,45 @@ export default function DirectorPage() {
                 <Button variant="outline" onClick={() => setMostrarMapeoEstudiantes(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={async () => {
-                  if ((!mapeoEstudiantes['nombres'] || mapeoEstudiantes['nombres'] === 'none') || 
-                      (!mapeoEstudiantes['apellidos'] || mapeoEstudiantes['apellidos'] === 'none') ||
-                      !mapeoEstudiantes['grado'] || mapeoEstudiantes['grado'] === 'none' || 
-                      !mapeoEstudiantes['seccion'] || mapeoEstudiantes['seccion'] === 'none') {
-                    toast.error('Debes mapear los campos obligatorios: Nombres, Apellidos, Grado y Sección');
+                  <Button 
+                    type="button"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('🔵 Botón Importar clickeado');
+                      console.log('Mapeo actual:', mapeoEstudiantes);
+                      console.log('Datos Excel:', datosExcelEstudiantes.length, 'filas');
+                    
+                  // Validar solo campos obligatorios: Nombres y Apellidos
+                  const camposFaltantes: string[] = [];
+                  if (!mapeoEstudiantes['nombres'] || mapeoEstudiantes['nombres'] === 'none') {
+                    camposFaltantes.push('Nombres');
+                  }
+                  if (!mapeoEstudiantes['apellidos'] || mapeoEstudiantes['apellidos'] === 'none') {
+                    camposFaltantes.push('Apellidos');
+                  }
+                  
+                  if (camposFaltantes.length > 0) {
+                    console.log('❌ Validación fallida - campos obligatorios no mapeados:', camposFaltantes);
+                    toast.error(
+                      `Debes mapear los siguientes campos obligatorios: ${camposFaltantes.join(', ')}`,
+                      { duration: 5000 }
+                    );
                     return;
                   }
                   
                   try {
+                    console.log('✅ Validación pasada, iniciando importación...');
                     toast.loading('Importando estudiantes...', { id: 'import-estudiantes' });
                     const estudiantesImportados: EstudianteInfo[] = datosExcelEstudiantes.map((row: any, idx: number) => {
                       const nombres = mapeoEstudiantes['nombres'] && mapeoEstudiantes['nombres'] !== 'none' && row[mapeoEstudiantes['nombres']] ? String(row[mapeoEstudiantes['nombres']]).trim() : '';
                       const apellidos = mapeoEstudiantes['apellidos'] && mapeoEstudiantes['apellidos'] !== 'none' && row[mapeoEstudiantes['apellidos']] ? String(row[mapeoEstudiantes['apellidos']]).trim() : '';
-                      const grado = mapeoEstudiantes['grado'] && mapeoEstudiantes['grado'] !== 'none' && row[mapeoEstudiantes['grado']] ? String(row[mapeoEstudiantes['grado']]).trim() : '';
-                      const seccion = mapeoEstudiantes['seccion'] && mapeoEstudiantes['seccion'] !== 'none' && row[mapeoEstudiantes['seccion']] ? String(row[mapeoEstudiantes['seccion']]).trim() : '';
+                      const grado = mapeoEstudiantes['grado'] && mapeoEstudiantes['grado'] !== 'none' && row[mapeoEstudiantes['grado']] ? String(row[mapeoEstudiantes['grado']]).trim() : undefined;
+                      const seccion = mapeoEstudiantes['seccion'] && mapeoEstudiantes['seccion'] !== 'none' && row[mapeoEstudiantes['seccion']] ? String(row[mapeoEstudiantes['seccion']]).trim() : undefined;
                       
-                      if (!nombres || !apellidos || !grado || !seccion) {
-                        throw new Error(`Fila ${idx + 2}: Faltan datos obligatorios (Nombres, Apellidos, Grado, Sección)`);
+                      // Solo validar nombres y apellidos como obligatorios
+                      if (!nombres || !apellidos) {
+                        throw new Error(`Fila ${idx + 2}: Faltan datos obligatorios (Nombres y Apellidos son requeridos)`);
                       }
                       
                       // Combinar nombres y apellidos para el campo nombre (compatibilidad)
@@ -2060,8 +2352,8 @@ export default function DirectorPage() {
                         nombre: nombreCompleto,
                         nombres,
                         apellidos,
-                        grado,
-                        seccion,
+                        grado: grado || '',
+                        seccion: seccion || '',
                         edad: mapeoEstudiantes['edad'] && mapeoEstudiantes['edad'] !== 'none' && row[mapeoEstudiantes['edad']] ? parseInt(String(row[mapeoEstudiantes['edad']])) : undefined,
                         fechaNacimiento: mapeoEstudiantes['fechaNacimiento'] && mapeoEstudiantes['fechaNacimiento'] !== 'none' ? String(row[mapeoEstudiantes['fechaNacimiento']] || '') : undefined,
                         contacto: {
@@ -2093,39 +2385,96 @@ export default function DirectorPage() {
                     
                     // Guardar cada estudiante importado individualmente
                     // Esto permite que saveEstudianteInfo determine si debe crear o actualizar
+                    console.log('💾 Guardando estudiantes en la base de datos...');
                     for (const est of estudiantesImportados) {
                       try {
                         const estudianteExistente = mapaEstudiantesExistentes.get(est.nombre);
                         if (estudianteExistente) {
                           // El estudiante existe, actualizarlo usando su nombre como nombreOriginal
+                          console.log(`🔄 Actualizando estudiante: ${est.nombre}`);
                           await saveEstudianteInfo(est, est.nombre);
                         actualizados++;
                       } else {
                           // El estudiante no existe, crearlo
+                          console.log(`✨ Creando nuevo estudiante: ${est.nombre}`);
                           await saveEstudianteInfo(est);
                         nuevos++;
                       }
                       } catch (error) {
-                        console.error(`Error guardando estudiante ${est.nombre}:`, error);
+                        console.error(`❌ Error guardando estudiante ${est.nombre}:`, error);
                         // Continuar con los demás estudiantes aunque uno falle
                       }
                     }
+                    console.log(`✅ Guardado completado: ${nuevos} nuevos, ${actualizados} actualizados`);
                     
                     // Refrescar la lista de estudiantes desde la base de datos
                     const estudiantesActualizados = await fetchEstudiantes();
                     setEstudiantesInfo(estudiantesActualizados);
                     setRefreshKey(prev => prev + 1);
+                    
+                    // Cerrar el modal
                     setMostrarMapeoEstudiantes(false);
                     setMapeoEstudiantes({});
                     setColumnasExcelEstudiantes([]);
                     setDatosExcelEstudiantes([]);
                     setArchivoExcelEstudiantes(null);
-                    toast.success(`Importación exitosa: ${nuevos} nuevos, ${actualizados} actualizados`, { id: 'import-estudiantes' });
+                    
+                    // Mostrar mensaje de confirmación detallado
+                    const totalImportados = nuevos + actualizados;
+                    if (totalImportados > 0) {
+                      // Mostrar mensaje en la página
+                      setMensajeImportacion({
+                        tipo: 'success',
+                        mensaje: `Importación completada exitosamente. Se procesaron ${totalImportados} estudiantes.`,
+                        detalles: `✨ Nuevos estudiantes: ${nuevos} | 🔄 Estudiantes actualizados: ${actualizados}`
+                      });
+                      
+                      // También mostrar toast
+                      toast.success(
+                        `✅ Importación completada exitosamente\n\n📊 Total de estudiantes procesados: ${totalImportados}\n✨ Nuevos estudiantes: ${nuevos}\n🔄 Estudiantes actualizados: ${actualizados}`,
+                        { 
+                          id: 'import-estudiantes',
+                          duration: 5000,
+                          description: `Se importaron ${totalImportados} estudiantes correctamente`
+                        }
+                      );
+                      
+                      // Ocultar el mensaje después de 10 segundos
+                      setTimeout(() => {
+                        setMensajeImportacion(null);
+                      }, 10000);
+                    } else {
+                      setMensajeImportacion({
+                        tipo: 'error',
+                        mensaje: 'No se importaron estudiantes. Verifica que los datos sean correctos.',
+                        detalles: 'Asegúrate de que todos los campos obligatorios estén mapeados correctamente.'
+                      });
+                      toast.warning('No se importaron estudiantes. Verifica que los datos sean correctos.', { id: 'import-estudiantes' });
+                    }
                   } catch (error: any) {
                     console.error('Error importando estudiantes:', error);
-                    toast.error(error.message || 'Error al importar el archivo Excel', { id: 'import-estudiantes' });
+                    const mensajeError = error.message || 'Error desconocido al procesar el archivo Excel';
+                    
+                    // Mostrar mensaje de error en la página
+                    setMensajeImportacion({
+                      tipo: 'error',
+                      mensaje: 'Error al importar estudiantes',
+                      detalles: mensajeError
+                    });
+                    
+                    // También mostrar toast
+                    toast.error(
+                      `❌ Error al importar estudiantes\n\n${mensajeError}`,
+                      { 
+                        id: 'import-estudiantes',
+                        duration: 6000
+                      }
+                    );
                   }
-                }}>
+                }}
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
                   Importar
                 </Button>
               </div>
@@ -2657,7 +3006,14 @@ export default function DirectorPage() {
                   <TableBody>
                     {listaEstudiantes
                       .filter(e => {
-                        const estudianteCompleto = estudiantesInfo.find(est => est.nombre === e.nombre);
+                        // Priorizar búsqueda por ID si está disponible, si no por nombre
+                        const estudianteConId = e as any;
+                        const estudianteCompleto = estudiantesInfo.find(est => {
+                          if (estudianteConId.id && est.id) {
+                            return est.id === estudianteConId.id;
+                          }
+                          return est.nombre === e.nombre;
+                        });
                         const nombreCompleto = e.nombre.toLowerCase();
                         const nombres = estudianteCompleto?.nombres?.toLowerCase() || '';
                         const apellidos = estudianteCompleto?.apellidos?.toLowerCase() || '';
@@ -2671,13 +3027,22 @@ export default function DirectorPage() {
                       })
                       .map((estudiante) => {
                         // Buscar el estudiante completo en estudiantesInfo para obtener nombres, apellidos e ID
-                        const estudianteCompleto = estudiantesInfo.find(e => e.nombre === estudiante.nombre);
+                        // Priorizar búsqueda por ID si está disponible, si no por nombre
+                        const estudianteConId = estudiante as any; // Type assertion para acceder a id si existe
+                        const estudianteCompleto = estudiantesInfo.find(e => {
+                          // Si ambos tienen ID, comparar por ID
+                          if (estudianteConId.id && e.id) {
+                            return e.id === estudianteConId.id;
+                          }
+                          // Si no, comparar por nombre (fallback)
+                          return e.nombre === estudiante.nombre;
+                        });
                         const nombres = estudianteCompleto?.nombres || estudiante.nombre?.split(' ').slice(0, -1).join(' ') || '-';
                         const apellidos = estudianteCompleto?.apellidos || estudiante.nombre?.split(' ').slice(-1).join(' ') || '-';
-                        const estudianteId = estudianteCompleto?.id; // Obtener el ID del estudiante completo
+                        const estudianteId = estudianteCompleto?.id || estudianteConId.id; // Obtener el ID del estudiante completo
                         
                         return (
-                        <TableRow key={estudiante.nombre} className="hover:bg-gray-50">
+                        <TableRow key={estudianteId || estudiante.nombre} className="hover:bg-gray-50">
                           <TableCell className="font-medium text-gray-900">{nombres}</TableCell>
                           <TableCell className="font-medium text-gray-900">{apellidos}</TableCell>
                           <TableCell className="text-gray-900">{estudiante.grado || '-'}</TableCell>
@@ -2729,18 +3094,18 @@ export default function DirectorPage() {
               <CardContent>
                 <div className="w-full flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
                   {/* Estudiante */}
-                  <div className="flex-1 flex flex-col items-center py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-2">Estudiante</span>
+                  <div className="flex-1 flex flex-col items-center py-5 px-3">
+                    <span className="block text-sm font-bold text-primary mb-3">Estudiante</span>
                     {fotoPreview ? (
-                      <img src={fotoPreview} alt="Foto de perfil" className="w-20 h-20 rounded-full object-cover border mb-1" />
+                      <img src={fotoPreview} alt="Foto de perfil" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm mb-2" />
                     ) : (
-                      <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-2xl text-gray-400 border mb-1">
-                        <User className="w-10 h-10" />
+                      <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200 shadow-sm mb-2">
+                        <User className="w-10 h-10 text-gray-400" />
                       </div>
                     )}
                     {/* Nombres y Apellidos del estudiante */}
                     {editando ? (
-                      <div className="mt-1 w-full flex flex-col gap-2">
+                      <div className="mt-2 w-full flex flex-col gap-2">
                       <Input
                           className="text-base font-semibold text-gray-900 text-center"
                           name="nombres"
@@ -2759,143 +3124,210 @@ export default function DirectorPage() {
                         />
                       </div>
                     ) : (
-                      <span className="mt-1 text-base font-semibold text-gray-900">{infoEdit.nombre || (infoEdit.nombres && infoEdit.apellidos ? `${infoEdit.nombres} ${infoEdit.apellidos}` : '-')}</span>
+                      <span className="mt-2 text-base font-semibold text-gray-900">{infoEdit.nombre || (infoEdit.nombres && infoEdit.apellidos ? `${infoEdit.nombres} ${infoEdit.apellidos}` : '-')}</span>
                     )}
                     {!editando && fotoPreview && (
-                      <Button size="sm" variant="outline" className="mt-1" onClick={() => setEditando(true)}>Cambiar foto</Button>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setEditando(true)}>Cambiar foto</Button>
                     )}
                     {editando && (
-                      <>
-                        <Button size="sm" variant="outline" className="mt-1" onClick={handleEliminarFoto}>Eliminar foto</Button>
-                        <label className="mt-1 cursor-pointer text-primary underline">
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        <Button size="sm" variant="outline" className="text-xs" onClick={handleEliminarFoto}>Eliminar foto</Button>
+                        <label className="cursor-pointer text-primary hover:text-primary/80 underline text-xs text-center transition-colors">
                           Subir foto
                           <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
                         </label>
-                      </>
+                      </div>
                     )}
-                    <div className="mt-3 w-full flex flex-col items-center">
-                      <span className="block text-xs font-semibold text-gray-700">Grado y Sección</span>
+                    <div className="mt-4 w-full flex flex-col items-center space-y-2.5">
+                      <div className="w-full">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <GraduationCap className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Grado y Sección</span>
+                        </div>
                       {editando ? (
-                        <div className="flex gap-2">
+                          <div className="flex gap-2 justify-center">
                           <Input name="grado" value={infoEdit.grado || ''} onChange={handleInputChange} className="w-16 text-center" placeholder="Grado" />
                           <Input name="seccion" value={infoEdit.seccion || ''} onChange={handleInputChange} className="w-16 text-center" placeholder="Sección" />
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-900">{infoEdit.grado} - {infoEdit.seccion}</span>
+                          <span className="text-sm text-gray-900 font-medium block text-center">{infoEdit.grado} - {infoEdit.seccion}</span>
                       )}
-                      <span className="block text-xs font-semibold text-gray-700 mt-1">Edad</span>
+                      </div>
+                      <div className="w-full">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <User className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Edad</span>
+                        </div>
                       {editando ? (
-                        <Input name="edad" value={infoEdit.edad || ''} onChange={handleInputChange} className="w-16 text-center" type="number" min="1" placeholder="Edad" />
+                          <Input name="edad" value={infoEdit.edad || ''} onChange={handleInputChange} className="w-16 text-center mx-auto" type="number" min="1" placeholder="Edad" />
                       ) : (
-                        <span className="text-sm text-gray-900">{infoEdit.edad} años</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.edad ? `${infoEdit.edad} años` : <span className="text-gray-400">-</span>}</span>
                       )}
+                      </div>
+                      <div className="w-full">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Fecha de Nacimiento</span>
+                        </div>
+                      {editando ? (
+                        <Input 
+                          name="fechaNacimiento" 
+                          type="date"
+                          value={infoEdit.fechaNacimiento ? new Date(infoEdit.fechaNacimiento).toISOString().split('T')[0] : ''} 
+                          onChange={handleInputChange} 
+                            className="w-32 text-center text-xs mx-auto" 
+                          placeholder="Fecha Nac." 
+                        />
+                      ) : (
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.fechaNacimiento ? formatFecha(infoEdit.fechaNacimiento) : <span className="text-gray-400">-</span>}</span>
+                      )}
+                      </div>
                     </div>
                   </div>
                   {/* Contacto del Estudiante */}
-                  <div className="flex-1 flex flex-col items-center py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-2">Contacto del Estudiante</span>
-                    <div className="mt-2 w-full flex flex-col items-center space-y-2">
+                  <div className="flex-1 flex flex-col items-center py-5 px-3">
+                    <span className="block text-sm font-bold text-primary mb-3">Contacto del Estudiante</span>
+                    <div className="mt-2 w-full flex flex-col items-center space-y-3">
                       <div className="w-full">
-                        <span className="block text-xs font-semibold text-gray-700 mb-1">Teléfono</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Phone className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Teléfono</span>
+                        </div>
                         {editando ? (
                           <Input name="contactoTelefono" value={infoEdit.contacto?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, telefono: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono" />
                         ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.contacto?.telefono || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.contacto?.telefono || <span className="text-gray-400">-</span>}</span>
                         )}
                       </div>
                       <div className="w-full">
-                        <span className="block text-xs font-semibold text-gray-700 mb-1">Email</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Mail className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Email</span>
+                        </div>
                         {editando ? (
                           <Input name="contactoEmail" value={infoEdit.contacto?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, email: e.target.value } }))} className="w-full text-center text-sm" placeholder="Email" />
                         ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.contacto?.email || '-'}</span>
+                          <span className="text-sm text-gray-900 break-all block text-center">{infoEdit.contacto?.email || <span className="text-gray-400">-</span>}</span>
                         )}
                       </div>
                     </div>
                   </div>
                   {/* Familiar / Apoderado */}
-                  <div className="flex-1 flex flex-col items-center py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-2">Familiar / Apoderado</span>
-                    <div className="mt-2 w-full flex flex-col items-center space-y-2">
+                  <div className="flex-1 flex flex-col items-center py-5 px-3">
+                    <span className="block text-sm font-bold text-primary mb-3">Familiar / Apoderado</span>
+                    <div className="mt-2 w-full flex flex-col items-center space-y-3">
                       <div className="w-full">
-                      <span className="block text-xs font-semibold text-gray-700 mb-1">Nombre</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <UserCircle className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Nombre</span>
+                        </div>
                       {editando ? (
                           <Input name="apoderadoNombre" value={infoEdit.apoderado?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, nombre: e.target.value } }))} className="w-full text-center text-sm" placeholder="Nombre del apoderado" />
                       ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.nombre || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.nombre || <span className="text-gray-400">-</span>}</span>
                       )}
                       </div>
                       <div className="w-full">
-                        <span className="block text-xs font-semibold text-gray-700 mb-1">Parentesco</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Users className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Parentesco</span>
+                        </div>
                       {editando ? (
                           <Input name="apoderadoParentesco" value={infoEdit.apoderado?.parentesco || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, parentesco: e.target.value } }))} className="w-full text-center text-sm" placeholder="Ej: Madre, Padre, etc." />
                       ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.parentesco || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.parentesco || <span className="text-gray-400">-</span>}</span>
                       )}
                       </div>
                       <div className="w-full">
-                        <span className="block text-xs font-semibold text-gray-700 mb-1">Teléfono</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Phone className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Teléfono</span>
+                        </div>
                       {editando ? (
                           <Input name="apoderadoTelefono" value={infoEdit.apoderado?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, telefono: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono" />
                         ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.telefono || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.telefono || <span className="text-gray-400">-</span>}</span>
                         )}
                       </div>
                       <div className="w-full">
-                        <span className="block text-xs font-semibold text-gray-700 mb-1">Teléfono Alternativo</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Phone className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Teléfono Alternativo</span>
+                        </div>
                         {editando ? (
                           <Input name="apoderadoTelefonoAlt" value={infoEdit.apoderado?.telefonoAlternativo || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, telefonoAlternativo: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono alternativo" />
                         ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.telefonoAlternativo || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.telefonoAlternativo || <span className="text-gray-400">-</span>}</span>
                         )}
                       </div>
                       <div className="w-full">
-                        <span className="block text-xs font-semibold text-gray-700 mb-1">Email</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Mail className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Email</span>
+                        </div>
                         {editando ? (
                           <Input name="apoderadoEmail" value={infoEdit.apoderado?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, email: e.target.value } }))} className="w-full text-center text-sm" placeholder="Email" />
                         ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.email || '-'}</span>
+                          <span className="text-sm text-gray-900 break-all block text-center">{infoEdit.apoderado?.email || <span className="text-gray-400">-</span>}</span>
                         )}
                       </div>
                       <div className="w-full">
-                        <span className="block text-xs font-semibold text-gray-700 mb-1">Dirección</span>
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Dirección</span>
+                        </div>
                         {editando ? (
                           <Input name="apoderadoDireccion" value={infoEdit.apoderado?.direccion || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, direccion: e.target.value } }))} className="w-full text-center text-sm" placeholder="Dirección" />
                         ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.direccion || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.direccion || <span className="text-gray-400">-</span>}</span>
                         )}
                       </div>
                     </div>
                   </div>
                   {/* Tutor */}
-                  <div className="flex-1 flex flex-col items-center py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-2">Tutor</span>
-                    <div className="mt-2 w-full flex flex-col items-center">
-                      <span className="block text-xs font-semibold text-gray-700 mb-1">Nombre</span>
+                  <div className="flex-1 flex flex-col items-center py-5 px-3">
+                    <span className="block text-sm font-bold text-primary mb-3">Tutor</span>
+                    <div className="mt-2 w-full flex flex-col items-center space-y-3">
+                      <div className="w-full">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <UserCircle className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Nombre</span>
+                        </div>
                       {editando ? (
-                        <Input name="nombre" value={infoEdit.tutor?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, nombre: e.target.value } }))} className="w-32 text-center" placeholder="Nombre" autoComplete="off" />
+                          <Input name="nombre" value={infoEdit.tutor?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, nombre: e.target.value } }))} className="w-full text-center text-sm" placeholder="Nombre" autoComplete="off" />
                       ) : (
-                        <span className="text-sm text-gray-900">{infoEdit.tutor?.nombre || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.tutor?.nombre || <span className="text-gray-400">-</span>}</span>
                       )}
-                      <span className="block text-xs font-semibold text-gray-700 mt-1">Teléfono</span>
+                      </div>
+                      <div className="w-full">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Phone className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Teléfono</span>
+                        </div>
                       {editando ? (
-                        <Input name="telefono" value={infoEdit.tutor?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, telefono: e.target.value } }))} className="w-32 text-center" placeholder="Teléfono" autoComplete="off" />
+                          <Input name="telefono" value={infoEdit.tutor?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, telefono: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono" autoComplete="off" />
                       ) : (
-                        <span className="text-sm text-gray-900">{infoEdit.tutor?.telefono || '-'}</span>
+                          <span className="text-sm text-gray-900 block text-center">{infoEdit.tutor?.telefono || <span className="text-gray-400">-</span>}</span>
                       )}
-                      <span className="block text-xs font-semibold text-gray-700 mt-1">Email</span>
+                      </div>
+                      <div className="w-full">
+                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                          <Mail className="h-3.5 w-3.5 text-primary/70" />
+                          <span className="text-xs font-semibold text-gray-700">Email</span>
+                        </div>
                       {editando ? (
-                        <Input name="email" value={infoEdit.tutor?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, email: e.target.value } }))} className="w-32 text-center" placeholder="Email" autoComplete="off" />
+                          <Input name="email" value={infoEdit.tutor?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, email: e.target.value } }))} className="w-full text-center text-sm" placeholder="Email" autoComplete="off" />
                       ) : (
-                        <span className="text-sm text-gray-900">{infoEdit.tutor?.email || '-'}</span>
+                          <span className="text-sm text-gray-900 break-all block text-center">{infoEdit.tutor?.email || <span className="text-gray-400">-</span>}</span>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-4">
+                </div>
+                <div className="flex gap-2 mt-6 pt-4 border-t border-gray-100">
                   {editando ? (
                     <>
-                      <Button size="sm" onClick={handleGuardar}>Guardar</Button>
+                      <Button size="sm" onClick={handleGuardar} className="transition-all">Guardar</Button>
                       <Button size="sm" variant="outline" onClick={async () => {
                         if (!selectedStudentId) return;
                         const original = await fetchEstudianteById(selectedStudentId);
@@ -2912,10 +3344,10 @@ export default function DirectorPage() {
                           setFotoPreview('');
                         }
                         setEditando(false);
-                      }}>Cancelar</Button>
+                      }} className="transition-all">Cancelar</Button>
                     </>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => setEditando(true)}>Editar información</Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditando(true)} className="transition-all">Editar información</Button>
                   )}
                 </div>
               </CardContent>
@@ -3321,6 +3753,67 @@ export default function DirectorPage() {
       {/* Reporte General Tab */}
       {typeof activeTab !== 'undefined' && activeTab === 'general' && (
         <div id="reporte-general-export" style={{ backgroundColor: '#ffffff' }}>
+          {/* DASHBOARD CON MÉTRICAS */}
+          <div className="mb-6 sm:mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Métricas Generales
+                </CardTitle>
+                <CardDescription className="text-sm text-gray-600">
+                  Resumen general del sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold text-blue-600">{estudiantesInfo.length}</p>
+                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Total Estudiantes</p>
+                    </div>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold text-green-600">{tutores.length}</p>
+                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Total Profesores</p>
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold text-purple-600">{incidencias.length}</p>
+                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Total Incidencias</p>
+                    </div>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold text-orange-600">{incidenciasDerivadas.length}</p>
+                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Pendientes</p>
+                    </div>
+                  </div>
+                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold text-teal-600">{incidencias.filter(i => i.resuelta).length}</p>
+                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Resueltas</p>
+                    </div>
+                  </div>
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold text-indigo-600">{grados.length}</p>
+                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Grados</p>
+                    </div>
+                  </div>
+                  <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold text-pink-600">{secciones.length}</p>
+                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Secciones</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* SECCIÓN 1: FILTROS Y BÚSQUEDA */}
           <Card className="mb-6 sm:mb-8">
             <CardHeader>
@@ -3378,6 +3871,44 @@ export default function DirectorPage() {
               </p>
             </CardContent>
           </Card>
+
+          {/* TABS DE NAVEGACIÓN DEL REPORTE */}
+          <div className="flex gap-2 border-b border-gray-200 mb-6 overflow-x-auto">
+            <button
+              onClick={() => setReporteGeneralTab('resumen')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                reporteGeneralTab === 'resumen'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Resumen Ejecutivo
+            </button>
+            <button
+              onClick={() => setReporteGeneralTab('detallado')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                reporteGeneralTab === 'detallado'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Análisis Detallado
+            </button>
+            <button
+              onClick={() => setReporteGeneralTab('graficos')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                reporteGeneralTab === 'graficos'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Gráficos y Tendencias
+            </button>
+          </div>
+
+          {/* CONTENIDO SEGÚN TAB SELECCIONADO */}
+          {/* Todos los elementos deben estar en el DOM para la exportación PDF */}
+          <div id="reporte-resumen-export" style={{ backgroundColor: '#ffffff', display: reporteGeneralTab === 'resumen' ? 'block' : 'none' }}>
           {/* SECCIÓN 2: INDICADORES CLAVE */}
                   {(() => {
                     const stats = typeof getGeneralStats === 'function' ? getGeneralStats(incidenciasGenerales) : { total: 0, porTipo: { asistencia: 0, conducta: 0, academica: 0, positivo: 0 }, estudiantesUnicos: 0 };
@@ -3386,13 +3917,23 @@ export default function DirectorPage() {
             // Como incidenciasGenerales ya está filtrado por fechaInicio/fechaFin, solo contamos las que hay
             const totalIncidencias = incidenciasGenerales.length;
             
-            // Calcular incidencias graves
-            const incidenciasGraves = incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'grave').length;
+            // Separar incidencias positivas y negativas
+            const incidenciasPositivas = incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'positivo');
+            const incidenciasNegativas = incidenciasGenerales.filter((inc: Incidencia) => inc.tipo !== 'positivo');
+            const totalPositivas = incidenciasPositivas.length;
+            const totalNegativas = incidenciasNegativas.length;
+            
+            // Calcular incidencias graves (excluyendo las positivas, ya que no requieren atención urgente)
+            const incidenciasGraves = incidenciasNegativas.filter((inc: Incidencia) => 
+              inc.gravedad === 'grave'
+            ).length;
             
             // Top estudiantes con más incidencias
             const porEstudiante: Record<string, number> = {};
             incidenciasGenerales.forEach((inc: Incidencia) => {
-              porEstudiante[inc.studentName] = (porEstudiante[inc.studentName] || 0) + 1;
+              // Usar studentId si está disponible, si no usar studentName como clave
+              const claveEstudiante = inc.studentId || inc.studentName;
+              porEstudiante[claveEstudiante] = (porEstudiante[claveEstudiante] || 0) + 1;
             });
             const topEstudiante = Object.entries(porEstudiante).sort((a, b) => b[1] - a[1])[0];
             
@@ -3421,119 +3962,192 @@ export default function DirectorPage() {
               orientacion: 'Orientación'
             };
             
-                    return (
-                      <>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <p className="text-3xl font-bold text-primary">{totalIncidencias}</p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">
-                          Total Incidencias
-                        </p>
-                        {fechaInicio && fechaFin && (
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            (filtrado)
-                          </p>
-                        )}
-                          </div>
-                    </CardContent>
-                  </Card>
+            return (
+              <div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                   <Card>
                     <CardContent className="p-4">
                       <div className="text-center">
                         <p className="text-3xl font-bold text-red-600">{incidenciasGraves}</p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Incidencias Graves</p>
-                          </div>
+                        <p className="text-xs text-gray-700 font-semibold mt-1">Requieren Atención Urgente</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {totalIncidencias > 0 ? ((incidenciasGraves / totalIncidencias) * 100).toFixed(1) : 0}% del total
+                        </p>
+                        {fechaInicio && fechaFin && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            ({totalIncidencias} en período)
+                          </p>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-orange-600">{topEstudiante ? topEstudiante[1] : 0}</p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Top Estudiante</p>
-                        {topEstudiante && (
-                          <p className="text-xs text-gray-600 mt-1 truncate" title={topEstudiante[0]}>
-                            {topEstudiante[0].split(' ').slice(0, 2).join(' ')}
-                          </p>
-                        )}
-                          </div>
+                        <p className="text-3xl font-bold text-orange-600">
+                          {incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'moderada').length}
+                        </p>
+                        <p className="text-xs text-gray-700 font-semibold mt-1">Moderadas</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {totalIncidencias > 0 ? ((incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'moderada').length / totalIncidencias) * 100).toFixed(1) : 0}% del total
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">{topProfesor ? topProfesor[1] : 0}</p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Top Profesor</p>
-                        {topProfesor && (
-                          <p className="text-xs text-gray-600 mt-1 truncate" title={topProfesor[0]}>
-                            {topProfesor[0].split(' ').slice(0, 2).join(' ')}
-                          </p>
-                        )}
-                          </div>
+                        <p className="text-3xl font-bold text-green-600">
+                          {incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'positivo').length}
+                        </p>
+                        <p className="text-xs text-gray-700 font-semibold mt-1">Aspectos Positivos</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {totalIncidencias > 0 ? ((incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'positivo').length / totalIncidencias) * 100).toFixed(1) : 0}% del total
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-purple-600">{topDerivacion ? topDerivacion[1] : 0}</p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Área Más Saturada</p>
-                        {topDerivacion && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            {labelDerivacion[topDerivacion[0]] || topDerivacion[0]}
-                          </p>
-                        )}
-                          </div>
+                        <p className="text-3xl font-bold text-blue-600">
+                          {incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'leve').length}
+                        </p>
+                        <p className="text-xs text-gray-700 font-semibold mt-1">Leves</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {totalIncidencias > 0 ? ((incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'leve').length / totalIncidencias) * 100).toFixed(1) : 0}% del total
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
-                        </div>
+                </div>
 
-                        {/* SECCIÓN 3: TOP 3 ESTUDIANTES DESTACADOS */}
+                {/* Resumen de Positivas vs Negativas */}
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="text-base sm:text-lg text-gray-900">Distribución de Incidencias</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm text-gray-600">
+                      Desglose de incidencias positivas (reconocimientos) y negativas (problemas)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-gray-900">Incidencias Positivas</span>
+                          <span className="text-lg font-bold text-green-600">{totalPositivas}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className="bg-green-600 h-3 rounded-full transition-all" 
+                            style={{ width: `${totalIncidencias > 0 ? ((totalPositivas / totalIncidencias) * 100) : 0}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          {totalIncidencias > 0 ? ((totalPositivas / totalIncidencias) * 100).toFixed(1) : 0}% del total - Reconocimientos y aspectos destacables
+                        </p>
+                      </div>
+                      <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-gray-900">Incidencias Negativas</span>
+                          <span className="text-lg font-bold text-red-600">{totalNegativas}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className="bg-red-600 h-3 rounded-full transition-all" 
+                            style={{ width: `${totalIncidencias > 0 ? ((totalNegativas / totalIncidencias) * 100) : 0}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          {totalIncidencias > 0 ? ((totalNegativas / totalIncidencias) * 100).toFixed(1) : 0}% del total - Problemas que requieren atención
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                        {/* SECCIÓN 3: TOP 10 ESTUDIANTES DESTACADOS */}
                         {(() => {
-                          // Calcular sistema de puntuación balanceado (positivos y negativos)
+                          // Calcular sistema de puntuación balanceado mejorado
+                          // Considera: incidencias positivas y gravedad de incidencias negativas
                           const puntuacionPorEstudiante = {} as Record<string, { 
                             puntos: number; 
                             positivos: number; 
                             negativos: number;
+                            graves: number;
+                            moderadas: number;
+                            leves: number;
                             estudiante: any 
                           }>;
                           
                           incidenciasGenerales.forEach(inc => {
-                            if (!puntuacionPorEstudiante[inc.studentName]) {
-                              const estInfo = estudiantesInfo.find((e: any) => e.nombre === inc.studentName) || {};
-                              puntuacionPorEstudiante[inc.studentName] = { 
+                            // Usar studentId si está disponible, si no usar studentName como clave
+                            const claveEstudiante = inc.studentId || inc.studentName;
+                            if (!puntuacionPorEstudiante[claveEstudiante]) {
+                              // Buscar estudiante por ID si está disponible, si no por nombre
+                              const estInfo = inc.studentId 
+                                ? estudiantesInfo.find((e: any) => e.id === inc.studentId) 
+                                : estudiantesInfo.find((e: any) => e.nombre === inc.studentName);
+                              puntuacionPorEstudiante[claveEstudiante] = { 
                                 puntos: 0, 
                                 positivos: 0, 
                                 negativos: 0,
+                                graves: 0,
+                                moderadas: 0,
+                                leves: 0,
                                 estudiante: estInfo 
                               };
                             }
                             
                             // Calcular puntos según tipo y gravedad
                             if (inc.tipo === 'positivo') {
-                              // Incidencias positivas: +3 puntos cada una
-                              puntuacionPorEstudiante[inc.studentName].puntos += 3;
-                              puntuacionPorEstudiante[inc.studentName].positivos += 1;
+                              // Incidencias positivas: +5 puntos cada una (mayor peso)
+                              puntuacionPorEstudiante[claveEstudiante].puntos += 5;
+                              puntuacionPorEstudiante[claveEstudiante].positivos += 1;
                             } else {
                               // Incidencias negativas: puntos negativos según gravedad
+                              // Las graves tienen mayor penalización
                               let puntosNegativos = 0;
                               if (inc.gravedad === 'leve') {
                                 puntosNegativos = -1;
+                                puntuacionPorEstudiante[claveEstudiante].leves += 1;
                               } else if (inc.gravedad === 'moderada') {
-                                puntosNegativos = -2;
+                                puntosNegativos = -3; // Penalización moderada
+                                puntuacionPorEstudiante[claveEstudiante].moderadas += 1;
                               } else if (inc.gravedad === 'grave') {
-                                puntosNegativos = -3;
+                                puntosNegativos = -6; // Mayor penalización para graves
+                                puntuacionPorEstudiante[claveEstudiante].graves += 1;
                               }
-                              puntuacionPorEstudiante[inc.studentName].puntos += puntosNegativos;
-                              puntuacionPorEstudiante[inc.studentName].negativos += 1;
+                              puntuacionPorEstudiante[claveEstudiante].puntos += puntosNegativos;
+                              puntuacionPorEstudiante[claveEstudiante].negativos += 1;
                             }
                           });
                           
-                          // Filtrar solo estudiantes con balance positivo (más positivos que negativos)
+                          // Filtrar y ordenar estudiantes destacados
+                          // Solo incluir estudiantes con balance positivo neto (puntos > 0)
+                          // Un estudiante destacado debe tener más puntos positivos que negativos
                           const estudiantesDestacados = Object.entries(puntuacionPorEstudiante)
-                            .filter(([_, data]) => data.puntos > 0)
-                            .sort((a, b) => b[1].puntos - a[1].puntos)
-                            .slice(0, 3);
+                            .filter(([_, data]) => {
+                              // Debe tener puntos positivos netos Y al menos una incidencia positiva
+                              return data.puntos > 0 && data.positivos > 0;
+                            })
+                            .sort((a, b) => {
+                              // Primero por puntos totales (mayor a menor)
+                              if (b[1].puntos !== a[1].puntos) {
+                                return b[1].puntos - a[1].puntos;
+                              }
+                              // Si tienen los mismos puntos, priorizar quien tiene más positivos
+                              if (b[1].positivos !== a[1].positivos) {
+                                return b[1].positivos - a[1].positivos;
+                              }
+                              // Si tienen los mismos positivos, priorizar quien tiene menos graves
+                              if (a[1].graves !== b[1].graves) {
+                                return a[1].graves - b[1].graves;
+                              }
+                              // Si tienen las mismas graves, priorizar quien tiene menos moderadas
+                              return a[1].moderadas - b[1].moderadas;
+                            })
+                            .slice(0, 10);
                           
                           if (estudiantesDestacados.length === 0) return null;
                           
@@ -3542,15 +4156,15 @@ export default function DirectorPage() {
                               <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-green-700">
                                   <Sparkles className="h-5 w-5 text-green-600" />
-                                  Top 3 Estudiantes Destacados
+                                  Top 10 Estudiantes Destacados
                                 </CardTitle>
                                 <CardDescription className="text-sm text-gray-900">
                                   Estudiantes con mejor balance entre aspectos positivos y negativos, evaluando gravedad y tipo de incidencias.
                                 </CardDescription>
                               </CardHeader>
                               <CardContent>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                  {estudiantesDestacados.map(([nombre, { puntos, positivos, negativos, estudiante }], idx) => (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                  {estudiantesDestacados.map(([nombre, { puntos, positivos, negativos, graves, moderadas, leves, estudiante }], idx) => (
                                     <div key={nombre} className="flex flex-col items-center bg-green-50 rounded-lg p-4 border border-green-200 shadow-sm">
                                       <div className="relative mb-2">
                                         {estudiante.fotoPerfil ? (
@@ -3563,11 +4177,20 @@ export default function DirectorPage() {
                                         <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full px-2 py-0.5 font-bold shadow">#{idx+1}</span>
                                       </div>
                                       <div className="text-base font-semibold text-green-900 text-center mb-1">{nombre}</div>
-                                      <div className="text-lg font-bold text-green-700 mb-1">+{puntos} puntos</div>
-                                      <div className="text-xs text-gray-600 text-center">
-                                        <span className="text-green-700">+{positivos} positivos</span>
+                                      <div className={`text-lg font-bold mb-1 ${puntos >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                                        {puntos >= 0 ? '+' : ''}{puntos} puntos
+                                      </div>
+                                      <div className="text-xs text-gray-600 text-center space-y-0.5">
+                                        <div>
+                                          <span className="text-green-700 font-semibold">+{positivos} positivos</span>
+                                        </div>
                                         {negativos > 0 && (
-                                          <span className="text-red-600"> / -{negativos} negativos</span>
+                                          <div className="flex items-center justify-center gap-1 flex-wrap">
+                                            <span className="text-gray-600">-{negativos} negativas:</span>
+                                            {graves > 0 && <span className="text-red-600 font-semibold">{graves}G</span>}
+                                            {moderadas > 0 && <span className="text-yellow-600">{moderadas}M</span>}
+                                            {leves > 0 && <span className="text-orange-600">{leves}L</span>}
+                                          </div>
                                         )}
                                       </div>
                                     </div>
@@ -3580,18 +4203,23 @@ export default function DirectorPage() {
 
                         {/* SECCIÓN 4: CASOS QUE REQUIEREN ATENCIÓN */}
                         {(() => {
-                          // Calcular estudiantes con 3+ incidencias graves
+                          // Calcular estudiantes con 3+ incidencias graves (excluyendo las positivas)
                           const gravesPorEstudiante: Record<string, { count: number; ultima: string; estudiante: any }> = {};
                           incidenciasGenerales.forEach(inc => {
-                            if (inc.gravedad === 'grave') {
-                              if (!gravesPorEstudiante[inc.studentName]) {
-                                const estInfo = estudiantesInfo.find((e: any) => e.nombre === inc.studentName) || {};
-                                gravesPorEstudiante[inc.studentName] = { count: 1, ultima: inc.fecha, estudiante: estInfo };
+                            if (inc.gravedad === 'grave' && inc.tipo !== 'positivo') {
+                              // Usar studentId si está disponible, si no usar studentName como clave
+                              const claveEstudiante = inc.studentId || inc.studentName;
+                              if (!gravesPorEstudiante[claveEstudiante]) {
+                                // Buscar estudiante por ID si está disponible, si no por nombre
+                                const estInfo = inc.studentId 
+                                  ? estudiantesInfo.find((e: any) => e.id === inc.studentId) 
+                                  : estudiantesInfo.find((e: any) => e.nombre === inc.studentName);
+                                gravesPorEstudiante[claveEstudiante] = { count: 1, ultima: inc.fecha, estudiante: estInfo || {} };
                               } else {
-                                gravesPorEstudiante[inc.studentName].count++;
+                                gravesPorEstudiante[claveEstudiante].count++;
                                 // Actualizar última si la fecha es más reciente
-                                if (new Date(inc.fecha) > new Date(gravesPorEstudiante[inc.studentName].ultima)) {
-                                  gravesPorEstudiante[inc.studentName].ultima = inc.fecha;
+                                if (new Date(inc.fecha) > new Date(gravesPorEstudiante[claveEstudiante].ultima)) {
+                                  gravesPorEstudiante[claveEstudiante].ultima = inc.fecha;
                                 }
                               }
                             }
@@ -3655,60 +4283,365 @@ export default function DirectorPage() {
                                 </div>
                               </CardContent>
                             </Card>
-                  );
-                })()}
-              </>
                           );
                         })()}
 
-          {/* SECCIÓN: Estudiantes Destacados */}
-          {incidenciasGenerales.length > 0 && (() => {
-            // Calcular estudiantes con más incidencias positivas
-            const porEstudiantePositivo: Record<string, number> = {};
-            incidenciasGenerales.forEach((inc: Incidencia) => {
-              if (inc.tipo === 'positivo') {
-                porEstudiantePositivo[inc.studentName] = (porEstudiantePositivo[inc.studentName] || 0) + 1;
-              }
-            });
-            const estudiantesDestacados = Object.entries(porEstudiantePositivo)
-              .sort(([_, a], [__, b]) => b - a)
-              .slice(0, 10);
-            
-            return (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900">
-                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                    Estudiantes Destacados
-                  </CardTitle>
-                  <CardDescription className="text-sm text-gray-900">
-                    Top estudiantes con comportamientos positivos
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    {estudiantesDestacados.length > 0 ? (
-                      <div className="space-y-2">
-                        {estudiantesDestacados.map(([nombre, count]) => (
-                          <div key={nombre} className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-gray-900">{nombre}</span>
-                            <Badge className="bg-blue-100 text-blue-800 border-blue-300">
-                              {count} comportamiento{count > 1 ? 's' : ''} positivo{count > 1 ? 's' : ''}
-                            </Badge>
-                          </div>
-                        ))}
+                {/* Reporte General con IA - Solo en Resumen */}
+                {generatingGeneralReport && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        Generando Análisis General...
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-5/6" />
+                        <Skeleton className="h-4 w-4/6" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
                       </div>
-                    ) : (
-                      <p className="text-sm text-gray-600 italic text-center py-2">
-                        No hay estudiantes con comportamientos positivos registrados en el período seleccionado.
-                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Render reporteGeneral card safely */}
+                {!generatingGeneralReport && reporteGeneral && (() => {
+            const { timestamp, truncated, report, resumen, alertas, recomendaciones } = reporteGeneral as any;
+                  return (
+                    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-white">
+                      <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                          <Sparkles className="h-5 w-5 text-primary" />
+                          Análisis General Generado por IA
+                        </CardTitle>
+                  <CardDescription className="text-sm">
+                          {timestamp ? (
+                            <>Generado el {new Date(timestamp).toLocaleString('es-ES')}</>
+                          ) : null}
+                          {truncated ? (
+                            <span className="ml-2 text-amber-600 font-medium">
+                        ⚠️ Reporte truncado
+                            </span>
+                          ) : null}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                  <div className="space-y-6">
+                    {/* Resumen Automático */}
+                    {resumen && (
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <h4 className="font-semibold text-gray-900 text-sm">Resumen Automático</h4>
+                        </div>
+                        <p className="text-gray-900 text-sm leading-relaxed">{resumen}</p>
+                      </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
+                    
+                    {/* Alertas Inteligentes - Generadas por IA */}
+                    {(() => {
+                      const alertasIA = (reporteGeneral as any)?.alertas;
+                      
+                      // Si hay alertas generadas por IA, mostrarlas
+                      if (alertasIA && alertasIA.trim()) {
+                        // Determinar el color según el contenido (positivo o alerta)
+                        const esPositivo = alertasIA.toLowerCase().includes('no se detectaron') || 
+                                          alertasIA.toLowerCase().includes('estado general es positivo') ||
+                                          alertasIA.toLowerCase().includes('rangos normales') ||
+                                          alertasIA.toLowerCase().includes('ninguna alerta');
+                        
+                        if (esPositivo) {
+                        return (
+                          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                                <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
+                            </div>
+                              <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">{alertasIA}</p>
+                          </div>
+                        );
+                        } else {
+                      return (
+                        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                            <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
+                          </div>
+                              <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">
+                                {alertasIA}
+                              </div>
+                              </div>
+                          );
+                        }
+                      }
+                      
+                      // Si no hay alertas de IA, mostrar mensaje por defecto
+                      return (
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle className="h-4 w-4 text-gray-600" />
+                            <h4 className="font-semibold text-gray-900 text-sm">Alertas Inteligentes</h4>
+                              </div>
+                          <p className="text-gray-900 text-sm italic">
+                            Las alertas se generarán automáticamente al crear el análisis con IA.
+                          </p>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Recomendaciones */}
+                    {recomendaciones && (
+                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="h-4 w-4 text-green-600" />
+                          <h4 className="font-semibold text-gray-900 text-sm">Recomendaciones</h4>
+                        </div>
+                        <div className="pl-1">
+                          {formatRecomendacionesGeneral(recomendaciones)}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Fallback: Reporte completo */}
+                    {!resumen && !recomendaciones && report && (
+                      <div className="text-gray-900 leading-relaxed text-sm">
+                            <div
+                              className="space-y-2"
+                              dangerouslySetInnerHTML={{
+                                __html: formatReportText(report)
+                              }}
+                            />
+                      </div>
+                    )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+          })()}
+              </div>
             );
           })()}
 
+          {/* Botones al final del Resumen */}
+          {typeof incidenciasGenerales !== 'undefined' && Array.isArray(incidenciasGenerales) && incidenciasGenerales.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
+              {/* Botón para Generar/Regenerar Análisis con IA */}
+              {!generatingGeneralReport && (
+                <Button
+                  onClick={() => {
+                    if (typeof generateGeneralReport === 'function') {
+                      // No pasar parámetros, la función recargará los datos en tiempo real
+                      generateGeneralReport();
+                    }
+                  }}
+                  size="lg"
+                  className="w-full gap-2"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  {reporteGeneral ? 'Regenerar Análisis con IA' : 'Generar Análisis con IA'}
+                </Button>
+              )}
+              
+              {/* Botón Exportar a PDF */}
+              <Button
+                onClick={handleExportPDF}
+                size="lg"
+                variant="outline"
+                className="w-full gap-2"
+              >
+                <Download className="h-5 w-5" />
+                Exportar a PDF
+              </Button>
+            </div>
+          )}
+          </div>
+
+          {/* Contenido Detallado - Siempre en DOM para exportación PDF */}
+          <div id="reporte-detallado-export" style={{ backgroundColor: '#ffffff', display: reporteGeneralTab === 'detallado' ? 'block' : 'none' }}>
+              {/* Análisis por Derivación */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Incidencias por Área de Derivación
+                  </CardTitle>
+                  <CardDescription className="text-sm text-gray-600">
+                    Distribución de incidencias según el área a la que fueron derivadas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(
+                      incidenciasGenerales.reduce((acc: Record<string, number>, inc: Incidencia) => {
+                        const deriv = inc.derivacion || 'ninguna';
+                        acc[deriv] = (acc[deriv] || 0) + 1;
+                        return acc;
+                      }, {})
+                    )
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([deriv, count]) => {
+                        const porcentaje = incidenciasGenerales.length > 0 ? ((count / incidenciasGenerales.length) * 100).toFixed(1) : 0;
+                        const label = deriv === 'ninguna' ? 'Sin derivación' : 
+                                     deriv === 'director' ? 'Director' :
+                                     deriv === 'psicologia' ? 'Psicología' :
+                                     deriv === 'enfermeria' ? 'Enfermería' :
+                                     deriv === 'coordinacion' ? 'Coordinación' :
+                                     deriv === 'orientacion' ? 'Orientación' : deriv;
+                        return (
+                          <div key={deriv} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-semibold text-gray-900">{label}</span>
+                                <span className="text-sm font-bold text-gray-900">{count} incidencias</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                <div 
+                                  className="bg-primary h-2.5 rounded-full transition-all" 
+                                  style={{ width: `${porcentaje}%` }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">{porcentaje}% del total</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Top Estudiantes por Tipo de Incidencia */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Top 5 Estudiantes con más incidencias negativas */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base sm:text-lg text-gray-900">Estudiantes con Más Incidencias Negativas</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm text-gray-600">
+                      Top 5 estudiantes que requieren mayor seguimiento
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {Object.entries(
+                        incidenciasGenerales
+                          .filter((inc: Incidencia) => inc.tipo !== 'positivo')
+                          .reduce((acc: Record<string, { count: number; nombre: string }>, inc: Incidencia) => {
+                            // Usar studentId si está disponible, si no usar studentName como clave
+                            const claveEstudiante = inc.studentId || inc.studentName;
+                            if (!acc[claveEstudiante]) {
+                              acc[claveEstudiante] = { count: 0, nombre: inc.studentName };
+                            }
+                            acc[claveEstudiante].count += 1;
+                            return acc;
+                          }, {})
+                      )
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .slice(0, 5)
+                        .map(([clave, data], idx) => (
+                          <div key={clave} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200 hover:bg-red-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                                <span className="text-xs font-bold text-red-600">#{idx + 1}</span>
+                              </div>
+                              <span className="text-sm font-medium text-gray-900 truncate">{data.nombre}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-bold text-red-600">{data.count}</span>
+                              <p className="text-xs text-gray-500">negativas</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top 5 Estudiantes con más incidencias positivas */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base sm:text-lg text-gray-900">Estudiantes con Más Incidencias Positivas</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm text-gray-600">
+                      Top 5 estudiantes con más reconocimientos
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {Object.entries(
+                        incidenciasGenerales
+                          .filter((inc: Incidencia) => inc.tipo === 'positivo')
+                          .reduce((acc: Record<string, { count: number; nombre: string }>, inc: Incidencia) => {
+                            // Usar studentId si está disponible, si no usar studentName como clave
+                            const claveEstudiante = inc.studentId || inc.studentName;
+                            if (!acc[claveEstudiante]) {
+                              acc[claveEstudiante] = { count: 0, nombre: inc.studentName };
+                            }
+                            acc[claveEstudiante].count += 1;
+                            return acc;
+                          }, {})
+                      )
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .slice(0, 5)
+                        .map(([clave, data], idx) => (
+                          <div key={clave} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                <span className="text-xs font-bold text-green-600">#{idx + 1}</span>
+                              </div>
+                              <span className="text-sm font-medium text-gray-900 truncate">{data.nombre}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-bold text-green-600">{data.count}</span>
+                              <p className="text-xs text-gray-500">positivas</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Top 5 Profesores */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-base sm:text-lg text-gray-900">Profesores Más Activos</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm text-gray-600">
+                    Top 5 profesores que registran más incidencias
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(
+                      incidenciasGenerales.reduce((acc: Record<string, number>, inc: Incidencia) => {
+                        if (inc.profesor) {
+                          acc[inc.profesor] = (acc[inc.profesor] || 0) + 1;
+                        }
+                        return acc;
+                      }, {})
+                    )
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+                      .map(([profesor, count], idx) => (
+                        <div key={profesor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-xs font-bold text-primary">#{idx + 1}</span>
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 truncate">{profesor}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-primary">{count}</span>
+                            <p className="text-xs text-gray-500">registradas</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+          </div>
+
+          {/* Contenido Gráficos - Siempre en DOM para exportación PDF */}
+          <div id="reporte-graficos-export" style={{ backgroundColor: '#ffffff', display: reporteGeneralTab === 'graficos' ? 'block' : 'none' }}>
           {/* SECCIÓN: Evolución Temporal */}
           {incidenciasGenerales.length > 0 && (() => {
             // Agrupar incidencias por mes
@@ -3848,36 +4781,44 @@ export default function DirectorPage() {
             {/* Gráfico: Incidencias por Tipo */}
                     <Card>
                       <CardHeader>
-                <CardTitle className="text-base text-gray-900">Incidencias por Tipo</CardTitle>
+                        <CardTitle className="text-base text-gray-900">Distribución por Tipo de Incidencia</CardTitle>
+                        <CardDescription className="text-xs text-gray-600">
+                          Cantidad de incidencias según su categoría
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         {(() => {
                           const stats = getGeneralStats(incidenciasGenerales);
+                          const total = incidenciasGenerales.length;
                           const maxValue = Math.max(...Object.values(stats.porTipo).map(Number), 1);
                           const tipos = [
-                            { key: 'conducta', label: 'Conducta', color: 'bg-red-600' },
-                    { key: 'asistencia', label: 'Asistencia', color: 'bg-orange-500' },
-                    { key: 'academica', label: 'Académica', color: 'bg-blue-600' },
-                            { key: 'positivo', label: 'Positivos', color: 'bg-green-600' },
+                            { key: 'conducta', label: 'Conducta', color: 'bg-red-600', textColor: 'text-red-600' },
+                            { key: 'asistencia', label: 'Asistencia', color: 'bg-orange-500', textColor: 'text-orange-600' },
+                            { key: 'academica', label: 'Académica', color: 'bg-blue-600', textColor: 'text-blue-600' },
+                            { key: 'positivo', label: 'Aspectos Positivos', color: 'bg-green-600', textColor: 'text-green-600' },
                           ];
                           return (
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                               {tipos.map((tipo) => {
                                 const value = stats.porTipo[tipo.key as keyof typeof stats.porTipo];
-                                const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                                const porcentaje = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                const barWidth = maxValue > 0 ? (value / maxValue) * 100 : 0;
                                 return (
                                   <div key={tipo.key}>
-                                    <div className="flex justify-between items-center mb-1">
-                                      <span className="text-sm text-gray-900 font-medium">{tipo.label}</span>
-                                      <span className="text-sm text-gray-900 font-bold">{value}</span>
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-sm font-semibold text-gray-900">{tipo.label}</span>
+                                      <div className="text-right">
+                                        <span className={`text-sm font-bold ${tipo.textColor}`}>{value}</span>
+                                        <span className="text-xs text-gray-500 ml-1">({porcentaje}%)</span>
+                                      </div>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
                                       <div
                                         className={`${tipo.color} h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-2`}
-                                        style={{ width: `${percentage}%` }}
+                                        style={{ width: `${barWidth}%` }}
                                       >
-                                        {percentage > 10 && (
-                                          <span className="text-xs text-white font-medium">{Math.round(percentage)}%</span>
+                                        {barWidth > 15 && (
+                                          <span className="text-xs text-white font-medium">{value}</span>
                                         )}
                                       </div>
                                     </div>
@@ -3893,16 +4834,22 @@ export default function DirectorPage() {
             {/* Gráfico: Incidencias por Grado/Sección */}
                     <Card>
                       <CardHeader>
-                <CardTitle className="text-base text-gray-900">Incidencias por Grado/Sección</CardTitle>
+                        <CardTitle className="text-base text-gray-900">Incidencias por Grado y Sección</CardTitle>
+                        <CardDescription className="text-xs text-gray-600">
+                          Top 5 grados/secciones con más incidencias registradas
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
                         {(() => {
                   const porGradoSeccion: Record<string, number> = {};
                   
                   incidenciasGenerales.forEach((inc: Incidencia) => {
-                    const estudiante = estudiantesInfo.find((e: any) => e.nombre === inc.studentName);
+                    // Buscar estudiante por ID si está disponible, si no por nombre
+                    const estudiante = inc.studentId 
+                      ? estudiantesInfo.find((e: any) => e.id === inc.studentId) 
+                      : estudiantesInfo.find((e: any) => e.nombre === inc.studentName);
                     if (estudiante && estudiante.grado && estudiante.seccion) {
-                      const key = `${estudiante.grado} - ${estudiante.seccion}`;
+                      const key = `${estudiante.grado}° - ${estudiante.seccion}`;
                       porGradoSeccion[key] = (porGradoSeccion[key] || 0) + 1;
                     }
                   });
@@ -3914,26 +4861,29 @@ export default function DirectorPage() {
                   const maxValue = topGrados.length > 0 ? Math.max(...topGrados.map(([_, v]) => v), 1) : 1;
                   
                   if (topGrados.length === 0) {
-                    return <p className="text-sm text-gray-500 text-center py-4">No hay datos de grado/sección</p>;
+                    return <p className="text-sm text-gray-500 text-center py-4">No hay datos disponibles de grado/sección</p>;
                   }
                   
                           return (
-                            <div className="space-y-3">
-                      {topGrados.map(([gradoSeccion, count]) => {
-                        const percentage = maxValue > 0 ? (count / maxValue) * 100 : 0;
+                            <div className="space-y-4">
+                      {topGrados.map(([gradoSeccion, count], idx) => {
+                        const barWidth = maxValue > 0 ? (count / maxValue) * 100 : 0;
                                 return (
                           <div key={gradoSeccion}>
-                                    <div className="flex justify-between items-center mb-1">
-                              <span className="text-sm text-gray-900 font-medium">{gradoSeccion}</span>
-                              <span className="text-sm text-gray-900 font-bold">{count}</span>
+                                    <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500">#{idx + 1}</span>
+                                <span className="text-sm font-semibold text-gray-900">{gradoSeccion}</span>
+                              </div>
+                              <span className="text-sm font-bold text-primary">{count} incidencias</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
                                       <div
                                 className="bg-primary h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
-                                        style={{ width: `${percentage}%` }}
+                                        style={{ width: `${barWidth}%` }}
                                       >
-                                        {percentage > 10 && (
-                                          <span className="text-xs text-white font-medium">{Math.round(percentage)}%</span>
+                                        {barWidth > 20 && (
+                                          <span className="text-xs text-white font-medium">{count}</span>
                                         )}
                                       </div>
                                     </div>
@@ -3945,81 +4895,57 @@ export default function DirectorPage() {
                         })()}
                       </CardContent>
                     </Card>
+                  </div>
 
-            {/* Gráfico: Gravedad vs Tipo */}
+            {/* Gráfico: Distribución por Gravedad */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base text-gray-900">Gravedad vs Tipo</CardTitle>
+                <CardTitle className="text-base text-gray-900">Distribución por Nivel de Gravedad</CardTitle>
+                <CardDescription className="text-xs text-gray-600">
+                  Cantidad de incidencias según su nivel de gravedad
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {(() => {
-                  const matriz: Record<string, Record<string, number>> = {
-                    conducta: { grave: 0, moderada: 0, leve: 0 },
-                    asistencia: { grave: 0, moderada: 0, leve: 0 },
-                    academica: { grave: 0, moderada: 0, leve: 0 },
-                    positivo: { grave: 0, moderada: 0, leve: 0 },
+                  const porGravedad = {
+                    grave: incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'grave').length,
+                    moderada: incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'moderada').length,
+                    leve: incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'leve').length,
                   };
+                  const total = porGravedad.grave + porGravedad.moderada + porGravedad.leve;
+                  const maxValue = Math.max(porGravedad.grave, porGravedad.moderada, porGravedad.leve, 1);
                   
-                  incidenciasGenerales.forEach((inc: Incidencia) => {
-                    if (matriz[inc.tipo] && matriz[inc.tipo][inc.gravedad] !== undefined) {
-                      matriz[inc.tipo][inc.gravedad]++;
-                    }
-                  });
-                  
-                  const tipos = ['conducta', 'asistencia', 'academica', 'positivo'];
-                  const tiposLabels: Record<string, string> = {
-                    conducta: 'Conducta',
-                    asistencia: 'Asistencia',
-                    academica: 'Académica',
-                    positivo: 'Positivos'
-                  };
+                  if (total === 0) {
+                    return <p className="text-sm text-gray-500 text-center py-4">No hay incidencias registradas</p>;
+                  }
                   
                   return (
                     <div className="space-y-4">
-                      {tipos.map((tipo) => {
-                        const total = matriz[tipo].grave + matriz[tipo].moderada + matriz[tipo].leve;
-                        if (total === 0) return null;
-                        
+                      {[
+                        { key: 'grave', label: 'Graves', count: porGravedad.grave, color: 'bg-red-600', textColor: 'text-red-600' },
+                        { key: 'moderada', label: 'Moderadas', count: porGravedad.moderada, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
+                        { key: 'leve', label: 'Leves', count: porGravedad.leve, color: 'bg-green-600', textColor: 'text-green-600' },
+                      ].map((item) => {
+                        const porcentaje = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
+                        const barWidth = maxValue > 0 ? (item.count / maxValue) * 100 : 0;
                         return (
-                          <div key={tipo}>
+                          <div key={item.key}>
                             <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-semibold text-gray-900">{tiposLabels[tipo]}</span>
-                              <span className="text-xs text-gray-600">{total} total</span>
+                              <span className="text-sm font-semibold text-gray-900">{item.label}</span>
+                              <div className="text-right">
+                                <span className={`text-sm font-bold ${item.textColor}`}>{item.count}</span>
+                                <span className="text-xs text-gray-500 ml-1">({porcentaje}%)</span>
                             </div>
-                            <div className="flex gap-1 h-6 rounded overflow-hidden">
-                              {matriz[tipo].grave > 0 && (
+                                </div>
+                            <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
                                 <div
-                                  className="bg-red-600 flex items-center justify-center"
-                                  style={{ width: `${(matriz[tipo].grave / total) * 100}%` }}
-                                  title={`Grave: ${matriz[tipo].grave}`}
+                                className={`${item.color} h-6 rounded-full transition-all duration-500 flex items-center justify-end pr-2`}
+                                style={{ width: `${barWidth}%` }}
                                 >
-                                  {matriz[tipo].grave > 0 && matriz[tipo].grave / total > 0.15 && (
-                                    <span className="text-xs text-white font-bold">{matriz[tipo].grave}</span>
+                                {barWidth > 15 && (
+                                  <span className="text-xs text-white font-medium">{item.count}</span>
                                   )}
                                 </div>
-                              )}
-                              {matriz[tipo].moderada > 0 && (
-                                <div
-                                  className="bg-blue-500 flex items-center justify-center"
-                                  style={{ width: `${(matriz[tipo].moderada / total) * 100}%` }}
-                                  title={`Moderada: ${matriz[tipo].moderada}`}
-                                >
-                                  {matriz[tipo].moderada > 0 && matriz[tipo].moderada / total > 0.15 && (
-                                    <span className="text-xs text-white font-bold">{matriz[tipo].moderada}</span>
-                                  )}
-                                </div>
-                              )}
-                              {matriz[tipo].leve > 0 && (
-                                <div
-                                  className="bg-green-600 flex items-center justify-center"
-                                  style={{ width: `${(matriz[tipo].leve / total) * 100}%` }}
-                                  title={`Leve: ${matriz[tipo].leve}`}
-                                >
-                                  {matriz[tipo].leve > 0 && matriz[tipo].leve / total > 0.15 && (
-                                    <span className="text-xs text-white font-bold">{matriz[tipo].leve}</span>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           </div>
                         );
@@ -4030,174 +4956,6 @@ export default function DirectorPage() {
               </CardContent>
             </Card>
           </div>
-
-                {/* Reporte General con IA */}
-                {generatingGeneralReport && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                        Generando Análisis General...
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-5/6" />
-                        <Skeleton className="h-4 w-4/6" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-3/4" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Render reporteGeneral card safely */}
-                {!generatingGeneralReport && reporteGeneral && (() => {
-            const { timestamp, truncated, report, resumen, alertas, recomendaciones } = reporteGeneral as any;
-                  return (
-                    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-white">
-                      <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                          <Sparkles className="h-5 w-5 text-primary" />
-                          Análisis General Generado por IA
-                        </CardTitle>
-                  <CardDescription className="text-sm">
-                          {timestamp ? (
-                            <>Generado el {new Date(timestamp).toLocaleString('es-ES')}</>
-                          ) : null}
-                          {truncated ? (
-                            <span className="ml-2 text-amber-600 font-medium">
-                        ⚠️ Reporte truncado
-                            </span>
-                          ) : null}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                  <div className="space-y-6">
-                    {/* Resumen Automático */}
-                    {resumen && (
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Resumen Automático</h4>
-                        </div>
-                        <p className="text-gray-900 text-sm leading-relaxed">{resumen}</p>
-                      </div>
-                    )}
-                    
-                    {/* Alertas Inteligentes - Generadas por IA */}
-                    {(() => {
-                      const alertasIA = (reporteGeneral as any)?.alertas;
-                      
-                      // Si hay alertas generadas por IA, mostrarlas
-                      if (alertasIA && alertasIA.trim()) {
-                        // Determinar el color según el contenido (positivo o alerta)
-                        const esPositivo = alertasIA.toLowerCase().includes('no se detectaron') || 
-                                          alertasIA.toLowerCase().includes('estado general es positivo') ||
-                                          alertasIA.toLowerCase().includes('rangos normales') ||
-                                          alertasIA.toLowerCase().includes('ninguna alerta');
-                        
-                        if (esPositivo) {
-                        return (
-                          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                                <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
-                            </div>
-                              <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">{alertasIA}</p>
-                          </div>
-                        );
-                        } else {
-                      return (
-                        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                          <div className="flex items-center gap-2 mb-3">
-                            <AlertCircle className="h-5 w-5 text-yellow-600" />
-                            <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
-                          </div>
-                              <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">
-                                {alertasIA}
-                              </div>
-                              </div>
-                          );
-                        }
-                      }
-                      
-                      // Si no hay alertas de IA, mostrar mensaje por defecto
-                      return (
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          <div className="flex items-center gap-2 mb-2">
-                            <AlertCircle className="h-4 w-4 text-gray-600" />
-                            <h4 className="font-semibold text-gray-900 text-sm">Alertas Inteligentes</h4>
-                              </div>
-                          <p className="text-gray-900 text-sm italic">
-                            Las alertas se generarán automáticamente al crear el análisis con IA.
-                          </p>
-                        </div>
-                      );
-                    })()}
-                    
-                    {/* Recomendaciones */}
-                    {recomendaciones && (
-                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Target className="h-4 w-4 text-green-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Recomendaciones</h4>
-                        </div>
-                        <div className="pl-1">
-                          {formatRecomendacionesGeneral(recomendaciones)}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Fallback: Reporte completo */}
-                    {!resumen && !recomendaciones && report && (
-                      <div className="text-gray-900 leading-relaxed text-sm">
-                            <div
-                              className="space-y-2"
-                              dangerouslySetInnerHTML={{
-                                __html: formatReportText(report)
-                              }}
-                            />
-                      </div>
-                    )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-          })()}
-          
-          {/* Botones al final de todo */}
-          {typeof incidenciasGenerales !== 'undefined' && Array.isArray(incidenciasGenerales) && incidenciasGenerales.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
-              {/* Botón para Generar/Regenerar Análisis con IA */}
-              {!generatingGeneralReport && (
-                <Button
-                  onClick={() => {
-                    if (typeof generateGeneralReport === 'function') {
-                      generateGeneralReport(incidenciasGenerales);
-                    }
-                  }}
-                  size="lg"
-                  className="w-full gap-2"
-                >
-                  <Sparkles className="h-5 w-5" />
-                  {reporteGeneral ? 'Regenerar Análisis con IA' : 'Generar Análisis con IA'}
-                </Button>
-              )}
-              
-              {/* Botón Exportar a PDF */}
-              <Button
-                onClick={handleExportPDF}
-                size="lg"
-                variant="outline"
-                className="w-full gap-2"
-              >
-                <Download className="h-5 w-5" />
-                Exportar a PDF
-              </Button>
-            </div>
-          )}
         </div>
       )}
 
@@ -4261,6 +5019,438 @@ export default function DirectorPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Formulario para ingresar estudiante manualmente */}
+              <div className="border-2 border-primary/20 rounded-lg p-6 bg-primary/5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Plus className="h-5 w-5 text-primary" />
+                    Ingresar Estudiante Manualmente
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMostrarFormularioNuevoEstudiante(!mostrarFormularioNuevoEstudiante);
+                      if (!mostrarFormularioNuevoEstudiante) {
+                        // Limpiar formulario al abrir
+                        setNuevoEstudianteForm({
+                          nombres: '',
+                          apellidos: '',
+                          grado: '',
+                          seccion: '',
+                          edad: undefined,
+                          fechaNacimiento: '',
+                          contacto: { telefono: '', email: '', nombre: '' },
+                          tutor: { nombre: '', telefono: '', email: '' },
+                          apoderado: {
+                            nombre: '',
+                            parentesco: '',
+                            telefono: '',
+                            telefonoAlternativo: '',
+                            email: '',
+                            direccion: ''
+                          }
+                        });
+                      }
+                    }}
+                  >
+                    {mostrarFormularioNuevoEstudiante ? (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Cerrar
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nuevo Estudiante
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {mostrarFormularioNuevoEstudiante && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Nombres <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          value={nuevoEstudianteForm.nombres || ''}
+                          onChange={(e) => setNuevoEstudianteForm({...nuevoEstudianteForm, nombres: e.target.value})}
+                          placeholder="Ingrese nombres"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Apellidos <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          value={nuevoEstudianteForm.apellidos || ''}
+                          onChange={(e) => setNuevoEstudianteForm({...nuevoEstudianteForm, apellidos: e.target.value})}
+                          placeholder="Ingrese apellidos"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Grado <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                          value={nuevoEstudianteForm.grado || ''}
+                          onValueChange={(value) => setNuevoEstudianteForm({...nuevoEstudianteForm, grado: value})}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="Seleccione grado" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {grados.map(grado => (
+                              <SelectItem key={grado} value={grado}>{grado}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Sección <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                          value={nuevoEstudianteForm.seccion || ''}
+                          onValueChange={(value) => setNuevoEstudianteForm({...nuevoEstudianteForm, seccion: value})}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="Seleccione sección" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {secciones.map(seccion => (
+                              <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Edad</label>
+                        <Input
+                          type="number"
+                          value={nuevoEstudianteForm.edad || ''}
+                          onChange={(e) => setNuevoEstudianteForm({...nuevoEstudianteForm, edad: e.target.value ? parseInt(e.target.value) : undefined})}
+                          placeholder="Edad"
+                          className="h-9 text-sm"
+                          min="1"
+                          max="150"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Fecha de Nacimiento</label>
+                        <Input
+                          type="date"
+                          value={nuevoEstudianteForm.fechaNacimiento || ''}
+                          onChange={(e) => setNuevoEstudianteForm({...nuevoEstudianteForm, fechaNacimiento: e.target.value})}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Información de Contacto</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Teléfono</label>
+                          <Input
+                            value={nuevoEstudianteForm.contacto?.telefono || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              contacto: {...nuevoEstudianteForm.contacto, telefono: e.target.value}
+                            })}
+                            placeholder="Teléfono"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
+                          <Input
+                            type="email"
+                            value={nuevoEstudianteForm.contacto?.email || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              contacto: {...nuevoEstudianteForm.contacto, email: e.target.value}
+                            })}
+                            placeholder="Email"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Nombre Contacto</label>
+                          <Input
+                            value={nuevoEstudianteForm.contacto?.nombre || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              contacto: {...nuevoEstudianteForm.contacto, nombre: e.target.value}
+                            })}
+                            placeholder="Nombre del contacto"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Información del Apoderado</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Nombre</label>
+                          <Input
+                            value={nuevoEstudianteForm.apoderado?.nombre || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              apoderado: {...nuevoEstudianteForm.apoderado, nombre: e.target.value}
+                            })}
+                            placeholder="Nombre del apoderado"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Parentesco</label>
+                          <Input
+                            value={nuevoEstudianteForm.apoderado?.parentesco || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              apoderado: {...nuevoEstudianteForm.apoderado, parentesco: e.target.value}
+                            })}
+                            placeholder="Ej: Padre, Madre, Tío, etc."
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Teléfono</label>
+                          <Input
+                            value={nuevoEstudianteForm.apoderado?.telefono || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              apoderado: {...nuevoEstudianteForm.apoderado, telefono: e.target.value}
+                            })}
+                            placeholder="Teléfono"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Teléfono Alternativo</label>
+                          <Input
+                            value={nuevoEstudianteForm.apoderado?.telefonoAlternativo || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              apoderado: {...nuevoEstudianteForm.apoderado, telefonoAlternativo: e.target.value}
+                            })}
+                            placeholder="Teléfono alternativo"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
+                          <Input
+                            type="email"
+                            value={nuevoEstudianteForm.apoderado?.email || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              apoderado: {...nuevoEstudianteForm.apoderado, email: e.target.value}
+                            })}
+                            placeholder="Email"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Dirección</label>
+                          <Input
+                            value={nuevoEstudianteForm.apoderado?.direccion || ''}
+                            onChange={(e) => setNuevoEstudianteForm({
+                              ...nuevoEstudianteForm,
+                              apoderado: {...nuevoEstudianteForm.apoderado, direccion: e.target.value}
+                            })}
+                            placeholder="Dirección"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t">
+                      <Button
+                        onClick={async () => {
+                          // Validaciones
+                          if (!nuevoEstudianteForm.nombres || !nuevoEstudianteForm.nombres.trim()) {
+                            toast.error('Los nombres son requeridos');
+                            return;
+                          }
+                          if (!nuevoEstudianteForm.apellidos || !nuevoEstudianteForm.apellidos.trim()) {
+                            toast.error('Los apellidos son requeridos');
+                            return;
+                          }
+                          if (!nuevoEstudianteForm.grado) {
+                            toast.error('El grado es requerido');
+                            return;
+                          }
+                          if (!nuevoEstudianteForm.seccion) {
+                            toast.error('La sección es requerida');
+                            return;
+                          }
+
+                          // Validar email si está presente
+                          if (nuevoEstudianteForm.contacto?.email) {
+                            const emailValidation = validateEmail(nuevoEstudianteForm.contacto.email);
+                            if (!emailValidation.isValid) {
+                              toast.error(emailValidation.error);
+                              return;
+                            }
+                          }
+
+                          // Validar teléfono si está presente
+                          if (nuevoEstudianteForm.contacto?.telefono) {
+                            const phoneValidation = validatePhone(nuevoEstudianteForm.contacto.telefono);
+                            if (!phoneValidation.isValid) {
+                              toast.error(phoneValidation.error);
+                              return;
+                            }
+                          }
+
+                          // Validar edad si está presente
+                          if (nuevoEstudianteForm.edad) {
+                            const edadValidation = validateAge(nuevoEstudianteForm.edad);
+                            if (!edadValidation.isValid) {
+                              toast.error(edadValidation.error);
+                              return;
+                            }
+                          }
+
+                          try {
+                            // Construir el objeto estudiante completo
+                            const estudianteCompleto: EstudianteInfo = {
+                              nombres: nuevoEstudianteForm.nombres.trim(),
+                              apellidos: nuevoEstudianteForm.apellidos.trim(),
+                              nombre: `${nuevoEstudianteForm.nombres.trim()} ${nuevoEstudianteForm.apellidos.trim()}`,
+                              grado: nuevoEstudianteForm.grado,
+                              seccion: nuevoEstudianteForm.seccion,
+                              edad: nuevoEstudianteForm.edad,
+                              fechaNacimiento: nuevoEstudianteForm.fechaNacimiento || undefined,
+                              contacto: nuevoEstudianteForm.contacto || undefined,
+                              tutor: nuevoEstudianteForm.tutor || undefined,
+                              apoderado: nuevoEstudianteForm.apoderado || undefined
+                            };
+
+                            await saveEstudianteInfo(estudianteCompleto);
+                            toast.success('Estudiante agregado exitosamente');
+                            
+                            // Limpiar formulario
+                            setNuevoEstudianteForm({
+                              nombres: '',
+                              apellidos: '',
+                              grado: '',
+                              seccion: '',
+                              edad: undefined,
+                              fechaNacimiento: '',
+                              contacto: { telefono: '', email: '', nombre: '' },
+                              tutor: { nombre: '', telefono: '', email: '' },
+                              apoderado: {
+                                nombre: '',
+                                parentesco: '',
+                                telefono: '',
+                                telefonoAlternativo: '',
+                                email: '',
+                                direccion: ''
+                              }
+                            });
+                            
+                            // Recargar estudiantes
+                            setRefreshKey(prev => prev + 1);
+                            setMostrarFormularioNuevoEstudiante(false);
+                          } catch (error: any) {
+                            console.error('Error guardando estudiante:', error);
+                            toast.error(error.message || 'Error al guardar el estudiante');
+                          }
+                        }}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Guardar Estudiante
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setNuevoEstudianteForm({
+                            nombres: '',
+                            apellidos: '',
+                            grado: '',
+                            seccion: '',
+                            edad: undefined,
+                            fechaNacimiento: '',
+                            contacto: { telefono: '', email: '', nombre: '' },
+                            tutor: { nombre: '', telefono: '', email: '' },
+                            apoderado: {
+                              nombre: '',
+                              parentesco: '',
+                              telefono: '',
+                              telefonoAlternativo: '',
+                              email: '',
+                              direccion: ''
+                            }
+                          });
+                        }}
+                      >
+                        Limpiar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Mensaje de confirmación de importación */}
+              {mensajeImportacion && (
+                <div className={`rounded-lg p-4 border-2 ${
+                  mensajeImportacion.tipo === 'success' 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      {mensajeImportacion.tipo === 'success' ? (
+                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <h4 className={`font-semibold text-base mb-1 ${
+                          mensajeImportacion.tipo === 'success' ? 'text-green-900' : 'text-red-900'
+                        }`}>
+                          {mensajeImportacion.tipo === 'success' ? '✅ Importación Completada' : '❌ Error en la Importación'}
+                        </h4>
+                        <p className={`text-sm ${
+                          mensajeImportacion.tipo === 'success' ? 'text-green-800' : 'text-red-800'
+                        }`}>
+                          {mensajeImportacion.mensaje}
+                        </p>
+                        {mensajeImportacion.detalles && (
+                          <p className={`text-xs mt-2 ${
+                            mensajeImportacion.tipo === 'success' ? 'text-green-700' : 'text-red-700'
+                          }`}>
+                            {mensajeImportacion.detalles}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMensajeImportacion(null)}
+                      className={`h-6 w-6 p-0 ${
+                        mensajeImportacion.tipo === 'success' ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'
+                      }`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               {/* Botón de importación */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                 <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -4419,13 +5609,20 @@ export default function DirectorPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="text-sm font-semibold">Foto</TableHead>
                         <TableHead className="text-sm font-semibold">Nombres</TableHead>
                         <TableHead className="text-sm font-semibold">Apellidos</TableHead>
                         <TableHead className="text-sm font-semibold">Grado</TableHead>
                         <TableHead className="text-sm font-semibold">Sección</TableHead>
                         <TableHead className="text-sm font-semibold">Edad</TableHead>
+                        <TableHead className="text-sm font-semibold hidden lg:table-cell">Fecha Nac.</TableHead>
                         <TableHead className="text-sm font-semibold">Contacto</TableHead>
-                        <TableHead className="text-sm font-semibold hidden md:table-cell">Apoderado</TableHead>
+                        <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Nombre</TableHead>
+                        <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Parentesco</TableHead>
+                        <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Teléfono</TableHead>
+                        <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Tel. Alt.</TableHead>
+                        <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Email</TableHead>
+                        <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Dirección</TableHead>
                         <TableHead className="text-sm font-semibold text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -4453,6 +5650,19 @@ export default function DirectorPage() {
                           
                           return (
                             <TableRow key={rowKey}>
+                              <TableCell className="text-gray-900">
+                                {estudiante.fotoPerfil ? (
+                                  <img 
+                                    src={estudiante.fotoPerfil} 
+                                    alt={estudiante.nombre} 
+                                    className="w-10 h-10 rounded-full object-cover border border-gray-300"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600 border border-gray-300">
+                                    {estudiante.nombres?.[0] || estudiante.nombre?.[0] || ''}{estudiante.apellidos?.[0] || estudiante.nombre?.split(' ')[1]?.[0] || ''}
+                                  </div>
+                                )}
+                              </TableCell>
                               <TableCell className="font-medium text-gray-900">
                                 {estaEditando ? (
                                   <Input
@@ -4521,6 +5731,18 @@ export default function DirectorPage() {
                                   estudiante.edad || '-'
                                 )}
                               </TableCell>
+                              <TableCell className="text-gray-900 hidden lg:table-cell">
+                                {estaEditando ? (
+                                  <Input
+                                    type="date"
+                                    value={formData.fechaNacimiento ? new Date(formData.fechaNacimiento).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => setEstudianteEditForm({...formData, fechaNacimiento: e.target.value})}
+                                    className="w-full h-8 text-sm"
+                                  />
+                                ) : (
+                                  <span className="text-xs">{estudiante.fechaNacimiento ? formatFecha(estudiante.fechaNacimiento) : '-'}</span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-gray-900">
                                 {estaEditando ? (
                                   <div className="space-y-1">
@@ -4548,6 +5770,97 @@ export default function DirectorPage() {
                                     <div>{estudiante.contacto?.telefono || '-'}</div>
                                     <div className="text-gray-600">{estudiante.contacto?.email || '-'}</div>
                                   </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-gray-900 hidden xl:table-cell">
+                                {estaEditando ? (
+                                  <Input
+                                    value={formData.apoderado?.nombre || ''}
+                                    onChange={(e) => setEstudianteEditForm({
+                                      ...formData, 
+                                      apoderado: {...formData.apoderado, nombre: e.target.value}
+                                    })}
+                                    className="w-full h-8 text-sm"
+                                    placeholder="Nombre"
+                                  />
+                                ) : (
+                                  <span className="text-xs">{estudiante.apoderado?.nombre || '-'}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-gray-900 hidden xl:table-cell">
+                                {estaEditando ? (
+                                  <Input
+                                    value={formData.apoderado?.parentesco || ''}
+                                    onChange={(e) => setEstudianteEditForm({
+                                      ...formData, 
+                                      apoderado: {...formData.apoderado, parentesco: e.target.value}
+                                    })}
+                                    className="w-full h-8 text-sm"
+                                    placeholder="Parentesco"
+                                  />
+                                ) : (
+                                  <span className="text-xs">{estudiante.apoderado?.parentesco || '-'}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-gray-900 hidden xl:table-cell">
+                                {estaEditando ? (
+                                  <Input
+                                    value={formData.apoderado?.telefono || ''}
+                                    onChange={(e) => setEstudianteEditForm({
+                                      ...formData, 
+                                      apoderado: {...formData.apoderado, telefono: e.target.value}
+                                    })}
+                                    className="w-full h-8 text-sm"
+                                    placeholder="Teléfono"
+                                  />
+                                ) : (
+                                  <span className="text-xs">{estudiante.apoderado?.telefono || '-'}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-gray-900 hidden xl:table-cell">
+                                {estaEditando ? (
+                                  <Input
+                                    type="email"
+                                    value={formData.apoderado?.email || ''}
+                                    onChange={(e) => setEstudianteEditForm({
+                                      ...formData, 
+                                      apoderado: {...formData.apoderado, email: e.target.value}
+                                    })}
+                                    className="w-full h-8 text-sm"
+                                    placeholder="Email"
+                                  />
+                                ) : (
+                                  <span className="text-xs">{estudiante.apoderado?.email || '-'}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-gray-900 hidden xl:table-cell">
+                                {estaEditando ? (
+                                  <Input
+                                    value={formData.apoderado?.telefonoAlternativo || ''}
+                                    onChange={(e) => setEstudianteEditForm({
+                                      ...formData, 
+                                      apoderado: {...formData.apoderado, telefonoAlternativo: e.target.value}
+                                    })}
+                                    className="w-full h-8 text-sm"
+                                    placeholder="Tel. Alt."
+                                  />
+                                ) : (
+                                  <span className="text-xs">{estudiante.apoderado?.telefonoAlternativo || '-'}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-gray-900 hidden xl:table-cell">
+                                {estaEditando ? (
+                                  <Input
+                                    value={formData.apoderado?.direccion || ''}
+                                    onChange={(e) => setEstudianteEditForm({
+                                      ...formData, 
+                                      apoderado: {...formData.apoderado, direccion: e.target.value}
+                                    })}
+                                    className="w-full h-8 text-sm"
+                                    placeholder="Dirección"
+                                  />
+                                ) : (
+                                  <span className="text-xs">{estudiante.apoderado?.direccion || '-'}</span>
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
@@ -4579,12 +5892,28 @@ export default function DirectorPage() {
                                               console.log('📝 Usando ID del estudiante:', estudianteId);
                                               estudianteCompleto = await fetchEstudianteById(estudianteId);
                                             } else {
-                                              // Fallback: buscar por nombre
+                                              // Fallback: intentar buscar por ID en estudiantesInfo primero, luego por nombre
                                               const nombreOriginal = estudianteNombreOriginal || estudiante.nombre;
-                                              console.log('📝 Buscando por nombre:', nombreOriginal);
-                                              estudianteCompleto = await fetchEstudiante(nombreOriginal);
-                                              if (estudianteCompleto?.id) {
-                                                estudianteId = estudianteCompleto.id;
+                                              console.log('📝 Intentando buscar estudiante por ID en lista local o por nombre:', nombreOriginal);
+                                              
+                                              // Primero intentar buscar en estudiantesInfo por ID si el nombre parece ser un UUID
+                                              const esUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nombreOriginal);
+                                              if (esUUID) {
+                                                const estudianteLocal = estudiantesInfo.find(e => e.id === nombreOriginal);
+                                                if (estudianteLocal?.id) {
+                                                  estudianteId = estudianteLocal.id;
+                                                  estudianteCompleto = await fetchEstudianteById(estudianteId);
+                                                  console.log('✅ Estudiante encontrado por ID en lista local:', estudianteId);
+                                                }
+                                              }
+                                              
+                                              // Si no se encontró por ID, buscar por nombre
+                                              if (!estudianteCompleto) {
+                                                console.log('📝 Buscando por nombre:', nombreOriginal);
+                                                estudianteCompleto = await fetchEstudiante(nombreOriginal);
+                                                if (estudianteCompleto?.id) {
+                                                  estudianteId = estudianteCompleto.id;
+                                                }
                                               }
                                             }
                                             
@@ -4632,6 +5961,14 @@ export default function DirectorPage() {
                                               edad: estudianteEditForm.edad !== undefined && estudianteEditForm.edad !== null
                                                 ? estudianteEditForm.edad
                                                 : estudianteCompleto.edad,
+                                              // Usar fecha de nacimiento del formulario si está presente
+                                              fechaNacimiento: estudianteEditForm.fechaNacimiento !== undefined
+                                                ? estudianteEditForm.fechaNacimiento
+                                                : estudianteCompleto.fechaNacimiento,
+                                              // Preservar foto de perfil
+                                              fotoPerfil: estudianteEditForm.fotoPerfil !== undefined
+                                                ? estudianteEditForm.fotoPerfil
+                                                : estudianteCompleto.fotoPerfil,
                                               // Fusionar contacto: usar valores del formulario si están presentes
                                               contacto: {
                                                 ...estudianteCompleto.contacto,
@@ -4717,6 +6054,7 @@ export default function DirectorPage() {
                                                 setEstudianteEditandoAdmin(null);
                                                 setEstudianteEditForm({});
                                                 setEstudianteNombreOriginal(null);
+        setEstudianteIdOriginal(null);
                                                 setFormularioCerradoKey(prev => prev + 1);
                                               });
                                               console.log('✅ Formulario cerrado');
@@ -4726,6 +6064,7 @@ export default function DirectorPage() {
                                                 setEstudianteEditandoAdmin(null);
                                                 setEstudianteEditForm({});
                                                 setEstudianteNombreOriginal(null);
+        setEstudianteIdOriginal(null);
                                                 setFormularioCerradoKey(prev => prev + 1);
                                               });
                                             }
@@ -4807,6 +6146,7 @@ export default function DirectorPage() {
                                               setEstudianteEditandoAdmin(null);
                                               setEstudianteEditForm({});
                                               setEstudianteNombreOriginal(null);
+        setEstudianteIdOriginal(null);
                                             });
                                             
                                             // Luego actualizar con los datos recargados de la base de datos para asegurar consistencia
@@ -4863,6 +6203,7 @@ export default function DirectorPage() {
                                             setEstudianteEditandoAdmin(null);
                                             setEstudianteEditForm({});
                                             setEstudianteNombreOriginal(null);
+        setEstudianteIdOriginal(null);
                                             toast.error(error.message || 'Error al guardar el estudiante');
                                           }
                                         }}
@@ -4887,8 +6228,10 @@ export default function DirectorPage() {
                                         variant="outline"
                                         onClick={() => {
                                           // Usar ID si está disponible, si no usar nombre (para compatibilidad)
-                                          setEstudianteEditandoAdmin(estudiante.id || estudiante.nombre);
+                                          const identificador = estudiante.id || estudiante.nombre;
+                                          setEstudianteEditandoAdmin(identificador);
                                           setEstudianteNombreOriginal(estudiante.nombre);
+                                          setEstudianteIdOriginal(estudiante.id || null);
                                           // Si no tiene nombres y apellidos separados, intentar separarlos del nombre
                                           let nombres = estudiante.nombres;
                                           let apellidos = estudiante.apellidos;
@@ -4914,14 +6257,23 @@ export default function DirectorPage() {
                                         onClick={async () => {
                                           if (confirm(`¿Estás seguro de eliminar a ${estudiante.nombre}?`)) {
                                             try {
-                                            await deleteEstudiante(estudiante.nombre);
-                                            const estudiantesFiltrados = estudiantesInfo.filter(e => e.nombre !== estudiante.nombre);
-                                            setEstudiantesInfo(estudiantesFiltrados);
-                                            setRefreshKey(prev => prev + 1);
-                                            toast.success('Estudiante eliminado exitosamente de la base de datos');
-                                            } catch (error) {
+                                              // Usar ID si está disponible (más confiable), si no usar nombre
+                                              const identificador = estudiante.id || estudiante.nombre;
+                                              const usarId = !!estudiante.id;
+                                              await deleteEstudiante(identificador, usarId);
+                                              // Filtrar por ID si está disponible, si no por nombre
+                                              const estudiantesFiltrados = estudiantesInfo.filter(e => {
+                                                if (estudiante.id && e.id) {
+                                                  return e.id !== estudiante.id;
+                                                }
+                                                return e.nombre !== estudiante.nombre;
+                                              });
+                                              setEstudiantesInfo(estudiantesFiltrados);
+                                              setRefreshKey(prev => prev + 1);
+                                              toast.success('Estudiante eliminado exitosamente de la base de datos');
+                                            } catch (error: any) {
                                               console.error('Error eliminando estudiante:', error);
-                                              toast.error('Error al eliminar estudiante');
+                                              toast.error(error.message || 'Error al eliminar estudiante');
                                             }
                                           }
                                         }}

@@ -15,6 +15,7 @@ export interface EstadoIncidenciaHistorial {
 export interface Incidencia {
   id: string;
   studentName: string;
+  studentId?: string; // ID del estudiante en la base de datos (más confiable que studentName)
   tipo: TipoIncidencia;
   subtipo?: SubtipoConducta | SubtipoPositivo; // Subtipo si es conducta o positivo
   gravedad: Gravedad; // Gravedad de la incidencia

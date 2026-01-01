@@ -88,20 +88,27 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const nombre = searchParams.get('nombre');
+    const id = searchParams.get('id');
+    
+    // Priorizar ID sobre nombre (más confiable)
+    if (id) {
+      await deleteEstudiante(id, true);
+      return NextResponse.json({ success: true, message: `Estudiante con ID ${id} eliminado exitosamente` });
+    }
     
     if (!nombre) {
       return NextResponse.json(
-        { error: 'Nombre del estudiante es requerido' },
+        { error: 'Nombre o ID del estudiante es requerido' },
         { status: 400 }
       );
     }
 
-    await deleteEstudiante(nombre);
+    await deleteEstudiante(nombre, false);
     return NextResponse.json({ success: true, message: `Estudiante ${nombre} eliminado exitosamente` });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error eliminando estudiante:', error);
     return NextResponse.json(
-      { error: 'Error al eliminar estudiante' },
+      { error: error.message || 'Error al eliminar estudiante' },
       { status: 500 }
     );
   }

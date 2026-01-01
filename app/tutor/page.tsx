@@ -1062,7 +1062,10 @@ export default function TutorPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-900">Descripci├│n</label>
+              <label className="text-sm font-semibold text-gray-900">
+                Descripción
+                <span className="text-xs text-gray-500 font-normal ml-2">(mínimo 10 caracteres)</span>
+              </label>
               <Textarea
                 placeholder={viewMode === 'asistencia' ? 'Describe la situación de Asistencia...' : 'Describe la incidencia de manera clara y concisa...'}
                 value={formData.descripcion}
@@ -1070,6 +1073,11 @@ export default function TutorPage() {
                 rows={4}
                 required
               />
+              {formData.descripcion.length > 0 && (
+                <p className={`text-xs mt-1 ${formData.descripcion.trim().length < 10 ? 'text-red-600' : 'text-gray-500'}`}>
+                  {formData.descripcion.trim().length} / 10 caracteres mínimo
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

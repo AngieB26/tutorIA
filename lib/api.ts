@@ -8,12 +8,25 @@
 // ============================================
 
 export async function fetchEstudiantes(grado?: string): Promise<any[]> {
-  const url = grado 
-    ? `/api/estudiantes?grado=${encodeURIComponent(grado)}`
-    : '/api/estudiantes';
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Error al obtener estudiantes');
-  return res.json();
+  try {
+    const url = grado 
+      ? `/api/estudiantes?grado=${encodeURIComponent(grado)}`
+      : '/api/estudiantes';
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn('⚠️ Error al obtener estudiantes:', res.status, res.statusText);
+      return []; // Retornar array vacío en lugar de lanzar error
+    }
+    return res.json();
+  } catch (error: any) {
+    // Manejar errores de red (ERR_NETWORK_IO_SUSPENDED, etc.)
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.warn('⚠️ Error de red al obtener estudiantes (servidor no disponible):', error.message);
+      return []; // Retornar array vacío para no romper la aplicación
+    }
+    console.error('❌ Error inesperado al obtener estudiantes:', error);
+    return [];
+  }
 }
 
 export async function fetchEstudiante(nombre: string): Promise<any | null> {
@@ -30,6 +43,16 @@ export async function fetchEstudianteById(id: string): Promise<any | null> {
   if (!res.ok) {
     if (res.status === 404) return null;
     throw new Error('Error al obtener estudiante');
+  }
+  return res.json();
+}
+
+export async function recalcularContadoresAsistencia(): Promise<void> {
+  const res = await fetch('/api/asistencia?action=recalcular', {
+    method: 'PATCH',
+  });
+  if (!res.ok) {
+    throw new Error('Error al recalcular contadores de asistencia');
   }
   return res.json();
 }
@@ -83,11 +106,17 @@ export async function saveEstudiantesInfo(estudiantes: any[]): Promise<void> {
   return saveEstudiantes(estudiantes);
 }
 
-export async function deleteEstudiante(nombre: string): Promise<void> {
-  const res = await fetch(`/api/estudiantes?nombre=${encodeURIComponent(nombre)}`, {
+export async function deleteEstudiante(nombreOrId: string, useId: boolean = false): Promise<void> {
+  const url = useId 
+    ? `/api/estudiantes?id=${encodeURIComponent(nombreOrId)}`
+    : `/api/estudiantes?nombre=${encodeURIComponent(nombreOrId)}`;
+  const res = await fetch(url, {
     method: 'DELETE',
   });
-  if (!res.ok) throw new Error('Error al eliminar estudiante');
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al eliminar estudiante');
+  }
 }
 
 // ============================================
@@ -164,9 +193,22 @@ export async function marcarIncidenciaResuelta(id: string, resueltaPor: string =
 // ============================================
 
 export async function fetchTutores(): Promise<any[]> {
-  const res = await fetch('/api/tutores');
-  if (!res.ok) throw new Error('Error al obtener tutores');
-  return res.json();
+  try {
+    const res = await fetch('/api/tutores');
+    if (!res.ok) {
+      console.warn('⚠️ Error al obtener tutores:', res.status, res.statusText);
+      return []; // Retornar array vacío en lugar de lanzar error
+    }
+    return res.json();
+  } catch (error: any) {
+    // Manejar errores de red (ERR_NETWORK_IO_SUSPENDED, etc.)
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.warn('⚠️ Error de red al obtener tutores (servidor no disponible):', error.message);
+      return []; // Retornar array vacío para no romper la aplicación
+    }
+    console.error('❌ Error inesperado al obtener tutores:', error);
+    return [];
+  }
 }
 
 export async function saveTutores(tutores: any[]): Promise<void> {
@@ -340,9 +382,22 @@ export async function getTutoresGradoSeccion(): Promise<any[]> {
 // ============================================
 
 export async function fetchAsistenciaClases(): Promise<any[]> {
-  const res = await fetch('/api/asistencia');
-  if (!res.ok) throw new Error('Error al obtener asistencia');
-  return res.json();
+  try {
+    const res = await fetch('/api/asistencia');
+    if (!res.ok) {
+      console.warn('⚠️ Error al obtener asistencia:', res.status, res.statusText);
+      return []; // Retornar array vacío en lugar de lanzar error
+    }
+    return res.json();
+  } catch (error: any) {
+    // Manejar errores de red (ERR_NETWORK_IO_SUSPENDED, etc.)
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.warn('⚠️ Error de red al obtener asistencia (servidor no disponible):', error.message);
+      return []; // Retornar array vacío para no romper la aplicación
+    }
+    console.error('❌ Error inesperado al obtener asistencia:', error);
+    return [];
+  }
 }
 
 export async function getAsistenciaClasesByFilters(params: {

@@ -9,23 +9,31 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Ejecutar seed automáticamente al cargar la página
-    const runSeed = async () => {
+    // OPTIMIZACIÓN: Solo ejecutar seed si no hay datos (verificar primero)
+    const runSeedIfNeeded = async () => {
       try {
-        console.log('Ejecutando seed...');
+        // Verificar si ya hay estudiantes antes de ejecutar seed
+        const estudiantesResponse = await fetch('/api/estudiantes');
+        if (estudiantesResponse.ok) {
+          const estudiantes = await estudiantesResponse.json();
+          if (estudiantes.length > 0) {
+            console.log('Ya hay datos, no se ejecuta seed');
+            return; // Ya hay datos, no ejecutar seed
+          }
+        }
+        
+        // Solo ejecutar seed si no hay datos
+        console.log('No hay datos, ejecutando seed...');
         const response = await fetch('/api/seed', { method: 'POST' });
         const data = await response.json();
-        console.log('Respuesta del seed:', data);
         if (data.success) {
-          console.log('Seed ejecutado:', data.message, data);
-        } else {
-          console.log('Seed no ejecutado (ya hay datos):', data);
+          console.log('Seed ejecutado:', data.message);
         }
       } catch (error) {
         console.error('Error ejecutando seed:', error);
       }
     };
-    runSeed();
+    runSeedIfNeeded();
   }, []);
 
   return (
