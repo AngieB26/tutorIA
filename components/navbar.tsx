@@ -32,12 +32,20 @@ export function Navbar() {
 
   // Helper function para obtener el nombre completo desde nombres y apellidos
   const getNombreCompleto = (estudiante: any): string => {
+    // Validar que estudiante exista
+    if (!estudiante) {
+      console.warn('⚠️ getNombreCompleto recibió estudiante undefined/null');
+      return 'Sin nombre';
+    }
+    
     if (estudiante.nombres && estudiante.apellidos) {
-      return `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+      const nombre = `${estudiante.nombres} ${estudiante.apellidos}`.trim();
+      if (nombre) return nombre;
     }
     // Fallback: si no hay nombres y apellidos, intentar usar nombre (si existe en runtime)
     if (estudiante.nombre) return estudiante.nombre;
-    return estudiante.nombres || estudiante.apellidos || 'Sin nombre';
+    const fallback = estudiante.nombres || estudiante.apellidos || 'Sin nombre';
+    return fallback;
   };
 
   useEffect(() => {
@@ -94,7 +102,20 @@ export function Navbar() {
           
           console.log('📊 Procesando contadores de estudiantes desde la tabla Estudiante...');
           estudiantesData.forEach((estudiante: any) => {
+            // Validar que el estudiante exista y tenga datos válidos
+            if (!estudiante) {
+              console.warn('⚠️ Estudiante undefined/null encontrado, omitiendo');
+              return;
+            }
+            
             const nombreCompleto = getNombreCompleto(estudiante);
+            
+            // Validar que el nombre completo sea válido (no undefined, null, o vacío)
+            if (!nombreCompleto || nombreCompleto === 'Sin nombre' || nombreCompleto.trim() === '') {
+              console.warn('⚠️ Estudiante sin nombre válido, omitiendo:', estudiante);
+              return;
+            }
+            
             // Usar los contadores de la tabla Estudiante si están disponibles
             const ausencias = estudiante.ausencias ?? 0;
             const tardanzas = estudiante.tardanzas ?? 0;
@@ -256,7 +277,20 @@ export function Navbar() {
         const conteoPorEstudiante: Record<string, { ausencias: number; tardanzas: number; estudiante: any }> = {};
         
         estudiantesData.forEach((estudiante: any) => {
-          const nombreCompleto = estudiante.nombre;
+          // Validar que el estudiante exista y tenga datos válidos
+          if (!estudiante) {
+            console.warn('⚠️ Estudiante undefined/null encontrado, omitiendo');
+            return;
+          }
+          
+          const nombreCompleto = getNombreCompleto(estudiante);
+          
+          // Validar que el nombre completo sea válido (no undefined, null, o vacío)
+          if (!nombreCompleto || nombreCompleto === 'Sin nombre' || nombreCompleto.trim() === '') {
+            console.warn('⚠️ Estudiante sin nombre válido, omitiendo:', estudiante);
+            return;
+          }
+          
           // Usar los contadores de la tabla Estudiante si están disponibles
           const ausencias = estudiante.ausencias ?? 0;
           const tardanzas = estudiante.tardanzas ?? 0;
