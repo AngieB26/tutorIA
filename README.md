@@ -10,7 +10,11 @@ TutorIA es una plataforma que digitaliza el registro de incidencias y asistencia
 
 - **Registro Rápido**: Los profesores registran incidencias en menos de 30 segundos
 - **Búsqueda Inteligente**: Los directores buscan estudiantes y ven todas sus incidencias de forma organizada
-- **Reportes con IA**: Generación automática de reportes que identifican patrones y alertas usando Claude API
+- **Reportes con IA**: Generación automática de reportes que identifican patrones y alertas usando Google Gemini API
+- **Gestión de Asistencia**: Registro de asistencia por clase con seguimiento detallado
+- **Gestión de Notas**: Registro y seguimiento de calificaciones por materia
+- **Gestión de Clases**: Organización de clases por grado, sección y profesor
+- **Sistema de Tutores**: Asignación de tutores a grados y secciones
 - **Interfaz Moderna**: Diseño profesional tipo dashboard con Tailwind CSS y shadcn/ui
 
 ## 🛠️ Stack Tecnológico
@@ -65,7 +69,21 @@ TutorIA es una plataforma que digitaliza el registro de incidencias y asistencia
    
    💡 **Recomendación**: Usa [Neon](https://neon.tech) para una base de datos PostgreSQL gratuita y serverless.
 
-5. **Obtener API Key de Google Gemini (GRATIS):**
+5. **Poblar la base de datos con datos de ejemplo:**
+   
+   ```bash
+   # Ejecutar el script de seed para crear datos de prueba
+   npm run db:seed
+   ```
+   
+   Esto creará:
+   - 20 estudiantes de ejemplo (1ro a 5to grado)
+   - 6 tutores/profesores
+   - 7 incidencias de ejemplo
+   - 18 notas de ejemplo
+   - 5 clases de ejemplo
+
+6. **Obtener API Key de Google Gemini (GRATIS):**
    
    **Resumen rápido:**
    - Ve a [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
@@ -80,12 +98,12 @@ TutorIA es una plataforma que digitaliza el registro de incidencias y asistencia
    - ✅ Fácil de obtener (solo cuenta de Google)
    - ✅ Perfecto para hackathons
 
-6. **Ejecutar el servidor de desarrollo:**
+7. **Ejecutar el servidor de desarrollo:**
    ```bash
    npm run dev
    ```
 
-7. **Abrir en el navegador:**
+8. **Abrir en el navegador:**
    ```
    http://localhost:3000
    ```
@@ -100,7 +118,9 @@ Para desplegar la aplicación en Vercel (recomendado para hackathons):
 1. Sube tu código a GitHub/GitLab/Bitbucket
 2. Ve a [vercel.com](https://vercel.com) e inicia sesión
 3. Importa tu repositorio
-4. Agrega la variable de entorno `ANTHROPIC_API_KEY` en la configuración
+4. Agrega las variables de entorno:
+   - `DATABASE_URL` (tu conexión a PostgreSQL)
+   - `GOOGLE_AI_API_KEY` (tu API key de Gemini)
 5. Haz clic en "Deploy"
 6. ¡Listo! Tu app estará en línea en minutos
 
@@ -146,23 +166,43 @@ Para desplegar la aplicación en Vercel (recomendado para hackathons):
 ```
 tutorIA/
 ├── app/
-│   ├── api/
-│   │   └── generate-report/
-│   │       └── route.ts          # API route para generar reportes con Claude
-│   ├── director/
-│   │   └── page.tsx              # Página del director (búsqueda y reportes)
-│   ├── profesor/
-│   │   └── page.tsx              # Página del profesor (registro de incidencias)
+│   ├── api/                      # API Routes de Next.js
+│   │   ├── asistencia/           # Endpoints de asistencia
+│   │   ├── clases/               # Endpoints de clases
+│   │   ├── estudiantes/          # Endpoints de estudiantes
+│   │   ├── generate-report/      # Generación de reportes con IA
+│   │   ├── gemini/               # Integración con Gemini API
+│   │   ├── incidencias/          # Endpoints de incidencias
+│   │   ├── notas/                # Endpoints de notas
+│   │   ├── tutores/              # Endpoints de tutores
+│   │   └── seed/                 # Endpoint para poblar BD
+│   ├── director/                 # Páginas del director
+│   │   ├── login/                # Login del director
+│   │   └── page.tsx              # Dashboard del director
+│   ├── profesor/                 # Páginas del profesor
+│   │   └── page.tsx              # Dashboard del profesor
+│   ├── tutor/                    # Páginas del tutor
+│   │   └── page.tsx              # Dashboard del tutor
 │   ├── layout.tsx                # Layout principal
 │   ├── page.tsx                  # Landing page (selector de roles)
 │   └── globals.css               # Estilos globales
 ├── components/
 │   ├── ui/                       # Componentes shadcn/ui
+│   ├── Combobox.tsx              # Componente de búsqueda
 │   └── navbar.tsx                # Componente de navegación
 ├── lib/
+│   ├── api.ts                    # Funciones helper para API
+│   ├── db.ts                     # Funciones de base de datos
+│   ├── gemini.ts                 # Integración con Gemini
+│   ├── prisma.ts                 # Cliente de Prisma
 │   ├── types.ts                  # Tipos TypeScript
 │   ├── utils.ts                  # Utilidades y helpers
+│   ├── validation.ts             # Validaciones
 │   └── storage.ts                # Funciones para localStorage
+├── prisma/
+│   ├── schema.prisma             # Schema de Prisma
+│   └── seed.ts                   # Script de seed para datos de ejemplo
+├── scripts/                      # Scripts de utilidad
 └── package.json
 ```
 
@@ -173,11 +213,16 @@ tutorIA/
 1. Navega a `/profesor` o haz clic en "Soy Profesor" en la landing page
 2. Completa el formulario:
    - Nombre del estudiante
-   - Tipo de incidencia (Ausencia, Conducta Negativa, Académica, Comportamiento Positivo)
+   - Tipo de incidencia (Asistencia, Conducta, Académica, Positivo)
+   - Subtipo (opcional)
+   - Gravedad (Leve, Moderada, Grave)
    - Descripción
    - Fecha
+   - Profesor/Tutor
+   - Lugar
+   - Derivación (si aplica)
 3. Haz clic en "Registrar Incidencia"
-4. La incidencia se guarda en localStorage y aparece en la lista de incidencias recientes
+4. La incidencia se guarda en la base de datos y aparece en la lista de incidencias recientes
 
 ### Para Directores
 
@@ -191,15 +236,33 @@ tutorIA/
    - Aspectos positivos
    - Recomendaciones
 
+### Para Tutores
+
+1. Navega a `/tutor` o haz clic en "Soy Tutor" en la landing page
+2. Gestiona las incidencias de tus estudiantes asignados
+3. Registra asistencia por clase
+4. Visualiza el historial completo de tus estudiantes
+
 ## 📊 Datos de Ejemplo
 
-La aplicación incluye datos de ejemplo que se cargan automáticamente la primera vez que se usa:
+La aplicación incluye un script de seed que puedes ejecutar para poblar la base de datos con datos de ejemplo:
 
-- **Juan Pérez**: 2 ausencias, 1 comportamiento positivo
-- **María López**: 2 incidencias académicas
-- **Carlos Ruiz**: 1 comportamiento positivo, 1 conducta negativa
+```bash
+npm run db:seed
+```
 
-Puedes buscar estos nombres en la página del director para ver los reportes.
+Esto creará:
+
+- **20 Estudiantes** distribuidos en grados 1ro a 5to, secciones A y B
+- **6 Tutores/Profesores** con información de contacto
+- **7 Incidencias** de ejemplo incluyendo:
+  - Juan Pérez: 2 incidencias de asistencia, 1 comportamiento positivo
+  - María López: 2 incidencias académicas
+  - Carlos Ruiz: 1 comportamiento positivo, 1 conducta negativa
+- **18 Notas** distribuidas entre los estudiantes de ejemplo
+- **5 Clases** de diferentes materias y grados
+
+Puedes buscar estos nombres en la página del director para ver los reportes completos.
 
 ## 🎨 Diseño
 
@@ -220,6 +283,22 @@ Puedes buscar estos nombres en la página del director para ver los reportes.
 - Los datos se almacenan en PostgreSQL usando Prisma ORM
 - La API key de Google Gemini debe mantenerse segura y nunca compartirse
 - La URL de la base de datos contiene credenciales sensibles - nunca la subas a Git
+- Asegúrate de que `.env.local` esté en tu `.gitignore`
+- En producción, usa variables de entorno del proveedor de hosting (Vercel, etc.)
+
+## 📊 Modelo de Datos
+
+El proyecto utiliza Prisma ORM con PostgreSQL. Los modelos principales incluyen:
+
+- **Estudiante**: Información personal, contacto, tutor, asistencia
+- **Incidencia**: Registro de incidencias con tipo, gravedad, derivación, estado
+- **Nota**: Calificaciones por materia y estudiante
+- **Clase**: Organización de clases por grado, sección y profesor
+- **Tutor**: Información de profesores/tutores
+- **RegistroAsistenciaClase**: Registro de asistencia por clase
+- **EstudianteAtendido**: Seguimiento de estudiantes atendidos
+
+Ver `prisma/schema.prisma` para el schema completo.
 
 ## 🚧 Próximas Mejoras
 
@@ -245,30 +324,43 @@ Ver [ROADMAP.md](./ROADMAP.md) para el plan completo de funcionalidades futuras.
 
 ## 📝 Scripts Disponibles
 
-- `npm run dev` - Inicia el servidor de desarrollo
+### Desarrollo
+- `npm run dev` - Inicia el servidor de desarrollo en http://localhost:3000
 - `npm run build` - Construye la aplicación para producción
 - `npm start` - Inicia el servidor de producción
-- `npm run lint` - Ejecuta el linter
+- `npm run lint` - Ejecuta el linter de ESLint
+
+### Base de Datos
 - `npm run db:generate` - Genera el cliente de Prisma
-- `npm run db:migrate` - Ejecuta migraciones de base de datos
+- `npm run db:migrate` - Ejecuta migraciones de base de datos (producción)
 - `npm run db:push` - Sincroniza el schema con la base de datos (desarrollo)
-- `npm run db:studio` - Abre Prisma Studio para ver/editar datos
+- `npm run db:studio` - Abre Prisma Studio para ver/editar datos visualmente
+- `npm run db:seed` - Pobla la base de datos con datos de ejemplo
+
+### Utilidades
+- `npm run reordenar-columnas` - Reordena columnas en la tabla de estudiantes
+- `npm run crear-tablas-faltantes` - Crea tablas faltantes en la base de datos
 
 ## 🚀 Despliegue Rápido
 
 ### Vercel (Recomendado)
 
 1. Conecta tu repositorio a Vercel
-2. Agrega la variable de entorno `ANTHROPIC_API_KEY`
+2. Agrega las variables de entorno:
+   - `DATABASE_URL` - URL de conexión a PostgreSQL
+   - `GOOGLE_AI_API_KEY` - API key de Google Gemini
 3. Deploy automático en cada push
 
 Ver [DEPLOY.md](./DEPLOY.md) para instrucciones completas.
 
-## 🔧 Documentación del Backend
+## 🔧 Documentación Adicional
 
+- **[API_ROUTES.md](./API_ROUTES.md)** - Documentación completa de todas las API routes
 - **[BACKEND.md](./BACKEND.md)** - Guía completa del backend y API
 - **[BACKEND-CHECKLIST.md](./BACKEND-CHECKLIST.md)** - Checklist rápido para verificar que todo funciona
 - **[NEON_SETUP.md](./NEON_SETUP.md)** - Guía para configurar la base de datos PostgreSQL con Neon
+- **[DEPLOY.md](./DEPLOY.md)** - Guía completa de despliegue en Vercel
+- **[ROADMAP.md](./ROADMAP.md)** - Plan de funcionalidades futuras
 
 ## 🤝 Contribuir
 
