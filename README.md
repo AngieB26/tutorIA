@@ -4,7 +4,7 @@
 
 TutorIA es una plataforma que digitaliza el registro de incidencias y asistencia estudiantil en colegios. Resuelve el problema de los directores que pierden horas buscando información manual cuando un padre visita, ofreciendo digitalización + IA que genera reportes inteligentes automáticos.
 
-🌐 **Demo en vivo**: [https://tutor-ia-iota.vercel.app](https://tutor-ia-iota.vercel.app)
+🌐 **Demo en vivo**: [https://tutoria-gamma.vercel.app](https://tutoria-gamma.vercel.app)
 
 ## 🚀 Características
 
