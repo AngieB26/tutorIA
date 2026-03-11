@@ -4432,7 +4432,7 @@ export default function DirectorPage() {
                           <div className="space-y-1">
                             <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-bold">
                               <Sparkles className="h-6 w-6 text-indigo-200 animate-pulse" />
-                              {reporteGeneral && (reporteGeneral as any).resumen?.toLowerCase().includes(grado?.toLowerCase() || '') || !selectedStudent 
+                              {reporteGeneral && (reporteGeneral as any).resumen?.toLowerCase().includes(filtroGrado?.toLowerCase() || '') || !selectedStudentId 
                                 ? 'Reporte General Estratégico IA' 
                                 : 'Análisis Estratégico IA'}
                             </CardTitle>
