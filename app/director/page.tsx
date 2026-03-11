@@ -3610,6 +3610,9 @@ export default function DirectorPage() {
                       positivos: incidenciasEstudiante.filter(i => i.tipo === 'positivo').length,
                       negativos: incidenciasEstudiante.filter(i => i.tipo !== 'positivo').length,
                       graves: incidenciasEstudiante.filter(i => i.gravedad === 'grave').length,
+                      asistencia: incidenciasEstudiante.filter(i => i.tipo === 'asistencia' || i.tipo === 'ausencia' || i.tipo === 'tardanza').length,
+                      conducta: incidenciasEstudiante.filter(i => i.tipo === 'conducta').length,
+                      academica: incidenciasEstudiante.filter(i => i.tipo === 'academica').length,
                     };
                     
                     // Calcular score de rendimiento (0-100)
@@ -3628,7 +3631,7 @@ export default function DirectorPage() {
                           <BarChart3 className="h-4 w-4 text-primary" />
                           <h4 className="font-semibold text-gray-900 text-sm">Indicador de Rendimiento</h4>
                         </div>
-                        <div className={`${bgColorScore} rounded-lg p-4 border border-gray-300`}>
+                        <div className={`${bgColorScore} rounded-lg p-4 border border-gray-300 shadow-sm`}>
                           <div className="flex items-center justify-between mb-3">
                             <div>
                               <p className="text-2xl font-bold text-gray-900">{Math.round(score)}</p>
@@ -3636,25 +3639,38 @@ export default function DirectorPage() {
                             </div>
                             <div className="text-right">
                               <p className={`text-lg font-bold ${colorScore}`}>{nivelRendimiento}</p>
-                              <p className="text-xs text-gray-700">{stats.total} incidencias</p>
+                              <p className="text-xs text-gray-700">{stats.total} incidencias registradas</p>
                             </div>
                           </div>
                           {/* Barra de progreso visual */}
-                          <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                          <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden border border-gray-300">
                             <div
-                              className={`h-4 rounded-full transition-all duration-500 ${score >= 70 ? 'bg-green-600' : score >= 50 ? 'bg-blue-600' : score >= 30 ? 'bg-yellow-600' : 'bg-red-600'}`}
+                              className={`h-4 rounded-full transition-all duration-700 ${score >= 70 ? 'bg-green-600' : score >= 50 ? 'bg-blue-600' : score >= 30 ? 'bg-yellow-600' : 'bg-red-600'}`}
                               style={{ width: `${score}%` }}
                             />
                           </div>
-                          <div className="grid grid-cols-3 gap-2 mt-3 text-xs text-gray-700">
-                            <div className="text-center">
-                              <span className="font-bold text-green-600">{stats.positivos}</span> Positivos
+                          
+                          {/* Desglose detallado por tipos - Grid optimizado */}
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mt-4 pt-3 border-t border-gray-200/50">
+                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
+                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Positivas</span>
+                              <span className="font-bold text-green-600 text-sm">{stats.positivos}</span>
                             </div>
-                            <div className="text-center">
-                              <span className="font-bold text-orange-600">{stats.negativos}</span> Negativos
+                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
+                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Asistencia</span>
+                              <span className="font-bold text-cyan-600 text-sm">{stats.asistencia}</span>
                             </div>
-                            <div className="text-center">
-                              <span className="font-bold text-red-600">{stats.graves}</span> Graves
+                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
+                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Conducta</span>
+                              <span className="font-bold text-orange-600 text-sm">{stats.conducta}</span>
+                            </div>
+                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
+                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Académica</span>
+                              <span className="font-bold text-blue-600 text-sm">{stats.academica}</span>
+                            </div>
+                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
+                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Graves</span>
+                              <span className="font-bold text-red-600 text-sm">{stats.graves}</span>
                             </div>
                           </div>
                         </div>

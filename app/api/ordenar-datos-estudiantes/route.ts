@@ -5,12 +5,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const datos = body.datos; // Array de objetos con los datos del Excel
     const mapeo = body.mapeo; // Mapeo de columnas actual
-    
+
     if (!datos || !Array.isArray(datos) || datos.length === 0) {
       return NextResponse.json({ error: 'No se proporcionaron datos válidos' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: 'API key no configurada' }, { status: 500 });
     }
@@ -47,12 +47,12 @@ IMPORTANTE:
 - NO uses markdown, solo JSON puro
 - El array "datosOrdenados" debe tener la misma estructura que los datos originales pero con los campos procesados`;
 
-    // Intentar con múltiples modelos de Gemini
+    // Intentar con múltiples modelos de Gemini (reales)
     const modelos = [
-      { nombre: 'gemini-2.5-flash', version: 'v1beta' },
       { nombre: 'gemini-2.0-flash', version: 'v1beta' },
+      { nombre: 'gemini-1.5-flash', version: 'v1' },
+      { nombre: 'gemini-1.5-pro', version: 'v1' },
       { nombre: 'gemini-1.5-flash', version: 'v1beta' },
-      { nombre: 'gemini-1.5-pro', version: 'v1beta' },
     ];
 
     let ultimoError: any = null;
@@ -60,7 +60,7 @@ IMPORTANTE:
     for (const modelo of modelos) {
       try {
         const url = `https://generativelanguage.googleapis.com/${modelo.version}/models/${modelo.nombre}:generateContent?key=${apiKey}`;
-        
+
         const requestBody = {
           contents: [{
             parts: [{
@@ -84,17 +84,17 @@ IMPORTANTE:
         if (geminiRes.ok) {
           const data = await geminiRes.json();
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          
+
           if (text) {
             // Intentar extraer JSON de la respuesta
             let jsonText = text.trim();
-            
+
             // Si la respuesta está envuelta en markdown, extraer el JSON
             const jsonMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
             if (jsonMatch) {
               jsonText = jsonMatch[1];
             }
-            
+
             // Buscar el objeto JSON en la respuesta
             const jsonStart = jsonText.indexOf('{');
             const jsonEnd = jsonText.lastIndexOf('}');
@@ -104,7 +104,7 @@ IMPORTANTE:
 
             try {
               const resultado = JSON.parse(jsonText);
-              
+
               // Si solo procesó una muestra, aplicar los mismos cambios al resto
               if (muestraDatos.length < datos.length && resultado.datosOrdenados) {
                 // Aplicar la lógica de procesamiento a todos los datos
@@ -137,14 +137,14 @@ IMPORTANTE:
     }
 
     console.error('❌ Error en llamada a Gemini:', ultimoError);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'No se pudo procesar con IA. Puedes importar los datos sin ordenar.',
       datosOriginales: datos
     }, { status: 200 });
 
   } catch (error: any) {
     console.error('Error en ordenar-datos-estudiantes:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: error.message || 'Error al procesar datos con IA'
     }, { status: 500 });
   }

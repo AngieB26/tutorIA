@@ -1,4 +1,4 @@
-export type TipoIncidencia = 'asistencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo';
+export type TipoIncidencia = 'asistencia' | 'ausencia' | 'tardanza' | 'conducta' | 'academica' | 'positivo';
 export type TipoDerivacion = 'ninguna' | 'director' | 'psicologia' | 'enfermeria' | 'coordinacion' | 'orientacion';
 export type SubtipoConducta = 'agresion' | 'falta_respeto' | 'interrupcion' | 'desobediencia' | 'otra';
 export type SubtipoPositivo = 'ayuda_companero' | 'participacion' | 'liderazgo' | 'creatividad' | 'otro';

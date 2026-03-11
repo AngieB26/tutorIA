@@ -1,8 +1,8 @@
 import requests
 import json
 
-GEMINI_API_KEY = "AIzaSyBono5ts-phOD_qzTLxKUgcY_Hi8_h5OF8"
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key={GEMINI_API_KEY}"
+GEMINI_API_KEY = "AIzaSyBGqGs4YoHj9Vhw73uoR8QWWT9kiyco5m8"
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
 body = {
     "contents": [
