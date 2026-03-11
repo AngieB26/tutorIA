@@ -374,9 +374,20 @@ export default function ProfesorPage() {
   const LIMITE_AUSENCIAS = 5;
 
 
-  // Filtrar clases del profesor seleccionado
+  // Obtener el día de la semana de la fecha seleccionada
+  const diaSeleccionado = fecha 
+    ? ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][new Date(fecha + 'T00:00:00').getDay()] 
+    : '';
+
+  // Filtrar clases del profesor seleccionado QUE CORRESPONDAN AL DÍA
   const clasesDelProfesor = profesor 
-    ? clases.filter(c => c.profesor === profesor)
+    ? clases.filter(c => {
+        const matchesProfesor = c.profesor === profesor;
+        // Normalizar días a minúsculas para la comparación
+        const diasNormalizados = c.dias?.map((d: string) => d.toLowerCase()) || [];
+        const matchesDia = diasNormalizados.includes(diaSeleccionado);
+        return matchesProfesor && matchesDia;
+      })
     : [];
 
   // Filtrar grados únicos disponibles según las clases del profesor
@@ -806,8 +817,8 @@ export default function ProfesorPage() {
                       setCurso('');
                     }}
                   >
-                    <SelectTrigger disabled={!profesor}>
-                      <SelectValue placeholder="Selecciona el grado" />
+                    <SelectTrigger disabled={!profesor || gradosDisponibles.length === 0}>
+                      <SelectValue placeholder={gradosDisponibles.length === 0 ? "Sin grados este día" : "Selecciona el grado"} />
                     </SelectTrigger>
                     <SelectContent>
                       {gradosDisponibles.map(g => (
@@ -817,6 +828,13 @@ export default function ProfesorPage() {
                   </Select>
                 </div>
               </div>
+
+              {profesor && clasesDelProfesor.length === 0 && (
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-md text-sm text-blue-700 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>No tienes clases programadas para hoy <strong>({diaSeleccionado})</strong>.</span>
+                </div>
+              )}
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
@@ -828,8 +846,8 @@ export default function ProfesorPage() {
                       setCurso('');
                     }}
                   >
-                    <SelectTrigger disabled={!profesor || !grado}>
-                      <SelectValue placeholder="Selecciona la sección" />
+                    <SelectTrigger disabled={!profesor || !grado || seccionesDisponibles.length === 0}>
+                      <SelectValue placeholder={seccionesDisponibles.length === 0 && grado ? "Sin secciones" : "Selecciona la sección"} />
                     </SelectTrigger>
                     <SelectContent>
                       {seccionesDisponibles.map(s => (
@@ -842,8 +860,8 @@ export default function ProfesorPage() {
                 <div>
                   <label className="text-sm font-medium text-gray-800">Curso</label>
                   <Select value={curso} onValueChange={setCurso}>
-                    <SelectTrigger disabled={!profesor || !grado || !seccion}>
-                      <SelectValue placeholder="Selecciona el curso" />
+                    <SelectTrigger disabled={!profesor || !grado || !seccion || cursosDisponibles.length === 0}>
+                      <SelectValue placeholder={cursosDisponibles.length === 0 && seccion ? "Sin cursos" : "Selecciona el curso"} />
                     </SelectTrigger>
                     <SelectContent>
                       {cursosDisponibles.map(c => (
@@ -860,11 +878,15 @@ export default function ProfesorPage() {
                   <Input placeholder="Ej: Aula 101" value={lugar} onChange={e => setLugar(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-800">Fecha</label>
-                  <div className="flex items-center gap-2">
-                    <Input type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
-                    <span className="text-xs text-gray-500 font-semibold">
-                      {fecha ? new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long' }) : ''}
+                  <label className="text-sm font-medium text-gray-800">Fecha de hoy</label>
+                  <div className="flex items-center gap-2 h-10 px-3 bg-gray-100 border border-gray-200 rounded-md">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-semibold text-gray-700">
+                      {new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { 
+                        weekday: 'long', 
+                        day: 'numeric', 
+                        month: 'long' 
+                      })}
                     </span>
                   </div>
                 </div>
