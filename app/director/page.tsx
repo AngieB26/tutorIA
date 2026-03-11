@@ -3650,29 +3650,7 @@ export default function DirectorPage() {
                             />
                           </div>
                           
-                          {/* Desglose detallado por tipos - Grid optimizado */}
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 mt-4 pt-3 border-t border-gray-200/50">
-                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
-                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Positivas</span>
-                              <span className="font-bold text-green-600 text-sm">{stats.positivos}</span>
-                            </div>
-                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
-                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Asistencia</span>
-                              <span className="font-bold text-cyan-600 text-sm">{stats.asistencia}</span>
-                            </div>
-                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
-                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Conducta</span>
-                              <span className="font-bold text-orange-600 text-sm">{stats.conducta}</span>
-                            </div>
-                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
-                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Académica</span>
-                              <span className="font-bold text-blue-600 text-sm">{stats.academica}</span>
-                            </div>
-                            <div className="bg-white/60 rounded p-2 text-center border border-gray-200 shadow-sm">
-                              <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-semibold">Graves</span>
-                              <span className="font-bold text-red-600 text-sm">{stats.graves}</span>
-                            </div>
-                          </div>
+
                         </div>
                       </div>
                     );
