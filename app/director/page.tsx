@@ -327,6 +327,7 @@ export default function DirectorPage() {
 
     const [localDetalleIA, setLocalDetalleIA] = useState<{ resumen: string; recomendaciones: string; raw: string }>({ resumen: '', recomendaciones: '', raw: '' });
     const [localLoadingIA, setLocalLoadingIA] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     useEffect(() => {
       if (!incidencia) return;
@@ -425,14 +426,19 @@ export default function DirectorPage() {
                     {lista.map((archivo: any, idx: number) => (
                       <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white outline-none focus:outline-none ring-0 focus:ring-0" style={{ width: 100 }}>
                         {archivo.type?.startsWith('image') ? (
-                          <a href={archivo.data} target="_blank" rel="noopener noreferrer" className="outline-none focus:outline-none">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedImage(archivo.data)}
+                            className="outline-none focus:outline-none w-full relative"
+                            title="Haz clic para ampliar"
+                          >
                             <img
                               src={archivo.data}
                               alt={archivo.name}
-                              className="w-full object-cover"
+                              className="w-full object-cover cursor-zoom-in"
                               style={{ height: 75 }}
                             />
-                          </a>
+                          </button>
                         ) : archivo.type?.startsWith('video') ? (
                           <video
                             src={archivo.data}
@@ -487,6 +493,28 @@ export default function DirectorPage() {
             </div>
           </div>
         </div>
+
+        {/* Modal de Imagen en Pantalla Completa */}
+        {selectedImage && (
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-90 p-4 transition-opacity backdrop-blur-sm"
+            onClick={() => setSelectedImage(null)}
+          >
+            <button 
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white text-4xl hover:text-gray-300 z-[70] focus:outline-none w-12 h-12 flex items-center justify-center bg-black bg-opacity-50 rounded-full"
+              onClick={() => setSelectedImage(null)}
+              title="Cerrar imagen"
+            >
+              ×
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Evidencia ampliada" 
+              className="max-w-full max-h-full object-contain rounded-md shadow-2xl scale-100 transition-transform duration-300 pointer-events-auto"
+              onClick={e => e.stopPropagation()} 
+            />
+          </div>
+        )}
       </div>
     );
   }
