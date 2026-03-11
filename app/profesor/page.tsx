@@ -1191,26 +1191,26 @@ export default function ProfesorPage() {
                         <span className="text-xs text-gray-400">No se eligió ningún archivo</span>
                       )}
                       {incArchivos.map((file, idx) => (
-                        <div key={idx} className="relative group border rounded p-2 bg-white shadow-sm flex flex-col items-center w-28">
+                        <div key={idx} className="relative group border border-gray-200 rounded p-2 bg-white shadow-sm flex flex-col items-center w-28 outline-none focus:outline-none">
                           {file.type.startsWith('image') ? (
                             <img
                               src={URL.createObjectURL(file)}
                               alt={file.name}
-                              className="w-20 h-20 object-cover rounded mb-1"
+                              className="w-20 h-20 object-cover rounded mb-1 select-none"
                             />
                           ) : file.type.startsWith('video') ? (
                             <video
                               src={URL.createObjectURL(file)}
-                              className="w-20 h-20 object-cover rounded mb-1"
+                              className="w-20 h-20 object-cover rounded mb-1 select-none"
                               controls
                             />
                           ) : (
                             <span className="text-xs text-gray-500">Archivo</span>
                           )}
-                          <span className="block text-xs truncate max-w-full" title={file.name}>{file.name}</span>
+                          <span className="block text-xs truncate max-w-full select-none" title={file.name}>{file.name}</span>
                           <button
                             type="button"
-                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-80 hover:opacity-100"
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md opacity-90 hover:opacity-100 outline-none focus:outline-none focus:ring-0 z-10"
                             title="Eliminar archivo"
                             onClick={e => {
                               e.stopPropagation();
