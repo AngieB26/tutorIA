@@ -84,18 +84,18 @@ export async function POST(req: NextRequest) {
       if (imageParts.length > 0) {
         promptsSeparados = {
           resumen: [
-            { text: `Analiza esta incidencia en 2 líneas y menciona si ves algo relevante en las evidencias visuales.\n\n${context}` },
+            { text: `Analiza detalladamente esta incidencia (tanto el texto como la imagen asociada). Resume lo que ves en un párrafo (MÁXIMO 3 líneas).\n\n${context}` },
             ...imageParts
           ] as any,
           recomendaciones: [
-            { text: `2 acciones recomendadas teniendo en cuenta la información y las imágenes si las hubiera. Una por línea.\n\n${context}` },
+            { text: `Basándote en la evidencia visual y la descripción, escribe 3 acciones concretas, inmediatas y CORRECTIVAS para solucionar el problema. Nunca sugieras "monitoreo preventivo". Una sugerencia por línea en viñetas.\n\n${context}` },
             ...imageParts
           ] as any
         };
       } else {
         promptsSeparados = {
           resumen: `Analiza esta incidencia en 2 líneas.\n\n${context}`,
-          recomendaciones: `2 acciones recomendadas. Una por línea.\n\n${context}`
+          recomendaciones: `Escribe 3 acciones recomendadas y correctivas. Prohibido sugerir "monitoreo preventivo". Una por línea.\n\n${context}`
         };
       }
       prompt = 'REPORTE_INCIDENCIA_SEPARADO';
@@ -203,7 +203,7 @@ NUNCA respondas que no encontraste nada si hay al menos una indicación visual o
       analisisPatrones: patr || 'Se requiere más tiempo para identificar un patrón claro.',
       fortalezas: fort || 'Enfocarse en reforzar conductas positivas básicas.',
       factoresRiesgo: ries || 'Situación estable por el momento.',
-      recomendaciones: reco || 'Continuar con el monitoreo preventivo.',
+      recomendaciones: reco || 'No hay recomendaciones específicas generadas, evaluar el caso directamente.',
       planSeguimiento: segu || 'Mantener registro diario de incidencias.',
       report: rawText,
       timestamp: new Date().toISOString()

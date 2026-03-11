@@ -423,9 +423,9 @@ export default function DirectorPage() {
                 return (
                   <div className="flex flex-wrap gap-2">
                     {lista.map((archivo: any, idx: number) => (
-                      <div key={idx} className="border rounded-lg overflow-hidden shadow-sm bg-white" style={{ width: 100 }}>
+                      <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white outline-none focus:outline-none ring-0 focus:ring-0" style={{ width: 100 }}>
                         {archivo.type?.startsWith('image') ? (
-                          <a href={archivo.data} target="_blank" rel="noopener noreferrer">
+                          <a href={archivo.data} target="_blank" rel="noopener noreferrer" className="outline-none focus:outline-none">
                             <img
                               src={archivo.data}
                               alt={archivo.name}
