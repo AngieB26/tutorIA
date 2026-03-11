@@ -2771,57 +2771,59 @@ export default function DirectorPage() {
             </CardHeader>
             <CardContent>
               {/* Filtros */}
-              <div className="flex flex-wrap gap-3 items-end mb-4">
-                <div className="flex flex-col flex-1 min-w-[180px]">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Buscar Estudiante</label>
-                  <Input
-                    type="text"
-                    placeholder="Buscar por nombre de estudiante..."
-                    value={busquedaEstudianteIncidencias}
-                    onChange={e => setBusquedaEstudianteIncidencias(e.target.value)}
-                    className="h-9 text-sm border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-primary focus:border-primary transition outline-none shadow-sm"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Tipo</label>
-                  <Select value={filtroTipo} onValueChange={(value) => setFiltroTipo(value as TipoIncidencia | 'todas')}>
-                    <SelectTrigger className="w-[140px] h-9 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas</SelectItem>
-                      <SelectItem value="asistencia">Asistencia</SelectItem>
-                      <SelectItem value="conducta">Conducta</SelectItem>
-                      <SelectItem value="academica">Académica</SelectItem>
-                      <SelectItem value="positivo">Positivo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Gravedad</label>
-                  <Select value={filtroGravedad} onValueChange={(value) => setFiltroGravedad(value as Gravedad | 'todas')}>
-                    <SelectTrigger className="w-[140px] h-9 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas</SelectItem>
-                      <SelectItem value="leve">Leve</SelectItem>
-                      <SelectItem value="moderada">Moderada</SelectItem>
-                      <SelectItem value="grave">Grave</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Ordenar por</label>
-                  <Select value={ordenFecha} onValueChange={(value) => setOrdenFecha(value as 'reciente' | 'antiguo')}>
-                    <SelectTrigger className="w-[140px] h-9 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="reciente">Más reciente</SelectItem>
-                      <SelectItem value="antiguo">Más antiguo</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="mb-4">
+                <div className="grid grid-cols-2 lg:flex lg:flex-row gap-2 sm:gap-3 items-end">
+                  <div className="flex flex-col col-span-2 lg:flex-1 lg:min-w-[180px]">
+                    <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Buscar Estudiante</label>
+                    <Input
+                      type="text"
+                      placeholder="Buscar por nombre..."
+                      value={busquedaEstudianteIncidencias}
+                      onChange={e => setBusquedaEstudianteIncidencias(e.target.value)}
+                      className="h-9 text-xs sm:text-sm border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-primary focus:border-primary transition outline-none shadow-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Tipo</label>
+                    <Select value={filtroTipo} onValueChange={(value) => setFiltroTipo(value as TipoIncidencia | 'todas')}>
+                      <SelectTrigger className="w-full lg:w-[130px] h-9 text-xs sm:text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas</SelectItem>
+                        <SelectItem value="asistencia">Asistencia</SelectItem>
+                        <SelectItem value="conducta">Conducta</SelectItem>
+                        <SelectItem value="academica">Académica</SelectItem>
+                        <SelectItem value="positivo">Positivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Gravedad</label>
+                    <Select value={filtroGravedad} onValueChange={(value) => setFiltroGravedad(value as Gravedad | 'todas')}>
+                      <SelectTrigger className="w-full lg:w-[130px] h-9 text-xs sm:text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas</SelectItem>
+                        <SelectItem value="leve">Leve</SelectItem>
+                        <SelectItem value="moderada">Moderada</SelectItem>
+                        <SelectItem value="grave">Grave</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col col-span-2 lg:col-span-1 lg:w-[140px]">
+                    <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Ordenar por</label>
+                    <Select value={ordenFecha} onValueChange={(value) => setOrdenFecha(value as 'reciente' | 'antiguo')}>
+                      <SelectTrigger className="w-full h-9 text-xs sm:text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="reciente">Más reciente</SelectItem>
+                        <SelectItem value="antiguo">Más antiguo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
@@ -2864,58 +2866,57 @@ export default function DirectorPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-sm font-semibold">Fecha</TableHead>
-                          <TableHead className="text-sm font-semibold">Estudiante</TableHead>
-                          <TableHead className="text-sm font-semibold">Tipo</TableHead>
-                          <TableHead className="text-sm font-semibold">Gravedad</TableHead>
-                          <TableHead className="text-sm font-semibold">Descripción</TableHead>
-                          <TableHead className="text-sm font-semibold hidden sm:table-cell">Profesor</TableHead>
-                          <TableHead className="text-sm font-semibold hidden sm:table-cell">Lugar</TableHead>
-                          <TableHead className="text-sm font-semibold hidden sm:table-cell">Estado</TableHead>
-                          <TableHead className="text-sm font-semibold">Acción</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold px-2 sm:px-4">Fecha</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold px-2 sm:px-4">Estudiante</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold px-2 sm:px-4">Tipo</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold hidden md:table-cell px-2 sm:px-4">Gravedad</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold hidden lg:table-cell px-2 sm:px-4">Descripción</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold hidden xl:table-cell px-2 sm:px-4">Profesor</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold hidden xl:table-cell px-2 sm:px-4">Lugar</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold hidden sm:table-cell px-2 sm:px-4">Estado</TableHead>
+                          <TableHead className="text-xs sm:text-sm font-semibold text-right px-2 sm:px-4">Acción</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {incidenciasOrdenadas.map((inc) => (
                           <TableRow key={inc.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap text-gray-900">{formatFechaHora(inc)}</TableCell>
-                            <TableCell className="text-xs sm:text-sm font-medium text-gray-900">{inc.studentName}</TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <Badge className={`${getTipoColor(inc.tipo)} text-xs`}>
+                            <TableCell className="font-medium text-[10px] sm:text-sm px-2 sm:px-4 text-gray-900">
+                              <div className="flex flex-col">
+                                <span>{new Date(inc.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                <span className="text-[9px] text-gray-500 sm:hidden">{new Date(inc.fecha).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-[10px] sm:text-sm font-medium text-gray-900 px-2 sm:px-4 truncate max-w-[80px] sm:max-w-none">{inc.studentName}</TableCell>
+                            <TableCell className="px-2 sm:px-4">
+                              <Badge className={`${inc.tipo === 'asistencia' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : getTipoColor(inc.tipo)} text-[9px] sm:text-xs px-1.5 py-0`}>
                                 {getTipoLabel(inc.tipo)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <Badge className={`${getGravedadColor(inc.gravedad)} text-xs`}>
+                            <TableCell className="hidden md:table-cell px-2 sm:px-4">
+                              <Badge className={`${getGravedadColor(inc.gravedad)} text-[9px] sm:text-xs px-1.5 py-0`}>
                                 {getGravedadLabel(inc.gravedad)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-xs sm:text-sm max-w-xs sm:max-w-none text-gray-900">{inc.descripcion}</TableCell>
-                            <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.profesor}</TableCell>
-                            <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.lugar || '-'}</TableCell>
-                            <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
+                            <TableCell className="text-xs sm:text-sm hidden lg:table-cell px-2 sm:px-4 max-w-xs truncate text-gray-900">{inc.descripcion}</TableCell>
+                            <TableCell className="text-gray-900 text-xs hidden xl:table-cell px-2 sm:px-4">{inc.profesor}</TableCell>
+                            <TableCell className="text-gray-900 text-xs hidden xl:table-cell px-2 sm:px-4">{inc.lugar || '-'}</TableCell>
+                            <TableCell className="hidden sm:table-cell px-2 sm:px-4">
                               {inc.estado === 'Resuelta' ? (
-                                <Badge className="bg-primary text-white">Resuelta</Badge>
+                                <Badge className="bg-primary text-white text-[9px] sm:text-xs px-1.5 py-0">Resuelta</Badge>
                               ) : inc.estado === 'Pendiente' ? (
-                                <Badge className="bg-yellow-400 text-black">Pendiente</Badge>
-                              ) : inc.estado === 'normal' ? (
-                                <Badge variant="secondary" className="bg-gray-100 text-gray-900">Normal</Badge>
-                              ) : inc.estado === 'En revisión' ? (
-                                <Badge className="bg-orange-400 text-white">En revisión</Badge>
-                              ) : inc.estado === 'Cerrada' ? (
-                                <Badge className="bg-gray-600 text-white">Cerrada</Badge>
+                                <Badge className="bg-yellow-400 text-black text-[9px] sm:text-xs px-1.5 py-0">Pendiente</Badge>
                               ) : (
-                                <Badge variant="secondary" className="bg-gray-100 text-gray-900">{inc.estado || 'Normal'}</Badge>
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-900 text-[9px] sm:text-xs px-1.5 py-0">{inc.estado || 'Normal'}</Badge>
                               )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-right px-2 sm:px-4">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => setIncidenciaDetalle(inc)}
-                                className="gap-1"
+                                className="h-7 w-7 sm:h-8 sm:w-auto sm:px-2 p-0"
                               >
-                                <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <Eye className="h-3.5 w-3.5 sm:mr-1" />
                                 <span className="hidden sm:inline">Ver</span>
                               </Button>
                             </TableCell>
