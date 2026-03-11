@@ -57,11 +57,47 @@ export async function POST(req: NextRequest) {
         }
       }
     } else if (inc) {
-      const context = `Incidencia: ${inc.tipo} | Estudiante: ${inc.studentName} | Descripción: ${inc.descripcion}`;
-      promptsSeparados = {
-        resumen: `Analiza esta incidencia en 2 líneas.\n\n${context}`,
-        recomendaciones: `2 acciones recomendadas. Una por línea.\n\n${context}`
-      };
+      const isArchivosEnabled = inc.archivos && Array.isArray(inc.archivos) && inc.archivos.length > 0;
+      const descArchivos = isArchivosEnabled ? " (Ver imágenes adjuntas para más contexto visual de la situación)" : "";
+      const context = `Incidencia: ${inc.tipo} | Estudiante: ${inc.studentName} | Descripción: ${inc.descripcion}${descArchivos}`;
+      
+      const imageParts: any[] = [];
+      if (isArchivosEnabled) {
+        inc.archivos.forEach((archivo: any) => {
+          if (archivo.type?.startsWith('image') && archivo.data) {
+            let base64Data = archivo.data;
+            if (base64Data.includes(',')) {
+              base64Data = base64Data.split(',')[1];
+            }
+            if (base64Data) {
+              imageParts.push({
+                inlineData: {
+                  data: base64Data,
+                  mimeType: archivo.type === 'image/png' ? 'image/png' : 'image/jpeg'
+                }
+              });
+            }
+          }
+        });
+      }
+
+      if (imageParts.length > 0) {
+        promptsSeparados = {
+          resumen: [
+            { text: `Analiza esta incidencia en 2 líneas y menciona si ves algo relevante en las evidencias visuales.\n\n${context}` },
+            ...imageParts
+          ] as any,
+          recomendaciones: [
+            { text: `2 acciones recomendadas teniendo en cuenta la información y las imágenes si las hubiera. Una por línea.\n\n${context}` },
+            ...imageParts
+          ] as any
+        };
+      } else {
+        promptsSeparados = {
+          resumen: `Analiza esta incidencia en 2 líneas.\n\n${context}`,
+          recomendaciones: `2 acciones recomendadas. Una por línea.\n\n${context}`
+        };
+      }
       prompt = 'REPORTE_INCIDENCIA_SEPARADO';
     } else {
       return NextResponse.json({ error: 'Faltan datos' }, { status: 400 });
@@ -90,14 +126,18 @@ export async function POST(req: NextRequest) {
         .trim();
     };
 
-    const llamarGemini = async (p: string, field: string, tokens: number = 800) => {
+    const llamarGemini = async (p: any, field: string, tokens: number = 800) => {
       console.log(`📡 [${field}] Solicitando...`);
-      // Instrucción de sistema para forzar formato directo e impedir el "No se encontró" si hay datos
-      const completePrompt = `Actúa como un psicólogo educativo experto. 
+      // Instrucción de sistema
+      const systemInstruction = `Actúa como un psicólogo educativo experto. 
 INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con el contenido solicitado. 
 PROHIBIDO: Introducciones ("Aquí tienes..."), saludos o conclusiones.
 Si no hay datos suficientes para un patrón o fortaleza, describe brevemente la situación actual basada en lo que ves.
-NUNCA respondas que no encontraste nada si hay al menos una incidencia.\n\n${p}`;
+NUNCA respondas que no encontraste nada si hay al menos una indicación visual o de texto.\n\n`;
+
+      const promptParts = Array.isArray(p) 
+        ? [{ text: systemInstruction }, ...p] 
+        : [{ text: systemInstruction + p }];
 
       for (const m of modelos) {
         try {
@@ -105,7 +145,7 @@ NUNCA respondas que no encontraste nada si hay al menos una incidencia.\n\n${p}`
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-              contents: [{ parts: [{ text: completePrompt }] }], 
+              contents: [{ parts: promptParts }], 
               generationConfig: { temperature: 0.6, maxOutputTokens: tokens } 
             }),
             signal: AbortSignal.timeout(20000)
