@@ -1,0 +1,150 @@
+﻿[dotenv@17.2.3] injecting env (2) from .env -- tip: ÔÜÖ´©Å  specify custom .env file path with { path: '/custom/path/.env' }
+--- INICIANDO TEST DE CONECTIVIDAD ---
+­ƒôí [resumen] Probando con Gemini...
+node.exe : ÔÜá´©Å [resumen] 
+Error con gemini-1.5-flash 
+(400): {
+En línea: 1 Carácter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : 
+    NotSpecified: (ÔÜá´©Å [r  
+  esumen...-flash (400): {:   
+ String) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorId : 
+    NativeCommandError
+ 
+  "error": {
+    "code": 400,
+    "message": "API key 
+expired. Please renew the API 
+key.",
+    "status": 
+"INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.ErrorInfo",
+        "reason": 
+"API_KEY_INVALID",
+        "domain": 
+"googleapis.com",
+        "metadata": {
+          "service": "generati
+velanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.LocalizedMe
+ssage",
+        "locale": "en-US",
+        "message": "API key 
+expired. Please renew the API 
+key."
+      }
+    ]
+  }
+}
+
+ÔÜá´©Å [resumen] Error con 
+gemini-pro (400): {
+  "error": {
+    "code": 400,
+    "message": "API key 
+expired. Please renew the API 
+key.",
+    "status": 
+"INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.ErrorInfo",
+        "reason": 
+"API_KEY_INVALID",
+        "domain": 
+"googleapis.com",
+        "metadata": {
+          "service": "generati
+velanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.LocalizedMe
+ssage",
+        "locale": "en-US",
+        "message": "API key 
+expired. Please renew the API 
+key."
+      }
+    ]
+  }
+}
+
+ƒö┤ Fall├│ la generaci├│n 
+para resumen
+ÔÅ▒´©Å Tiempo para resumen: 1.01s
+­ƒôí [recomendaciones] Probando con Gemini...
+ÔÜá´©Å [recomendaciones] 
+Error con gemini-1.5-flash 
+(404): {
+  "error": {
+    "code": 404,
+    "message": 
+"models/gemini-1.5-flash is 
+not found for API version 
+v1beta, or is not supported 
+for generateContent. Call 
+ListModels to see the list of 
+available models and their 
+supported methods.",
+    "status": "NOT_FOUND"
+  }
+}
+
+ÔÜá´©Å [recomendaciones] 
+Error con gemini-pro (400): {
+  "error": {
+    "code": 400,
+    "message": "API key 
+expired. Please renew the API 
+key.",
+    "status": 
+"INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.ErrorInfo",
+        "reason": 
+"API_KEY_INVALID",
+        "domain": 
+"googleapis.com",
+        "metadata": {
+          "service": "generati
+velanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.LocalizedMe
+ssage",
+        "locale": "en-US",
+        "message": "API key 
+expired. Please renew the API 
+key."
+      }
+    ]
+  }
+}
+
+ƒö┤ Fall├│ la generaci├│n 
+para recomendaciones
+ÔÅ▒´©Å Tiempo para recomendaciones: 0.56s
+--- TEST FINALIZADO ---

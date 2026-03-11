@@ -1,0 +1,51 @@
+﻿[dotenv@17.2.3] injecting env (2) from .env -- tip: ­ƒöÉ encrypt with Dotenvx: https://dotenvx.com
+--- LISTANDO MODELOS DISPONIBLES ---
+node.exe : ÔØî Error al 
+listar modelos: {
+En línea: 1 Carácter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : 
+    NotSpecified: (ÔØî Error  
+   al listar modelos: {:Str   
+ ing) [], RemoteException
+    + FullyQualifiedErrorId : 
+    NativeCommandError
+ 
+  "error": {
+    "code": 400,
+    "message": "API key 
+expired. Please renew the API 
+key.",
+    "status": 
+"INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.ErrorInfo",
+        "reason": 
+"API_KEY_INVALID",
+        "domain": 
+"googleapis.com",
+        "metadata": {
+          "service": "generati
+velanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.LocalizedMe
+ssage",
+        "locale": "en-US",
+        "message": "API key 
+expired. Please renew the API 
+key."
+      }
+    ]
+  }
+}
