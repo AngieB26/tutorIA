@@ -1130,11 +1130,20 @@ export default function ProfesorPage() {
                       );
                       if (files.length > 0) {
                         setIncArchivos(prev => {
-                          const total = prev.length + files.length;
+                          const validFiles = files.filter(f => {
+                            if (f.size > 5 * 1024 * 1024) {
+                              alert(`El archivo ${f.name} pesa más de 5MB. Por favor sube archivos más ligeros.`);
+                              return false;
+                            }
+                            return true;
+                          });
+                          
+                          const total = prev.length + validFiles.length;
                           if (total > 10) {
-                            return [...prev, ...files.slice(0, 10 - prev.length)];
+                            alert('Máximo 10 archivos por incidencia.');
+                            return [...prev, ...validFiles.slice(0, 10 - prev.length)];
                           }
-                          return [...prev, ...files];
+                          return [...prev, ...validFiles];
                         });
                       }
                     }}
@@ -1158,11 +1167,20 @@ export default function ProfesorPage() {
                         if (!e.target.files) return;
                         const files = Array.from(e.target.files);
                         setIncArchivos(prev => {
-                          const total = prev.length + files.length;
+                          const validFiles = files.filter(f => {
+                            if (f.size > 5 * 1024 * 1024) {
+                              alert(`El archivo ${f.name} pesa más de 5MB. Por favor sube archivos más ligeros.`);
+                              return false;
+                            }
+                            return true;
+                          });
+                          
+                          const total = prev.length + validFiles.length;
                           if (total > 10) {
-                            return [...prev, ...files.slice(0, 10 - prev.length)];
+                            alert('Máximo 10 archivos por incidencia.');
+                            return [...prev, ...validFiles.slice(0, 10 - prev.length)];
                           }
-                          return [...prev, ...files];
+                          return [...prev, ...validFiles];
                         });
                         e.target.value = '';
                       }}
@@ -1241,12 +1259,53 @@ export default function ProfesorPage() {
                       return;
                     }
                     setLoading(true);
-                    // Convertir archivos a base64 para persistirlos en la BD
+                    // Convertir y comprimir archivos antes de persistirlos en la BD
                     const archivosBase64 = await Promise.all(
                       incArchivos.map(f => new Promise<{ name: string; type: string; size: number; data: string }>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve({ name: f.name, type: f.type, size: f.size, data: reader.result as string });
-                        reader.readAsDataURL(f);
+                        // Si es imagen, redimensionar y comprimir usando un canvas
+                        if (f.type.startsWith('image')) {
+                          const reader = new FileReader();
+                          reader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              let width = img.width;
+                              let height = img.height;
+                              const MAX_SIZE = 1200; // Redimensionar si es muy grande
+                              
+                              if (width > height) {
+                                if (width > MAX_SIZE) {
+                                  height = Math.round((height * MAX_SIZE) / width);
+                                  width = MAX_SIZE;
+                                }
+                              } else {
+                                if (height > MAX_SIZE) {
+                                  width = Math.round((width * MAX_SIZE) / height);
+                                  height = MAX_SIZE;
+                                }
+                              }
+                              
+                              canvas.width = width;
+                              canvas.height = height;
+                              const ctx = canvas.getContext('2d');
+                              if (ctx) {
+                                ctx.drawImage(img, 0, 0, width, height);
+                                // Comprimir como JPEG al 70% de calidad
+                                const comprimida = canvas.toDataURL('image/jpeg', 0.7);
+                                resolve({ name: f.name, type: 'image/jpeg', size: f.size, data: comprimida });
+                              } else {
+                                resolve({ name: f.name, type: f.type, size: f.size, data: e.target?.result as string });
+                              }
+                            };
+                            img.src = e.target?.result as string;
+                          };
+                          reader.readAsDataURL(f);
+                        } else {
+                          // Si es video, guardarlo tal cual (se recomienda límite de peso al subir)
+                          const reader = new FileReader();
+                          reader.onload = () => resolve({ name: f.name, type: f.type, size: f.size, data: reader.result as string });
+                          reader.readAsDataURL(f);
+                        }
                       }))
                     );
                     // Guardar incidencia en la base de datos
