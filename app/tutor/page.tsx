@@ -46,9 +46,9 @@ export default function TutorPage() {
   const [filtroSeccionSeccion, setFiltroSeccionSeccion] = useState<string>('');
   const [busquedaEstudiante, setBusquedaEstudiante] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [iaResumenes, setIaResumenes] = useState<Record<string, string>>({});
-  const [iaCargando, setIaCargando] = useState<Record<string, boolean>>({});
-  const resumenesCargados = useRef<Set<string>>(new Set());
+  const [iaResumenGeneral, setIaResumenGeneral] = useState<string>('');
+  const [iaCargandoGeneral, setIaCargandoGeneral] = useState<boolean>(false);
+  const resumenGeneralCargado = useRef<boolean>(false);
   
   const [formData, setFormData] = useState({
     grado: '',
@@ -157,134 +157,71 @@ export default function TutorPage() {
     loadTutorAsignado();
   }, [seccionSeleccionada]);
 
-  // Cargar resúmenes de IA para estudiantes (solo si es tutor de la sección)
+  // Cargar resumen de IA para toda la sección
   useEffect(() => {
     if (!esTutorDeLaSeccion || !seccionSeleccionada || estudiantesFiltrados.length === 0) {
+      setIaResumenGeneral('');
+      resumenGeneralCargado.current = false;
       return;
     }
 
-    const loadResumenes = async () => {
-      for (const est of estudiantesFiltrados) {
-        const nombreEst = getNombreCompleto(est);
-        // Solo cargar si no existe el resumen y no se está cargando (evitar llamadas duplicadas)
-        if (iaResumenes[nombreEst] || resumenesCargados.current.has(nombreEst)) {
-          console.log(`⏭️ Saltando ${nombreEst}: ya tiene resumen o está en proceso`);
-          continue;
-        }
+    // Si ya se cargó para esta sección, no repetir
+    if (resumenGeneralCargado.current) return;
 
-        try {
-          console.log(`🔄 Cargando resumen IA para: ${nombreEst}`);
-          const incidenciasEst = await fetchIncidencias({ studentName: nombreEst });
-          const incidenciasRecientes = incidenciasEst.filter(inc => {
-            const fechaInc = new Date(inc.fecha);
-            const hace30Dias = new Date();
-            hace30Dias.setDate(hace30Dias.getDate() - 30);
-            return fechaInc >= hace30Dias;
-          });
-
-          console.log(`📊 ${nombreEst}: ${incidenciasRecientes.length} incidencias recientes`);
-
-          // Marcar como que ya se está procesando
-          resumenesCargados.current.add(nombreEst);
-
-          // Marcar como cargando
-          setIaCargando(prev => ({ ...prev, [nombreEst]: true }));
-
-          // Llamar siempre a la API para generar resumen de IA (incluso si no hay incidencias)
-          try {
-            console.log(`📡 Llamando API para ${nombreEst}...`);
-            const res = await fetch('/api/generate-report', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                estudiante: nombreEst,
-                incidencias: incidenciasRecientes.length > 0 ? incidenciasRecientes : []
-              })
-            });
-
-            console.log(`📥 Respuesta API para ${nombreEst}:`, res.status, res.statusText);
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              console.error(`❌ Error HTTP para ${nombreEst}:`, res.status, errorText);
-              throw new Error(`Error ${res.status}: ${errorText}`);
+    const loadResumenGeneral = async () => {
+      setIaCargandoGeneral(true);
+      try {
+        console.log(`🔄 Cargando resumen general para la sección: ${seccionSeleccionada.grado} ${seccionSeleccionada.seccion}`);
+        
+        // Obtener todas las incidencias de todos los estudiantes en paralelo
+        const todasLasIncidencias = await Promise.all(
+          estudiantesFiltrados.map(async (est) => {
+            const nombreEst = getNombreCompleto(est);
+            try {
+              const incidenciasEst = await fetchIncidencias({ studentName: nombreEst });
+              return incidenciasEst.map(inc => ({ ...inc, studentName: nombreEst }));
+            } catch (error) {
+              console.error(`Error cargando incidencias para ${nombreEst}:`, error);
+              return [];
             }
+          })
+        );
 
-            const data = await res.json();
-            console.log(`✅ Datos recibidos para ${nombreEst}:`, { 
-              tieneResumen: !!data.resumen, 
-              resumenLength: data.resumen?.length || 0,
-              tieneReport: !!data.report,
-              error: data.error 
-            });
+        const incidenciasAplanadas = todasLasIncidencias.flat();
+        const incidenciasRecientes = incidenciasAplanadas.filter(inc => {
+          const fechaInc = new Date(inc.fecha);
+          const hace30Dias = new Date();
+          hace30Dias.setDate(hace30Dias.getDate() - 30);
+          return fechaInc >= hace30Dias;
+        });
 
-            // Verificar si hay un error en la respuesta
-            if (data.error) {
-              console.error(`❌ Error en respuesta API para ${nombreEst}:`, data.error, data.resumen);
-              // No guardar mensajes de error como resumen, mostrar mensaje genérico
-              setIaResumenes(prev => ({ ...prev, [nombreEst]: 'Error de configuración: verifica la API key de Google AI.' }));
-              return;
-            }
+        console.log(`📊 Sección: ${incidenciasRecientes.length} incidencias totales en los últimos 30 días`);
 
-            // Extraer el resumen de la respuesta (solo si no hay error)
-            let resumen = '';
-            if (data.resumen && typeof data.resumen === 'string' && data.resumen.trim()) {
-              // Verificar que no sea un mensaje de error
-              const resumenLower = data.resumen.toLowerCase();
-              if (resumenLower.includes('error') && 
-                  (resumenLower.includes('autenticación') || 
-                   resumenLower.includes('api key') || 
-                   resumenLower.includes('configuración') ||
-                   resumenLower.includes('conectar'))) {
-                console.warn(`⚠️ El resumen parece ser un mensaje de error para ${nombreEst}`);
-                resumen = 'Error de configuración: verifica la API key de Google AI.';
-              } else {
-                // Tomar solo la primera línea o las primeras 150 caracteres del resumen
-                const primeraLinea = data.resumen.split('\n')[0].trim();
-                resumen = primeraLinea.length > 150 
-                  ? primeraLinea.substring(0, 150) + '...' 
-                  : primeraLinea;
-              }
-            } else if (data.report && typeof data.report === 'string' && data.report.trim()) {
-              // Fallback: usar el report completo si no hay resumen
-              const primeraLinea = data.report.split('\n')[0].trim();
-              resumen = primeraLinea.length > 150 
-                ? primeraLinea.substring(0, 150) + '...' 
-                : primeraLinea;
-            } else {
-              resumen = 'Sin análisis disponible.';
-              console.warn(`⚠️ No se encontró resumen válido para ${nombreEst}`);
-            }
+        // Llamar a la API para generar un solo reporte para el salón
+        const res = await fetch('/api/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            estudiante: `Salón ${seccionSeleccionada.grado} ${seccionSeleccionada.seccion}`,
+            incidencias: incidenciasRecientes
+          })
+        });
 
-            console.log(`💾 Guardando resumen para ${nombreEst}:`, resumen.substring(0, 50) + '...');
-            setIaResumenes(prev => ({ ...prev, [nombreEst]: resumen }));
-          } catch (error) {
-            console.error(`❌ Error generando resumen IA para ${nombreEst}:`, error);
-            setIaResumenes(prev => ({ ...prev, [nombreEst]: 'Error al generar resumen de IA.' }));
-          } finally {
-            setIaCargando(prev => {
-              const nuevo = { ...prev };
-              delete nuevo[nombreEst];
-              return nuevo;
-            });
-          }
-        } catch (error) {
-          const nombreEst = getNombreCompleto(est);
-          console.error(`❌ Error cargando incidencias para ${nombreEst}:`, error);
-          // Limpiar el estado de carga si hay error
-          resumenesCargados.current.delete(nombreEst);
-          setIaCargando(prev => {
-            const nuevo = { ...prev };
-            delete nuevo[nombreEst];
-            return nuevo;
-          });
-        }
+        if (!res.ok) throw new Error('Error al generar resumen general');
+
+        const data = await res.json();
+        setIaResumenGeneral(data.resumen || data.report || 'Sin análisis disponible para el salón.');
+        resumenGeneralCargado.current = true;
+      } catch (error) {
+        console.error('❌ Error generando resumen general de IA:', error);
+        setIaResumenGeneral('Error al generar el resumen general del salón.');
+      } finally {
+        setIaCargandoGeneral(false);
       }
     };
 
-    loadResumenes();
-    // Removido iaResumenes de las dependencias para evitar loops infinitos
-  }, [estudiantesFiltrados.length, esTutorDeLaSeccion, seccionSeleccionada?.grado || '', seccionSeleccionada?.seccion || '']);
+    loadResumenGeneral();
+  }, [esTutorDeLaSeccion, seccionSeleccionada, estudiantesFiltrados.length]);
 
   // Estado para incidencias por estudiante (para calcular estados)
   const [incidenciasPorEstudiante, setIncidenciasPorEstudiante] = useState<Record<string, any[]>>({});
@@ -347,13 +284,13 @@ export default function TutorPage() {
       return {
         ...est,
         estado,
-        iaResumen: iaResumenes[nombreEst] || null,
-        estaCargandoIA: iaCargando[nombreEst] || false
+        iaResumen: null,
+        estaCargandoIA: false
       };
     });
 
     setEstudiantesConEstado(estudiantesConEstadoData);
-  }, [estudiantesFiltrados, seccionSeleccionada, esTutorDeLaSeccion, incidenciasPorEstudiante, iaResumenes, iaCargando]);
+  }, [estudiantesFiltrados, seccionSeleccionada, esTutorDeLaSeccion, incidenciasPorEstudiante]);
 
   // Estados para resumen de datos
   const [resumenData, setResumenData] = useState<any>(null);
@@ -823,23 +760,19 @@ export default function TutorPage() {
                 {esTutorDeLaSeccion && (
                   <Card className="bg-gray-50 border-gray-200">
                     <CardHeader>
-                      <CardTitle className="text-base !text-gray-900">IA – Resumen</CardTitle>
+                      <CardTitle className="text-base !text-gray-900">IA – Resumen General del Salón</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {estudiantesConEstado.map(est => (
-                          <div key={getNombreCompleto(est)} className="text-sm text-gray-700 break-words">
-                            <span className="font-semibold block sm:inline">{getNombreCompleto(est)}:</span>{' '}
-                            <span className="block sm:inline">
-                              {est.estaCargandoIA ? (
-                                <span className="text-gray-500 italic">Generando resumen...</span>
-                              ) : (
-                                est.iaResumen || 'Sin análisis disponible'
-                              )}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      {iaCargandoGeneral ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                          <span className="text-sm text-gray-500 italic">Generando resumen general del salón...</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                          {iaResumenGeneral || 'Sin análisis disponible para el salón.'}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

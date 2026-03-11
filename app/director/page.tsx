@@ -5293,7 +5293,7 @@ export default function DirectorPage() {
                       </div>
                     </div>
                     
-                    <div className="border-t pt-4">
+                    <div className="border-t border-gray-200 pt-4">
                       <h4 className="text-sm font-semibold text-gray-900 mb-3">Información de Contacto</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -5336,7 +5336,7 @@ export default function DirectorPage() {
                       </div>
                     </div>
 
-                    <div className="border-t pt-4">
+                    <div className="border-t border-gray-200 pt-4">
                       <h4 className="text-sm font-semibold text-gray-900 mb-3">Información del Apoderado</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -5415,7 +5415,7 @@ export default function DirectorPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-3 pt-4 border-t">
+                    <div className="flex gap-3 pt-4 border-t border-gray-200">
                       <Button
                         onClick={async () => {
                           // Validaciones

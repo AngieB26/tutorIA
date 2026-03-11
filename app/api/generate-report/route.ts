@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         prompt = `Genera un resumen positivo y breve para ${estudiante} indicando que no tiene incidencias recientes. Solo una línea.`;
       } else {
         const incidenciasTexto = estudiante === 'Reporte General' ? '' : incidencias.map((i: any, idx: number) => 
-          `Inc ${idx + 1}: ${i.tipo} - ${i.gravedad} - ${i.descripcion?.substring(0, 100)}`
+          `Inc ${idx + 1}: ${i.studentName ? i.studentName + ' - ' : ''}${i.tipo} - ${i.gravedad} - ${i.descripcion?.substring(0, 100)}`
         ).join('\n');
 
         const totalIncidencias = incidencias.length;
