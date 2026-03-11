@@ -559,6 +559,8 @@ export async function getIncidencias(): Promise<Incidencia[]> {
         resueltaPor: inc.resueltaPor ?? undefined,
         estado: inc.estado as EstadoIncidencia,
         historialEstado: historial, // Siempre retornar un array, nunca undefined ni null
+        // @ts-ignore - TS podría quejarse si no detecta el cambio reciente en el schema
+        archivos: inc.archivos ? (typeof inc.archivos === 'string' ? JSON.parse(inc.archivos) : inc.archivos) : undefined,
       };
     });
   } catch (error) {
@@ -638,6 +640,8 @@ export async function saveIncidencias(incidencias: Incidencia[]): Promise<void> 
           resueltaPor: inc.resueltaPor ?? null,
           estado: inc.estado ?? 'Pendiente',
           historialEstado: inc.historialEstado ? JSON.stringify(inc.historialEstado) : null,
+          // @ts-ignore
+          archivos: (inc as any).archivos ?? null,
         },
       });
     }
@@ -866,6 +870,8 @@ export async function addIncidencia(incidencia: Omit<Incidencia, 'id' | 'timesta
         })(),
         estado: estadoInicial, // 'normal' para positivas, 'Pendiente' para las demás
         historialEstado: JSON.stringify(historialEstado), // Siempre inicializar historial
+        // @ts-ignore
+        archivos: (newIncidencia as any).archivos ?? null,
       },
     });
 

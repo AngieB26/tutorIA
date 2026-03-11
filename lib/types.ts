@@ -31,6 +31,7 @@ export interface Incidencia {
   resueltaPor?: string; // Quién la resolvió
   estado: EstadoIncidencia;
   historialEstado?: EstadoIncidenciaHistorial[];
+  archivos?: any; // Añadido para guardar adjuntos
 }
 
 export interface Nota {
