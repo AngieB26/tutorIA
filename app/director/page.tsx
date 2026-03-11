@@ -4455,113 +4455,97 @@ export default function DirectorPage() {
                 {!generatingGeneralReport && reporteGeneral && (() => {
             const { timestamp, truncated, report, resumen, alertas, recomendaciones } = reporteGeneral as any;
                   return (
-                    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-white">
-                      <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                          <Sparkles className="h-5 w-5 text-primary" />
-                          Análisis General Generado por IA
-                        </CardTitle>
-                  <CardDescription className="text-sm">
-                          {timestamp ? (
-                            <>Generado el {new Date(timestamp).toLocaleString('es-ES')}</>
-                          ) : null}
-                          {truncated ? (
-                            <span className="ml-2 text-amber-600 font-medium">
-                        ⚠️ Reporte truncado
-                            </span>
-                          ) : null}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                  <div className="space-y-6">
-                    {/* Resumen Automático */}
-                    {resumen && (
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Resumen Automático</h4>
-                        </div>
-                        <p className="text-gray-900 text-sm leading-relaxed">{resumen}</p>
-                      </div>
-                    )}
-                    
-                    {/* Alertas Inteligentes - Generadas por IA */}
-                    {(() => {
-                      const alertasIA = (reporteGeneral as any)?.alertas;
-                      
-                      // Si hay alertas generadas por IA, mostrarlas
-                      if (alertasIA && alertasIA.trim()) {
-                        // Determinar el color según el contenido (positivo o alerta)
-                        const esPositivo = alertasIA.toLowerCase().includes('no se detectaron') || 
-                                          alertasIA.toLowerCase().includes('estado general es positivo') ||
-                                          alertasIA.toLowerCase().includes('rangos normales') ||
-                                          alertasIA.toLowerCase().includes('ninguna alerta');
-                        
-                        if (esPositivo) {
-                        return (
-                          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                                <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
-                            </div>
-                              <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">{alertasIA}</p>
+                    <Card className="border-indigo-100 shadow-xl overflow-hidden bg-white/80 backdrop-blur-sm border-2">
+                       <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white pb-6">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-bold">
+                              <Sparkles className="h-6 w-6 text-indigo-200 animate-pulse" />
+                              Análisis Estratégico IA
+                            </CardTitle>
+                            <CardDescription className="text-indigo-100 flex items-center gap-2">
+                              {timestamp ? (
+                                <><Calendar className="h-3 w-3" /> Generado el {new Date(timestamp).toLocaleString('es-ES')}</>
+                              ) : null}
+                            </CardDescription>
                           </div>
-                        );
-                        } else {
-                      return (
-                        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                          <div className="flex items-center gap-2 mb-3">
-                            <AlertCircle className="h-5 w-5 text-yellow-600" />
-                            <h4 className="font-semibold text-gray-900 text-base">Alertas Inteligentes</h4>
-                          </div>
-                              <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-line">
-                                {alertasIA}
-                              </div>
-                              </div>
-                          );
-                        }
-                      }
-                      
-                      // Si no hay alertas de IA, mostrar mensaje por defecto
-                      return (
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          <div className="flex items-center gap-2 mb-2">
-                            <AlertCircle className="h-4 w-4 text-gray-600" />
-                            <h4 className="font-semibold text-gray-900 text-sm">Alertas Inteligentes</h4>
-                              </div>
-                          <p className="text-gray-900 text-sm italic">
-                            Las alertas se generarán automáticamente al crear el análisis con IA.
-                          </p>
+                          {truncated && (
+                            <Badge variant="secondary" className="bg-white/20 text-white border-white/30 backdrop-blur-md">
+                              ⚠️ Optimizado
+                            </Badge>
+                          )}
                         </div>
-                      );
-                    })()}
-                    
-                    {/* Recomendaciones */}
-                    {recomendaciones && (
-                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Target className="h-4 w-4 text-green-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Recomendaciones</h4>
-                        </div>
-                        <div className="pl-1">
-                          {formatRecomendacionesGeneral(recomendaciones)}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Fallback: Reporte completo */}
-                    {!resumen && !recomendaciones && report && (
-                      <div className="text-gray-900 leading-relaxed text-sm">
-                            <div
-                              className="space-y-2"
-                              dangerouslySetInnerHTML={{
-                                __html: formatReportText(report)
-                              }}
-                            />
-                      </div>
-                    )}
-                        </div>
-                      </CardContent>
+                       </CardHeader>
+                       <CardContent className="pt-8 px-6 pb-8">
+                         <div className="space-y-8">
+                           {/* Resumen Automático */}
+                           {resumen && (
+                             <div className="relative group">
+                               <div className="absolute -left-2 top-0 bottom-0 w-1 bg-blue-500 rounded-full transition-all group-hover:w-1.5" />
+                               <div className="pl-4">
+                                 <div className="flex items-center gap-2 mb-3">
+                                   <div className="p-2 bg-blue-50 rounded-lg">
+                                     <FileText className="h-5 w-5 text-blue-600" />
+                                   </div>
+                                   <h4 className="font-bold text-gray-900 text-lg tracking-tight">Resumen Ejecutivo</h4>
+                                 </div>
+                                 <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100/50 shadow-sm">
+                                   <p className="text-gray-800 text-base leading-relaxed font-normal">{resumen}</p>
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+                           
+                           {/* Alertas Inteligentes */}
+                           {(() => {
+                             const alertasIA = (reporteGeneral as any)?.alertas;
+                             if (!alertasIA || !alertasIA.trim()) return null;
+                             
+                             const esPositivo = alertasIA.toLowerCase().includes('no se detectaron') || 
+                                               alertasIA.toLowerCase().includes('positivo') ||
+                                               alertasIA.toLowerCase().includes('normal');
+                             
+                             return (
+                               <div className="relative group">
+                                 <div className={`absolute -left-2 top-0 bottom-0 w-1 rounded-full transition-all group-hover:w-1.5 ${esPositivo ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                 <div className="pl-4">
+                                   <div className="flex items-center gap-2 mb-3">
+                                     <div className={`p-2 rounded-lg ${esPositivo ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                                       {esPositivo ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertCircle className="h-5 w-5 text-amber-600" />}
+                                     </div>
+                                     <h4 className="font-bold text-gray-900 text-lg tracking-tight">Detección de Patrones</h4>
+                                   </div>
+                                   <div className={`rounded-xl p-5 border shadow-sm ${esPositivo ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-amber-50/50 border-amber-100/50'}`}>
+                                     <div className="text-gray-800 text-base leading-relaxed whitespace-pre-line font-medium">
+                                       {alertasIA}
+                                     </div>
+                                   </div>
+                                 </div>
+                               </div>
+                             );
+                           })()}
+                           
+                           {/* Recomendaciones */}
+                           {recomendaciones && (
+                             <div className="relative group">
+                               <div className="absolute -left-2 top-0 bottom-0 w-1 bg-indigo-500 rounded-full transition-all group-hover:w-1.5" />
+                               <div className="pl-4">
+                                 <div className="flex items-center gap-2 mb-3">
+                                   <div className="p-2 bg-indigo-50 rounded-lg">
+                                     <Target className="h-5 w-5 text-indigo-600" />
+                                   </div>
+                                   <h4 className="font-bold text-gray-900 text-lg tracking-tight">Acciones Recomendadas</h4>
+                                 </div>
+                                 <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100/50 shadow-sm">
+                                   <div className="space-y-3">
+                                     {formatRecomendacionesGeneral(recomendaciones)}
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       </CardContent>
                     </Card>
                   );
                 })()}

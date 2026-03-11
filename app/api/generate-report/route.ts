@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
       if (incidencias.length === 0) {
         prompt = `Genera un resumen positivo y breve para ${estudiante} indicando que no tiene incidencias recientes. Solo una línea.`;
       } else {
-        const incidenciasTexto = estudiante === 'Reporte General' ? '' : incidencias.map((i: any, idx: number) => 
-          `Inc ${idx + 1}: ${i.studentName ? i.studentName + ' - ' : ''}${i.tipo} - ${i.gravedad} - ${i.descripcion?.substring(0, 100)}`
+        const incidenciasTexto = incidencias.map((i: any, idx: number) => 
+          `- ${i.studentName || 'Estudiante'}: ${i.tipo} (${i.gravedad}) - ${i.descripcion?.substring(0, 120)}`
         ).join('\n');
 
         const totalIncidencias = incidencias.length;
@@ -36,22 +36,23 @@ export async function POST(req: NextRequest) {
           const pos = incidencias.filter((i: any) => i.tipo === 'positivo').length;
           const graves = incidencias.filter((i: any) => i.tipo !== 'positivo' && i.gravedad === 'grave').length;
           const stats = `Total: ${totalIncidencias} (${pos} pos, ${neg} neg). Graves: ${graves}.`;
+          const context = `Contexto del aula:\n${incidenciasTexto}`;
 
           promptsSeparados = {
-            resumen: `Resumen ejecutivo de MÁXIMO 40 palabras sobre el estado institucional. Enfócate solo en lo más crítico (NEGATIVOS).\n\n${stats}`,
-            alertas: `Identifica ÚNICAMENTE 2 alertas críticas en formato lista de puntos cortos. No repitas lo dicho en el resumen.\n\n${stats}`,
-            recomendaciones: `Proporciona 3 recomendaciones estratégicas BREVES. Una por línea. Máximo 15 palabras cada una.\n\n${stats}`
+            resumen: `Como psicólogo educativo, realiza un análisis profesional del clima del aula (MÁXIMO 80 palabras). Identifica tendencias basadas en estos datos:\n\n${stats}\n\n${context}`,
+            alertas: `Identifica 3 señales de alerta o patrones de riesgo específicos encontrados en los datos. Sé muy concreto. Puntos cortos.\n\n${context}`,
+            recomendaciones: `Proporciona 4 recomendaciones pedagógicas/emocionales para el tutor. Enfócate en la gestión del grupo. Una por línea.\n\n${context}`
           };
           prompt = 'REPORTE_GENERAL_SEPARADO';
         } else {
           const context = `Estudiante: ${estudiante} | Total: ${totalIncidencias}\n\nIncidencias:\n${incidenciasTexto}`;
           promptsSeparados = {
-            resumen: `Describe la situación actual de ${estudiante} en MÁXIMO 2 líneas. Sé directo.\n\n${context}`,
-            analisisPatrones: `Identifica los 2 comportamientos más recurrentes. Prohibido repetir el resumen. Usa puntos cortos.\n\n${context}`,
-            fortalezas: `Menciona 1 fortaleza O área de mejora prioritaria. Máximo 20 palabras.\n\n${context}`,
-            factoresRiesgo: `¿Cuál es el riesgo principal aquí? Responde en UNA SOLA FRASE de máximo 15 palabras.\n\n${context}`,
-            recomendaciones: `3 acciones concretas para este caso. Máximo 10 palabras por acción. Una por línea.\n\n${context}`,
-            planSeguimiento: `Define 2 pasos de seguimiento inmediatos. Formato lista de puntos, máximo 12 palabras por punto.\n\n${context}`
+            resumen: `Análisis psicológico-educativo breve de ${estudiante} (MÁXIMO 70 palabras). Identifica el núcleo del problema o situación.\n\n${context}`,
+            analisisPatrones: `Identifica los patrones de conducta recurrentes. Usa puntos cortos.\n\n${context}`,
+            fortalezas: `Destaca fortalezas o áreas de oportunidad positiva observadas. Máximo 30 palabras.\n\n${context}`,
+            factoresRiesgo: `Riesgos principales a corto plazo. Una sola frase contundente.\n\n${context}`,
+            recomendaciones: `4 acciones estratégicas personalizadas para tratar con ${estudiante}. Una por línea.\n\n${context}`,
+            planSeguimiento: `Pasos de seguimiento administrativo y psicológico. Puntos cortos.\n\n${context}`
           };
           prompt = 'REPORTE_ESTUDIANTE_SEPARADO';
         }
@@ -129,11 +130,12 @@ export async function POST(req: NextRequest) {
     const llamarGemini = async (p: any, field: string, tokens: number = 800) => {
       console.log(`📡 [${field}] Solicitando...`);
       // Instrucción de sistema
-      const systemInstruction = `Actúa como un psicólogo educativo experto. 
-INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con el contenido solicitado. 
-PROHIBIDO: Introducciones ("Aquí tienes..."), saludos o conclusiones.
-Si no hay datos suficientes para un patrón o fortaleza, describe brevemente la situación actual basada en lo que ves.
-NUNCA respondas que no encontraste nada si hay al menos una indicación visual o de texto.\n\n`;
+      const systemInstruction = `Actúa como un psicólogo educativo y analista de datos escolares de alto nivel. 
+Tu objetivo es transformar datos crudos en insights accionables, empáticos y profesionales.
+INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE con el contenido solicitado. PROHIBIDO introducciones, saludos o conclusiones.
+TONO: Profesional, analítico, constructivo y directo.
+Si hay pocos datos, no te limites a decir "falta información"; en su lugar, analiza la señal disponible (por pequeña que sea) y sugiere qué observar en el futuro.
+NUNCA uses frases genéricas de relleno. Cada palabra debe aportar valor al tutor o director.\n\n`;
 
       const promptParts = Array.isArray(p) 
         ? [{ text: systemInstruction }, ...p] 
