@@ -913,6 +913,7 @@ export default function DirectorPage() {
   // Estados para lista de estudiantes (declarados antes del useEffect que los usa)
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState<string | null>(null); // Para mostrar en UI
+  const [profileTab, setProfileTab] = useState<'info' | 'contacto' | 'apoderado' | 'tutor'>('info');
 
   // Estados para filtros de fecha (declarados antes del useEffect que los usa)
   const [fechaInicio, setFechaInicio] = useState<string>('');
@@ -3108,243 +3109,255 @@ export default function DirectorPage() {
                   Información del Estudiante
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 divide-gray-100">
-                  {/* Estudiante */}
-                  <div className="flex flex-col items-center py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-4 self-start sm:self-center">Estudiante</span>
-                    <div className="flex flex-col items-center mb-4">
-                      {fotoPreview ? (
-                        <img src={fotoPreview} alt="Foto de perfil" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm mb-2" />
-                      ) : (
-                        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200 shadow-sm mb-2">
-                          <User className="w-10 h-10 text-gray-400" />
-                        </div>
-                      )}
-                      
-                      {editando ? (
-                        <div className="w-full flex flex-col gap-2 mt-2">
-                          <Input
-                            className="text-sm font-semibold text-gray-900 text-center"
-                            name="nombres"
-                            value={infoEdit.nombres || ''}
-                            onChange={handleInputChange}
-                            placeholder="Nombres"
-                            autoComplete="off"
-                          />
-                          <Input
-                            className="text-sm font-semibold text-gray-900 text-center"
-                            name="apellidos"
-                            value={infoEdit.apellidos || ''}
-                            onChange={handleInputChange}
-                            placeholder="Apellidos"
-                            autoComplete="off"
-                          />
-                        </div>
-                      ) : (
-                        <span className="text-base font-semibold text-gray-900 text-center">{infoEdit.nombre || (infoEdit.nombres && infoEdit.apellidos ? `${infoEdit.nombres} ${infoEdit.apellidos}` : '-')}</span>
-                      )}
+              <CardContent className="pt-2">
+                {/* Tabs de navegación local para el perfil */}
+                <div className="flex overflow-x-auto pb-4 mb-4 gap-2 border-b border-gray-100 -mx-6 px-6 sm:mx-0 sm:px-0 scrollbar-hide">
+                  {[
+                    { id: 'info', label: 'Info', icon: User },
+                    { id: 'contacto', label: 'Contacto', icon: Phone },
+                    { id: 'apoderado', label: 'Apoderado', icon: UserCircle },
+                    { id: 'tutor', label: 'Tutor', icon: GraduationCap },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setProfileTab(tab.id as any)}
+                      className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full transition-all whitespace-nowrap ${
+                        profileTab === tab.id
+                          ? 'bg-primary text-white shadow-md'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      <tab.icon className="h-3.5 w-3.5" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-                      {!editando && fotoPreview && (
-                        <Button size="sm" variant="outline" className="mt-2 text-[10px] h-7" onClick={() => setEditando(true)}>Cambiar foto</Button>
-                      )}
-                      {editando && (
-                        <div className="mt-2 flex flex-col gap-1.5 w-full">
-                          <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={handleEliminarFoto}>Eliminar foto</Button>
-                          <label className="cursor-pointer text-primary hover:text-primary/80 underline text-[10px] text-center transition-colors">
-                            Subir foto
-                            <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
-                          </label>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="w-full space-y-3">
-                      <div className="flex flex-col sm:items-center">
-                        <div className="flex items-center gap-1.5 mb-1 sm:justify-center">
-                          <GraduationCap className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Grado y Sección</span>
-                        </div>
-                        {editando ? (
-                          <div className="flex gap-2 sm:justify-center">
-                            <Input name="grado" value={infoEdit.grado || ''} onChange={handleInputChange} className="w-full sm:w-16 text-center h-8 text-sm" placeholder="Grado" />
-                            <Input name="seccion" value={infoEdit.seccion || ''} onChange={handleInputChange} className="w-full sm:w-16 text-center h-8 text-sm" placeholder="Sección" />
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-900 font-medium sm:text-center">{infoEdit.grado} - {infoEdit.seccion}</span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col sm:items-center">
-                        <div className="flex items-center gap-1.5 mb-1 sm:justify-center">
-                          <User className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Edad</span>
-                        </div>
-                        {editando ? (
-                          <Input name="edad" value={infoEdit.edad || ''} onChange={handleInputChange} className="w-full sm:w-20 text-center h-8 text-sm sm:mx-auto" type="number" min="1" placeholder="Edad" />
-                        ) : (
-                          <span className="text-sm text-gray-900 sm:text-center">{infoEdit.edad ? `${infoEdit.edad} años` : '-'}</span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col sm:items-center">
-                        <div className="flex items-center gap-1.5 mb-1 sm:justify-center">
-                          <Calendar className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Nacimiento</span>
-                        </div>
-                        {editando ? (
-                          <Input 
-                            name="fechaNacimiento" 
-                            type="date"
-                            value={infoEdit.fechaNacimiento ? new Date(infoEdit.fechaNacimiento).toISOString().split('T')[0] : ''} 
-                            onChange={handleInputChange} 
-                            className="w-full h-8 text-xs sm:mx-auto" 
-                          />
-                        ) : (
-                          <span className="text-sm text-gray-900 sm:text-center">{infoEdit.fechaNacimiento ? formatFecha(infoEdit.fechaNacimiento) : '-'}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contacto del Estudiante */}
-                  <div className="flex flex-col py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-4">Contacto</span>
-                    <div className="space-y-4">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Phone className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Teléfono</span>
-                        </div>
-                        {editando ? (
-                          <Input name="contactoTelefono" value={infoEdit.contacto?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, telefono: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Teléfono" />
-                        ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.contacto?.telefono || '-'}</span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Mail className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Email</span>
-                        </div>
-                        {editando ? (
-                          <Input name="contactoEmail" value={infoEdit.contacto?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, email: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Email" />
-                        ) : (
-                          <span className="text-sm text-gray-900 break-all">{infoEdit.contacto?.email || '-'}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Familiar / Apoderado */}
-                  <div className="flex flex-col py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-4">Apoderado</span>
-                    <div className="space-y-3">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <UserCircle className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Nombre</span>
-                        </div>
-                        {editando ? (
-                          <Input name="apoderadoNombre" value={infoEdit.apoderado?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, nombre: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Nombre" />
-                        ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.nombre || '-'}</span>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Users className="h-3.5 w-3.5 text-primary/70" />
-                            <span className="text-[11px] font-semibold text-gray-500 uppercase">Vínculo</span>
-                          </div>
-                          {editando ? (
-                            <Input name="apoderadoParentesco" value={infoEdit.apoderado?.parentesco || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, parentesco: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Ej: Madre" />
+                <div className="min-h-[280px]">
+                  {/* Tab: Info General */}
+                  {profileTab === 'info' && (
+                    <div className="animate-in fade-in slide-in-from-left-2 duration-300">
+                      <div className="flex flex-col items-center mb-6">
+                        <div className="relative group">
+                          {fotoPreview ? (
+                            <img src={fotoPreview} alt="Foto de perfil" className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg" />
                           ) : (
-                            <span className="text-sm text-gray-900">{infoEdit.apoderado?.parentesco || '-'}</span>
+                            <div className="w-24 h-24 rounded-full bg-primary/5 flex items-center justify-center border-4 border-white shadow-lg">
+                              <User className="w-12 h-12 text-primary/30" />
+                            </div>
+                          )}
+                          {!editando && fotoPreview && (
+                            <Button size="icon" variant="secondary" className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md border-2 border-white" onClick={() => setEditando(true)}>
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
                           )}
                         </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Phone className="h-3.5 w-3.5 text-primary/70" />
-                            <span className="text-[11px] font-semibold text-gray-500 uppercase">Tel.</span>
+                        
+                        {editando ? (
+                          <div className="w-full max-w-xs flex flex-col gap-2 mt-4 text-center">
+                            <Input className="text-sm font-bold text-center h-9" name="nombres" value={infoEdit.nombres || ''} onChange={handleInputChange} placeholder="Nombres" autoComplete="off" />
+                            <Input className="text-sm font-bold text-center h-9" name="apellidos" value={infoEdit.apellidos || ''} onChange={handleInputChange} placeholder="Apellidos" autoComplete="off" />
                           </div>
-                          {editando ? (
-                            <Input name="apoderadoTelefono" value={infoEdit.apoderado?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, telefono: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Tel." />
-                          ) : (
-                            <span className="text-sm text-gray-900">{infoEdit.apoderado?.telefono || '-'}</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Mail className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Email</span>
-                        </div>
-                        {editando ? (
-                          <Input name="apoderadoEmail" value={infoEdit.apoderado?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, email: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Email" />
                         ) : (
-                          <span className="text-sm text-gray-900 break-all">{infoEdit.apoderado?.email || '-'}</span>
+                          <h3 className="mt-4 text-lg font-bold text-gray-900 text-center leading-tight">
+                            {infoEdit.nombre || (infoEdit.nombres && infoEdit.apellidos ? `${infoEdit.nombres} ${infoEdit.apellidos}` : '-')}
+                          </h3>
+                        )}
+
+                        {editando && (
+                          <div className="mt-3 flex gap-2 w-full justify-center">
+                            <Button size="sm" variant="outline" className="text-[10px] h-7 px-3" onClick={handleEliminarFoto}>Eliminar Foto</Button>
+                            <label className="cursor-pointer bg-primary/10 text-primary hover:bg-primary/20 flex items-center px-3 py-1 rounded-md text-[10px] font-semibold transition-colors">
+                              Subir Nueva
+                              <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
+                            </label>
+                          </div>
                         )}
                       </div>
 
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <MapPin className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Dirección</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 text-primary/70">
+                            <GraduationCap className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Grado y Sección</span>
+                            {editando ? (
+                              <div className="flex gap-1 mt-1">
+                                <Input name="grado" value={infoEdit.grado || ''} onChange={handleInputChange} className="w-12 h-7 text-xs p-1 text-center" />
+                                <Input name="seccion" value={infoEdit.seccion || ''} onChange={handleInputChange} className="w-8 h-7 text-xs p-1 text-center" />
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-900 font-semibold">{infoEdit.grado} - {infoEdit.seccion}</span>
+                            )}
+                          </div>
                         </div>
-                        {editando ? (
-                          <Input name="apoderadoDireccion" value={infoEdit.apoderado?.direccion || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, direccion: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Dirección" />
-                        ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.direccion || '-'}</span>
-                        )}
+
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 text-primary/70">
+                            <User className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Edad</span>
+                            {editando ? (
+                              <Input name="edad" type="number" value={infoEdit.edad || ''} onChange={handleInputChange} className="w-16 h-7 text-xs p-1 mt-1" />
+                            ) : (
+                              <span className="text-sm text-gray-900 font-semibold">{infoEdit.edad ? `${infoEdit.edad} años` : '-'}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 text-primary/70">
+                            <Calendar className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nacimiento</span>
+                            {editando ? (
+                              <Input name="fechaNacimiento" type="date" value={infoEdit.fechaNacimiento ? new Date(infoEdit.fechaNacimiento).toISOString().split('T')[0] : ''} onChange={handleInputChange} className="w-full h-7 text-xs p-1 mt-1" />
+                            ) : (
+                              <span className="text-sm text-gray-900 font-semibold">{infoEdit.fechaNacimiento ? formatFecha(infoEdit.fechaNacimiento) : '-'}</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Tutor */}
-                  <div className="flex flex-col py-4 px-2">
-                    <span className="block text-sm font-bold text-primary mb-4">Tutor Asignado</span>
-                    <div className="space-y-4">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <UserCircle className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Nombre</span>
+                  {/* Tab: Contacto */}
+                  {profileTab === 'contacto' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-4">
+                      <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm space-y-4">
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1 h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                            <Phone className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Teléfono Movil</span>
+                            {editando ? (
+                              <Input value={infoEdit.contacto?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, telefono: e.target.value } }))} className="mt-1 h-9 text-sm" placeholder="Ej: +51 900 000 000" />
+                            ) : (
+                              <p className="text-sm text-gray-900 font-medium">{infoEdit.contacto?.telefono || 'No registrado'}</p>
+                            )}
+                          </div>
                         </div>
-                        {editando ? (
-                          <Input name="nombre" value={infoEdit.tutor?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, nombre: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Nombre" />
-                        ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.tutor?.nombre || '-'}</span>
-                        )}
-                      </div>
 
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Phone className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Teléfono</span>
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1 h-9 w-9 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                            <Mail className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Correo Institucional</span>
+                            {editando ? (
+                              <Input value={infoEdit.contacto?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, email: e.target.value } }))} className="mt-1 h-9 text-sm" placeholder="ejemplo@escuela.com" />
+                            ) : (
+                              <p className="text-sm text-gray-900 font-medium break-all">{infoEdit.contacto?.email || 'No registrado'}</p>
+                            )}
+                          </div>
                         </div>
-                        {editando ? (
-                          <Input name="telefono" value={infoEdit.tutor?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, telefono: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Teléfono" />
-                        ) : (
-                          <span className="text-sm text-gray-900">{infoEdit.tutor?.telefono || '-'}</span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Mail className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Email</span>
-                        </div>
-                        {editando ? (
-                          <Input name="email" value={infoEdit.tutor?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, email: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Email" />
-                        ) : (
-                          <span className="text-sm text-gray-900 break-all">{infoEdit.tutor?.email || '-'}</span>
-                        )}
                       </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Tab: Apoderado */}
+                  {profileTab === 'apoderado' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-3">
+                      <div className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm space-y-4">
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1 h-9 w-9 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
+                            <UserCircle className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Familiar Responsable</span>
+                            {editando ? (
+                              <Input value={infoEdit.apoderado?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, nombre: e.target.value } }))} className="mt-1 h-9 text-sm" placeholder="Nombre completo" />
+                            ) : (
+                              <p className="text-sm text-gray-900 font-bold">{infoEdit.apoderado?.nombre || 'No registrado'}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pl-13">
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Parentesco</span>
+                            {editando ? (
+                              <Input value={infoEdit.apoderado?.parentesco || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, parentesco: e.target.value } }))} className="mt-1 h-8 text-xs" placeholder="Ej: Madre" />
+                            ) : (
+                              <p className="text-sm text-gray-900 font-semibold">{infoEdit.apoderado?.parentesco || '-'}</p>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Teléfono</span>
+                            {editando ? (
+                              <Input value={infoEdit.apoderado?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, telefono: e.target.value } }))} className="mt-1 h-8 text-xs" placeholder="Tel." />
+                            ) : (
+                              <p className="text-sm text-gray-900 font-semibold">{infoEdit.apoderado?.telefono || '-'}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-4 border-t border-gray-50 pt-4">
+                          <div className="mt-1 h-9 w-9 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                            <MapPin className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Dirección de Residencia</span>
+                            {editando ? (
+                              <Input value={infoEdit.apoderado?.direccion || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, direccion: e.target.value } }))} className="mt-1 h-9 text-sm" placeholder="Calle, Distrito..." />
+                            ) : (
+                              <p className="text-sm text-gray-900 font-medium">{infoEdit.apoderado?.direccion || 'No registrada'}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab: Tutor */}
+                  {profileTab === 'tutor' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-4">
+                      <div className="p-5 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl border border-primary/10 space-y-5">
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-white shadow-lg">
+                            <GraduationCap className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">Tutor Encargado</span>
+                            {editando ? (
+                              <Input value={infoEdit.tutor?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, nombre: e.target.value } }))} className="mt-1 h-9 text-sm bg-white" placeholder="Nombre del tutor" />
+                            ) : (
+                              <p className="text-base font-bold text-gray-900">{infoEdit.tutor?.nombre || 'Pendiente de asignación'}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="flex items-center gap-3 bg-white/60 p-2.5 rounded-lg border border-white">
+                            <Phone className="h-4 w-4 text-primary/50" />
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-bold text-gray-400 uppercase">Celular</span>
+                              {editando ? (
+                                <Input value={infoEdit.tutor?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, telefono: e.target.value } }))} className="h-7 text-xs border-none p-0 focus-visible:ring-0" />
+                              ) : (
+                                <span className="text-sm font-semibold">{infoEdit.tutor?.telefono || '-'}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 bg-white/60 p-2.5 rounded-lg border border-white">
+                            <Mail className="h-4 w-4 text-primary/50" />
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-bold text-gray-400 uppercase">Email</span>
+                              {editando ? (
+                                <Input value={infoEdit.tutor?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, email: e.target.value } }))} className="h-7 text-xs border-none p-0 focus-visible:ring-0" />
+                              ) : (
+                                <span className="text-sm font-semibold break-all">{infoEdit.tutor?.email || '-'}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 mt-6 pt-4 border-t border-gray-100">
                   {editando ? (
@@ -3447,26 +3460,26 @@ export default function DirectorPage() {
                 
                 console.log('📊 Estadísticas calculadas:', stats);
                 return (
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                      <p className="text-2xl font-bold text-primary">{stats.total}</p>
-                      <p className="text-xs text-gray-900 font-semibold mt-1">Total</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 text-center">
+                      <p className="text-xl sm:text-2xl font-bold text-primary">{stats.total}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-900 font-semibold mt-1">Total</p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                      <p className="text-2xl font-bold text-orange-500">{stats.porTipo.asistencia}</p>
-                      <p className="text-xs text-gray-900 font-semibold mt-1">Asistencias</p>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 text-center">
+                      <p className="text-xl sm:text-2xl font-bold text-orange-500">{stats.porTipo.asistencia}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-900 font-semibold mt-1">Inasistencias</p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                      <p className="text-2xl font-bold text-red-600">{stats.porTipo.conducta}</p>
-                      <p className="text-xs text-gray-900 font-semibold mt-1">Conducta</p>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 text-center">
+                      <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.porTipo.conducta}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-900 font-semibold mt-1">Conducta</p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                      <p className="text-2xl font-bold text-blue-600">{stats.porTipo.academica}</p>
-                      <p className="text-xs text-gray-900 font-semibold mt-1">Académicas</p>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 text-center">
+                      <p className="text-xl sm:text-2xl font-bold text-blue-600">{stats.porTipo.academica}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-900 font-semibold mt-1">Académicas</p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                      <p className="text-2xl font-bold text-green-600">{stats.porTipo.positivo}</p>
-                      <p className="text-xs text-gray-900 font-semibold mt-1">Positivos</p>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 text-center">
+                      <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.porTipo.positivo}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-900 font-semibold mt-1">Positivos</p>
                     </div>
                   </div>
                 );
@@ -3495,14 +3508,12 @@ export default function DirectorPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-sm font-semibold">Fecha</TableHead>
-                          <TableHead className="text-sm font-semibold">Estudiante</TableHead>
-                          <TableHead className="text-sm font-semibold">Tipo</TableHead>
-                          <TableHead className="text-sm font-semibold">Gravedad</TableHead>
-                          <TableHead className="text-sm font-semibold">Descripción</TableHead>
-                          <TableHead className="text-sm font-semibold hidden sm:table-cell">Profesor</TableHead>
-                          <TableHead className="text-sm font-semibold hidden sm:table-cell">Lugar</TableHead>
-                          <TableHead className="text-sm font-semibold hidden sm:table-cell">Estado</TableHead>
+                          <TableHead className="text-[10px] sm:text-sm font-semibold p-2">Fecha</TableHead>
+                          <TableHead className="text-[10px] sm:text-sm font-semibold p-2">Tipo</TableHead>
+                          <TableHead className="text-[10px] sm:text-sm font-semibold p-2">Gravedad</TableHead>
+                          <TableHead className="text-[10px] sm:text-sm font-semibold p-2">Descripción</TableHead>
+                          <TableHead className="text-[10px] sm:text-sm font-semibold hidden sm:table-cell">Profesor</TableHead>
+                          <TableHead className="text-[10px] sm:text-sm font-semibold hidden sm:table-cell">Estado</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -3511,28 +3522,26 @@ export default function DirectorPage() {
                           (filtroTipo === 'todas' || inc.tipo === filtroTipo)
                         ) : []).map((inc) => (
                           <TableRow key={inc.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap text-gray-900">{formatFechaHora(inc)}</TableCell>
-                            <TableCell className="text-xs sm:text-sm font-medium text-gray-900">{inc.studentName}</TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <Badge className={`${getTipoColor(inc.tipo)} text-xs`}>
+                            <TableCell className="p-2 font-medium text-[10px] sm:text-sm whitespace-nowrap text-gray-900">{formatFechaHora(inc)}</TableCell>
+                            <TableCell className="p-2 whitespace-nowrap">
+                              <Badge className={`${getTipoColor(inc.tipo)} text-[9px] sm:text-xs px-1.5 py-0`}>
                                 {getTipoLabel(inc.tipo)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <Badge className={`${getGravedadColor(inc.gravedad)} text-xs`}>
+                            <TableCell className="p-2 whitespace-nowrap">
+                              <Badge className={`${getGravedadColor(inc.gravedad)} text-[9px] sm:text-xs px-1.5 py-0`}>
                                 {getGravedadLabel(inc.gravedad)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-xs sm:text-sm max-w-xs sm:max-w-none text-gray-900">{inc.descripcion}</TableCell>
-                            <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.profesor}</TableCell>
-                            <TableCell className="text-gray-900 text-xs sm:text-sm hidden sm:table-cell">{inc.lugar || '-'}</TableCell>
-                            <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
+                            <TableCell className="p-2 text-[10px] sm:text-sm max-w-[120px] sm:max-w-none truncate sm:whitespace-normal text-gray-900">{inc.descripcion}</TableCell>
+                            <TableCell className="text-gray-900 text-[10px] sm:text-sm hidden sm:table-cell">{inc.profesor}</TableCell>
+                            <TableCell className="text-[10px] sm:text-sm hidden sm:table-cell">
                               {inc.resuelta ? (
-                                <Badge className="bg-primary text-white">Resuelta</Badge>
+                                <Badge className="bg-primary text-white text-[9px] px-1.5 py-0">Resuelta</Badge>
                               ) : inc.derivacion && inc.derivacion !== 'ninguna' ? (
-                                <Badge className="bg-yellow-400 text-black">Pendiente</Badge>
+                                <Badge className="bg-yellow-400 text-black text-[9px] px-1.5 py-0">Pendiente</Badge>
                               ) : (
-                                <Badge variant="secondary" className="bg-gray-100 text-gray-900">Normal</Badge>
+                                <Badge variant="secondary" className="bg-gray-100 text-gray-900 text-[9px] px-1.5 py-0">Normal</Badge>
                               )}
                             </TableCell>
                           </TableRow>
@@ -3782,47 +3791,47 @@ export default function DirectorPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
-                  <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-4">
+                  <div className="bg-blue-50 p-2 sm:p-4 rounded-lg border border-blue-200">
                     <div className="text-center">
-                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600">{estudiantesInfo.length}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Total Estudiantes</p>
+                      <p className="text-xl sm:text-2xl font-bold text-blue-600">{estudiantesInfo.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-0.5 sm:mt-1">Estudiantes</p>
                     </div>
                   </div>
-                  <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+                  <div className="bg-green-50 p-2 sm:p-4 rounded-lg border border-green-200">
                     <div className="text-center">
-                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-600">{tutores.length}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Total Profesores</p>
+                      <p className="text-xl sm:text-2xl font-bold text-green-600">{tutores.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-0.5 sm:mt-1">Profesores</p>
                     </div>
                   </div>
-                  <div className="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
+                  <div className="bg-purple-50 p-2 sm:p-4 rounded-lg border border-purple-200">
                     <div className="text-center">
-                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-600">{incidencias.length}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Total Incidencias</p>
+                      <p className="text-xl sm:text-2xl font-bold text-purple-600">{incidencias.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-0.5 sm:mt-1">Incidencias</p>
                     </div>
                   </div>
-                  <div className="bg-orange-50 p-3 sm:p-4 rounded-lg border border-orange-200">
+                  <div className="bg-orange-50 p-2 sm:p-4 rounded-lg border border-orange-200">
                     <div className="text-center">
-                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-600">{incidenciasDerivadas.length}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Pendientes</p>
+                      <p className="text-xl sm:text-2xl font-bold text-orange-600">{incidenciasDerivadas.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-0.5 sm:mt-1">Pendientes</p>
                     </div>
                   </div>
-                  <div className="bg-teal-50 p-3 sm:p-4 rounded-lg border border-teal-200">
+                  <div className="bg-teal-50 p-2 sm:p-4 rounded-lg border border-teal-200">
                     <div className="text-center">
-                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-teal-600">{incidencias.filter(i => i.resuelta).length}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Resueltas</p>
+                      <p className="text-xl sm:text-2xl font-bold text-teal-600">{incidencias.filter(i => i.resuelta).length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-0.5 sm:mt-1">Resueltas</p>
                     </div>
                   </div>
-                  <div className="bg-indigo-50 p-3 sm:p-4 rounded-lg border border-indigo-200">
+                  <div className="bg-indigo-50 p-2 sm:p-4 rounded-lg border border-indigo-200">
                     <div className="text-center">
-                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-600">{grados.length}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Grados</p>
+                      <p className="text-xl sm:text-2xl font-bold text-indigo-600">{grados.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-0.5 sm:mt-1">Grados</p>
                     </div>
                   </div>
-                  <div className="bg-pink-50 p-3 sm:p-4 rounded-lg border border-pink-200">
+                  <div className="bg-pink-50 p-2 sm:p-4 rounded-lg border border-pink-200">
                     <div className="text-center">
-                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-pink-600">{secciones.length}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Secciones</p>
+                      <p className="text-xl sm:text-2xl font-bold text-pink-600">{secciones.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-0.5 sm:mt-1">Secciones</p>
                     </div>
                   </div>
                 </div>
@@ -3842,23 +3851,23 @@ export default function DirectorPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 sm:gap-4 items-end">
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-gray-700 mb-1">Fecha de inicio</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1">Inicio</label>
                   <Input 
                     type="date" 
                     value={fechaInicio} 
                     onChange={e => setFechaInicio(e.target.value)}
-                    className="min-w-[140px]"
+                    className="h-9 text-xs"
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-gray-700 mb-1">Fecha de fin</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1">Fin</label>
                   <Input 
                     type="date" 
                     value={fechaFin} 
                     onChange={e => setFechaFin(e.target.value)}
-                    className="min-w-[140px]"
+                    className="h-9 text-xs"
                   />
                 </div>
                 <Button 
@@ -3875,7 +3884,7 @@ export default function DirectorPage() {
                     }
                   }}
                   variant="outline"
-                  className="h-10 px-6 mt-2 sm:mt-0"
+                  className="h-9 px-4 col-span-2 sm:col-auto text-xs"
                 >
                   Ver Todo
                 </Button>
@@ -3951,7 +3960,6 @@ export default function DirectorPage() {
               const claveEstudiante = inc.studentId || inc.studentName;
               porEstudiante[claveEstudiante] = (porEstudiante[claveEstudiante] || 0) + 1;
             });
-            const topEstudiante = Object.entries(porEstudiante).sort((a, b) => b[1] - a[1])[0];
             
             // Top profesor
             const porProfesor: Record<string, number> = {};
@@ -3980,58 +3988,54 @@ export default function DirectorPage() {
             
             return (
               <div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                  <Card>
-                    <CardContent className="p-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                  <Card className="shadow-none border-gray-100 ring-1 ring-gray-100">
+                    <CardContent className="p-3">
                       <div className="text-center">
-                        <p className="text-3xl font-bold text-red-600">{incidenciasGraves}</p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Requieren Atención Urgente</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xl sm:text-2xl font-bold text-red-600">{incidenciasGraves}</p>
+                        <p className="text-[10px] text-gray-900 font-bold mt-1 leading-tight">Urgentes</p>
+                        <p className="text-[9px] text-gray-500 mt-0.5 font-medium">
                           {totalIncidencias > 0 ? ((incidenciasGraves / totalIncidencias) * 100).toFixed(1) : 0}% del total
                         </p>
-                        {fechaInicio && fechaFin && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            ({totalIncidencias} en período)
-                          </p>
-                        )}
                       </div>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
+
+                  <Card className="shadow-none border-gray-100 ring-1 ring-gray-100">
+                    <CardContent className="p-3">
                       <div className="text-center">
-                        <p className="text-3xl font-bold text-orange-600">
-                          {incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'moderada').length}
+                        <p className="text-xl sm:text-2xl font-bold text-orange-500">
+                          {incidenciasNegativas.filter((inc: Incidencia) => inc.gravedad === 'moderada').length}
                         </p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Moderadas</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {totalIncidencias > 0 ? ((incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'moderada').length / totalIncidencias) * 100).toFixed(1) : 0}% del total
+                        <p className="text-[10px] text-gray-900 font-bold mt-1 leading-tight">Moderadas</p>
+                        <p className="text-[9px] text-gray-500 mt-0.5 font-medium">
+                          {totalIncidencias > 0 ? (((incidenciasNegativas.filter((inc: Incidencia) => inc.gravedad === 'moderada').length) / totalIncidencias) * 100).toFixed(1) : 0}% del total
                         </p>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
+
+                  <Card className="shadow-none border-gray-100 ring-1 ring-gray-100">
+                    <CardContent className="p-3">
                       <div className="text-center">
-                        <p className="text-3xl font-bold text-green-600">
-                          {incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'positivo').length}
-                        </p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Aspectos Positivos</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {totalIncidencias > 0 ? ((incidenciasGenerales.filter((inc: Incidencia) => inc.tipo === 'positivo').length / totalIncidencias) * 100).toFixed(1) : 0}% del total
+                        <p className="text-xl sm:text-2xl font-bold text-green-600">{totalPositivas}</p>
+                        <p className="text-[10px] text-gray-900 font-bold mt-1 leading-tight">Positivas</p>
+                        <p className="text-[9px] text-gray-500 mt-0.5 font-medium">
+                          {totalIncidencias > 0 ? ((totalPositivas / totalIncidencias) * 100).toFixed(1) : 0}% del total
                         </p>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card>
-                    <CardContent className="p-4">
+
+                  <Card className="shadow-none border-gray-100 ring-1 ring-gray-100">
+                    <CardContent className="p-3">
                       <div className="text-center">
-                        <p className="text-3xl font-bold text-blue-600">
-                          {incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'leve').length}
+                        <p className="text-xl sm:text-2xl font-bold text-blue-500">
+                          {incidenciasNegativas.filter((inc: Incidencia) => inc.gravedad === 'leve').length}
                         </p>
-                        <p className="text-xs text-gray-700 font-semibold mt-1">Leves</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {totalIncidencias > 0 ? ((incidenciasGenerales.filter((inc: Incidencia) => inc.gravedad === 'leve').length / totalIncidencias) * 100).toFixed(1) : 0}% del total
+                        <p className="text-[10px] text-gray-900 font-bold mt-1 leading-tight">Leves</p>
+                        <p className="text-[9px] text-gray-500 mt-0.5 font-medium">
+                          {totalIncidencias > 0 ? (((incidenciasNegativas.filter((inc: Incidencia) => inc.gravedad === 'leve').length) / totalIncidencias) * 100).toFixed(1) : 0}% del total
                         </p>
                       </div>
                     </CardContent>
@@ -4081,6 +4085,9 @@ export default function DirectorPage() {
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+            );
+          })()}
 
                         {/* SECCIÓN 3: TOP 10 ESTUDIANTES DESTACADOS */}
                         {(() => {
@@ -4436,10 +4443,7 @@ export default function DirectorPage() {
                       </CardContent>
                     </Card>
                   );
-          })()}
-              </div>
-            );
-          })()}
+                })()}
 
           {/* Botones al final del Resumen */}
           {typeof incidenciasGenerales !== 'undefined' && Array.isArray(incidenciasGenerales) && incidenciasGenerales.length > 0 && (
@@ -4473,7 +4477,7 @@ export default function DirectorPage() {
               </Button>
             </div>
           )}
-          </div>
+          </div>{/* end reporte-resumen-export */}
 
           {/* Contenido Detallado - Siempre en DOM para exportación PDF */}
           <div id="reporte-detallado-export" style={{ backgroundColor: '#ffffff', display: reporteGeneralTab === 'detallado' ? 'block' : 'none' }}>
