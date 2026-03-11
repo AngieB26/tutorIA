@@ -127,6 +127,25 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // Eliminar archivo adjunto
+    if (body.eliminarArchivoIndex !== undefined) {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      const inc = await prisma.incidencia.findUnique({ where: { id } });
+      if (inc && inc.archivos) {
+        let archivos = typeof inc.archivos === 'string' ? JSON.parse(inc.archivos) : inc.archivos;
+        if (Array.isArray(archivos)) {
+          archivos = archivos.filter((_: any, idx: number) => idx !== body.eliminarArchivoIndex);
+          await prisma.incidencia.update({
+            where: { id },
+            data: { archivos: archivos as any }
+          });
+          return NextResponse.json({ success: true });
+        }
+      }
+      return NextResponse.json({ error: 'No se encontró archivo a eliminar' }, { status: 404 });
+    }
+
     return NextResponse.json({ error: 'Operación no válida' }, { status: 400 });
   } catch (error) {
     console.error('Error actualizando incidencia:', error);

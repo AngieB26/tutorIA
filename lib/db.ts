@@ -455,36 +455,33 @@ export async function saveEstudiantesInfo(estudiantes: EstudianteInfo[], nombres
 
 export async function deleteEstudiante(nombreOrId: string, useId: boolean = false): Promise<void> {
   try {
-    if (useId) {
-      // Si se especifica que es un ID, eliminar directamente por ID
-      await prisma.estudiante.delete({
-        where: { id: nombreOrId }
-      });
-      console.log(`✅ Estudiante con ID ${nombreOrId} eliminado de la base de datos`);
-      return;
-    }
+    let actualId = useId ? nombreOrId : null;
 
-    // Buscar por nombres y apellidos separados (comportamiento original para compatibilidad)
-    let estudiante = null;
-    if (nombreOrId.includes(' ')) {
-      const partes = nombreOrId.trim().split(/\s+/);
-      if (partes.length >= 2) {
-        const apellidos = partes[partes.length - 1];
-        const nombres = partes.slice(0, -1).join(' ');
-        estudiante = await prisma.estudiante.findFirst({
-          where: {
-            nombres: nombres,
-            apellidos: apellidos
-          }
-        });
+    if (!useId) {
+      if (nombreOrId.includes(' ')) {
+        const partes = nombreOrId.trim().split(/\s+/);
+        if (partes.length >= 2) {
+          const apellidos = partes[partes.length - 1];
+          const nombres = partes.slice(0, -1).join(' ');
+          const estudiante = await prisma.estudiante.findFirst({
+            where: { nombres, apellidos }
+          });
+          if (estudiante) actualId = estudiante.id;
+        }
       }
     }
-    
-    if (estudiante) {
+
+    if (actualId) {
+      // Desvincular registros dependientes para evitar errores de Foreign Key Constraint
+      await prisma.incidencia.updateMany({ where: { estudianteId: actualId }, data: { estudianteId: null } });
+      await prisma.nota.updateMany({ where: { estudianteId: actualId }, data: { estudianteId: null } });
+      await prisma.registroAsistenciaEntry.updateMany({ where: { estudianteId: actualId }, data: { estudianteId: null } });
+      await prisma.estudianteAtendido.updateMany({ where: { estudianteId: actualId }, data: { estudianteId: null } });
+
       await prisma.estudiante.delete({
-        where: { id: estudiante.id }
+        where: { id: actualId }
       });
-      console.log(`✅ Estudiante ${nombreOrId} eliminado de la base de datos`);
+      console.log(`✅ Estudiante con ID ${actualId} eliminado de la base de datos`);
     } else {
       throw new Error(`Estudiante ${nombreOrId} no encontrado`);
     }

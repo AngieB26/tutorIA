@@ -424,7 +424,39 @@ export default function DirectorPage() {
                 return (
                   <div className="flex flex-wrap gap-2">
                     {lista.map((archivo: any, idx: number) => (
-                      <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white outline-none focus:outline-none ring-0 focus:ring-0" style={{ width: 100 }}>
+                      <div key={idx} className="relative border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white outline-none focus:outline-none ring-0 focus:ring-0" style={{ width: 100 }}>
+                        {/* Botón para eliminar el archivo */}
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (window.confirm('¿Estás seguro de que deseas eliminar este archivo adjunto permanentemente?')) {
+                              try {
+                                const toastId = toast.loading('Eliminando archivo...');
+                                const res = await fetch(`/api/incidencias?id=${incidencia.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ eliminarArchivoIndex: idx })
+                                });
+                                
+                                if (!res.ok) throw new Error('Error al eliminar');
+                                toast.success('Archivo eliminado correctamente', { id: toastId });
+                                
+                                // Ocultar el modal o forzar recarga local de la página para mostrar el estado actualizado
+                                onClose();
+                                if (typeof window !== 'undefined') {
+                                  window.location.reload();
+                                }
+                              } catch (err) {
+                                toast.error('Ocurrió un error al eliminar el archivo');
+                              }
+                            }
+                          }}
+                          className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-80 hover:opacity-100 hover:bg-red-600 transition-opacity focus:outline-none shadow-sm"
+                          title="Eliminar archivo"
+                        >
+                          ×
+                        </button>
                         {archivo.type?.startsWith('image') ? (
                           <button
                             type="button"
