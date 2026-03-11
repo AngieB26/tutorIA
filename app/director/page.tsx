@@ -2050,15 +2050,16 @@ export default function DirectorPage() {
         </button>
         <button
           onClick={() => setActiveTab('general')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'general'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-900 hover:text-gray-900'
           }`}
         >
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Reporte General
+          <div className="flex items-center gap-1 sm:gap-2">
+            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Reporte General</span>
+            <span className="sm:hidden">Reporte</span>
           </div>
         </button>
         <button
