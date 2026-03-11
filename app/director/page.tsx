@@ -355,117 +355,136 @@ export default function DirectorPage() {
 
     if (!incidencia) return null;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-        <div className="bg-white rounded-lg w-full max-w-3xl p-6 relative overflow-y-auto" style={{ maxHeight: '90vh' }}>
-          <button onClick={onClose} className="absolute top-2 right-2 text-gray-500 hover:text-gray-900 text-xl">×</button>
-          <h2 className="text-xl font-bold mb-4 text-primary">Información de la Incidencia</h2>
-          {/* Datos principales */}
-          <div className="mb-4">
-            <h3 className="font-semibold text-gray-800 mb-2 text-base">Datos del registro</h3>
-            <div className="space-y-1">
-              <div className="text-sm"><span className="font-semibold text-gray-700">Tipo:</span> <span className="text-gray-700">{getTipoLabel(incidencia.tipo)}</span></div>
-              <div className="text-sm"><span className="font-semibold text-gray-700">Estudiante:</span> <span className="text-gray-700">{incidencia.studentName}</span></div>
-              <div className="text-sm"><span className="font-semibold text-gray-700">Profesor:</span> <span className="text-gray-700">{incidencia.profesor}</span></div>
-              <div className="text-sm"><span className="font-semibold text-gray-700">Descripción:</span> <span className="text-gray-700">{incidencia.descripcion}</span></div>
-              <div className="text-sm"><span className="font-semibold text-gray-700">Fecha y hora:</span> <span className="text-gray-700">{formatFecha(incidencia.fecha)}</span></div>
-              {incidencia.gravedad && <div className="text-sm"><span className="font-semibold text-gray-700">Gravedad:</span> <span className="text-gray-700">{getGravedadLabel ? getGravedadLabel(incidencia.gravedad) : incidencia.gravedad}</span></div>}
-              {incidencia.derivacion && incidencia.derivacion !== 'ninguna' && (
-                <div className="text-sm">
-                  <span className="font-semibold text-gray-700">Derivación:</span>{' '}
-                  <Badge className="bg-yellow-400 text-black">
-                    {incidencia.derivacion === 'director' ? 'Director' :
-                     incidencia.derivacion === 'psicologia' ? 'Psicología' :
-                     incidencia.derivacion === 'enfermeria' ? 'Enfermería' :
-                     incidencia.derivacion === 'coordinacion' ? 'Coordinación' :
-                     incidencia.derivacion === 'orientacion' ? 'Orientación' :
-                     incidencia.derivacion}
-                  </Badge>
-                </div>
-              )}
-              {incidencia.resuelta !== undefined && (
-                <div className="text-sm">
-                  <span className="font-semibold text-gray-700">Estado:</span>{' '}
-                  {incidencia.resuelta ? (
-                    <Badge className="bg-primary text-white">Resuelta</Badge>
-                  ) : (
-                    <Badge className="bg-yellow-400 text-black">Pendiente</Badge>
-                  )}
-                </div>
-              )}
-            </div>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-40 px-0 sm:px-4">
+        <div className="bg-white rounded-t-2xl sm:rounded-lg w-full sm:max-w-3xl relative overflow-y-auto" style={{ maxHeight: '92vh' }}>
+          {/* Header */}
+          <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+            <h2 className="text-base sm:text-xl font-bold text-primary">Información de la Incidencia</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-700 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              ×
+            </button>
           </div>
-          <div className="mb-4">
-            <h3 className="font-semibold text-gray-800 mb-2">Archivos adjuntos</h3>
-            {(() => {
-              const archivos = (incidencia as any).archivos;
-              const lista = Array.isArray(archivos) ? archivos : [];
-              if (lista.length === 0) {
-                return <div className="text-sm text-gray-500 italic">No hay evidencias adjuntas.</div>;
-              }
-              return (
-                <div className="flex flex-wrap gap-3">
-                  {lista.map((archivo: any, idx: number) => (
-                    <div key={idx} className="border rounded-lg overflow-hidden shadow-sm bg-white" style={{ width: 120 }}>
-                      {archivo.type?.startsWith('image') ? (
-                        <a href={archivo.data} target="_blank" rel="noopener noreferrer">
-                          <img
+
+          <div className="px-4 sm:px-6 py-4 space-y-4">
+            {/* Datos principales */}
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base border-l-4 border-primary pl-2">Datos del registro</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                <div className="text-xs sm:text-sm"><span className="font-semibold text-gray-700">Tipo: </span><span className="text-gray-700">{getTipoLabel(incidencia.tipo)}</span></div>
+                <div className="text-xs sm:text-sm"><span className="font-semibold text-gray-700">Estudiante: </span><span className="text-gray-700">{incidencia.studentName}</span></div>
+                <div className="text-xs sm:text-sm"><span className="font-semibold text-gray-700">Profesor: </span><span className="text-gray-700">{incidencia.profesor}</span></div>
+                <div className="text-xs sm:text-sm"><span className="font-semibold text-gray-700">Fecha: </span><span className="text-gray-700">{formatFecha(incidencia.fecha)}</span></div>
+                {incidencia.gravedad && (
+                  <div className="text-xs sm:text-sm"><span className="font-semibold text-gray-700">Gravedad: </span><span className="text-gray-700">{getGravedadLabel ? getGravedadLabel(incidencia.gravedad) : incidencia.gravedad}</span></div>
+                )}
+                {incidencia.derivacion && incidencia.derivacion !== 'ninguna' && (
+                  <div className="text-xs sm:text-sm flex items-center gap-1 flex-wrap">
+                    <span className="font-semibold text-gray-700">Derivación:</span>
+                    <Badge className="bg-yellow-400 text-black text-xs">
+                      {incidencia.derivacion === 'director' ? 'Director' :
+                       incidencia.derivacion === 'psicologia' ? 'Psicología' :
+                       incidencia.derivacion === 'enfermeria' ? 'Enfermería' :
+                       incidencia.derivacion === 'coordinacion' ? 'Coordinación' :
+                       incidencia.derivacion === 'orientacion' ? 'Orientación' :
+                       incidencia.derivacion}
+                    </Badge>
+                  </div>
+                )}
+                {incidencia.resuelta !== undefined && (
+                  <div className="text-xs sm:text-sm flex items-center gap-1">
+                    <span className="font-semibold text-gray-700">Estado:</span>
+                    {incidencia.resuelta ? (
+                      <Badge className="bg-primary text-white text-xs">Resuelta</Badge>
+                    ) : (
+                      <Badge className="bg-yellow-400 text-black text-xs">Pendiente</Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Descripción en ancho completo */}
+              <div className="mt-2 text-xs sm:text-sm">
+                <span className="font-semibold text-gray-700">Descripción: </span>
+                <span className="text-gray-700">{incidencia.descripcion}</span>
+              </div>
+            </div>
+
+            {/* Archivos adjuntos */}
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base border-l-4 border-primary pl-2">Archivos adjuntos</h3>
+              {(() => {
+                const archivos = (incidencia as any).archivos;
+                const lista = Array.isArray(archivos) ? archivos : [];
+                if (lista.length === 0) {
+                  return <div className="text-xs sm:text-sm text-gray-500 italic">No hay evidencias adjuntas.</div>;
+                }
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {lista.map((archivo: any, idx: number) => (
+                      <div key={idx} className="border rounded-lg overflow-hidden shadow-sm bg-white" style={{ width: 100 }}>
+                        {archivo.type?.startsWith('image') ? (
+                          <a href={archivo.data} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={archivo.data}
+                              alt={archivo.name}
+                              className="w-full object-cover"
+                              style={{ height: 75 }}
+                            />
+                          </a>
+                        ) : archivo.type?.startsWith('video') ? (
+                          <video
                             src={archivo.data}
-                            alt={archivo.name}
-                            className="w-full object-cover"
-                            style={{ height: 90 }}
+                            controls
+                            className="w-full"
+                            style={{ height: 75 }}
                           />
-                        </a>
-                      ) : archivo.type?.startsWith('video') ? (
-                        <video
-                          src={archivo.data}
-                          controls
-                          className="w-full"
-                          style={{ height: 90 }}
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-20 bg-gray-100 text-xs text-gray-500 px-2 text-center">
+                        ) : (
+                          <div className="flex items-center justify-center h-16 bg-gray-100 text-xs text-gray-500 px-2 text-center">
+                            {archivo.name}
+                          </div>
+                        )}
+                        <div className="px-1 py-0.5 text-xs text-gray-500 truncate" title={archivo.name}>
                           {archivo.name}
                         </div>
-                      )}
-                      <div className="px-1 py-0.5 text-xs text-gray-500 truncate" title={archivo.name}>
-                        {archivo.name}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-          {/* Análisis Inteligente */}
-          <div>
-            <h3 className="font-semibold text-gray-800 mb-2">Análisis Inteligente</h3>
-            {/* Resumen automático y recomendaciones rápidas */}
-            {localLoadingIA ? (
-              <div className="text-sm text-gray-900 italic">Cargando análisis de IA...</div>
-            ) : (
-              <>
-                <div className="text-sm text-gray-900 mb-4">
-                  <span className="font-semibold block mb-1 text-gray-900">Resumen:</span>
-                {(localDetalleIA.resumen)
-                    ? <div className="bg-gray-50 rounded p-3 border border-gray-200 text-gray-900" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', wordWrap: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}>{localDetalleIA.resumen}</div>
-                  : (localDetalleIA.raw)
-                      ? <div className="bg-gray-50 rounded p-3 border border-gray-200 text-gray-900" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', wordWrap: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}>{localDetalleIA.raw}</div>
-                    : <span className="italic text-gray-500">No hay texto disponible de IA.</span>}
-                </div>
-                <div className="text-sm text-gray-900">
-                  <span className="font-semibold block mb-1 text-gray-900">Recomendaciones rápidas:</span>
-                  {(localDetalleIA.recomendaciones)
-                    ? <div className="bg-gray-50 rounded p-3 border border-gray-200 text-gray-900" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                        {formatRecomendaciones(localDetalleIA.recomendaciones)}
-                      </div>
-                    : (localDetalleIA.raw)
-                      ? <div className="bg-gray-50 rounded p-3 border border-gray-200 text-gray-900" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                          {formatRecomendaciones(localDetalleIA.raw)}
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Análisis Inteligente */}
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base border-l-4 border-primary pl-2">Análisis Inteligente</h3>
+              {localLoadingIA ? (
+                <div className="text-xs sm:text-sm text-gray-500 italic">Cargando análisis de IA...</div>
+              ) : (
+                <>
+                  <div className="text-xs sm:text-sm text-gray-900 mb-3">
+                    <span className="font-semibold block mb-1 text-gray-900">Resumen:</span>
+                    {(localDetalleIA.resumen)
+                      ? <div className="bg-gray-50 rounded p-2 sm:p-3 border border-gray-200 text-gray-900 text-xs sm:text-sm" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', wordWrap: 'break-word', overflowWrap: 'break-word' }}>{localDetalleIA.resumen}</div>
+                      : (localDetalleIA.raw)
+                        ? <div className="bg-gray-50 rounded p-2 sm:p-3 border border-gray-200 text-gray-900 text-xs sm:text-sm" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', wordWrap: 'break-word', overflowWrap: 'break-word' }}>{localDetalleIA.raw}</div>
+                        : <span className="italic text-gray-500">No hay texto disponible de IA.</span>}
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-900">
+                    <span className="font-semibold block mb-1 text-gray-900">Recomendaciones rápidas:</span>
+                    {(localDetalleIA.recomendaciones)
+                      ? <div className="bg-gray-50 rounded p-2 sm:p-3 border border-gray-200 text-gray-900 text-xs sm:text-sm" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                          {formatRecomendaciones(localDetalleIA.recomendaciones)}
                         </div>
-                      : <span className="italic text-gray-500">No hay texto disponible de IA.</span>}
-                </div>
-              </>
-            )}
+                      : (localDetalleIA.raw)
+                        ? <div className="bg-gray-50 rounded p-2 sm:p-3 border border-gray-200 text-gray-900 text-xs sm:text-sm" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                            {formatRecomendaciones(localDetalleIA.raw)}
+                          </div>
+                        : <span className="italic text-gray-500">No hay texto disponible de IA.</span>}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
