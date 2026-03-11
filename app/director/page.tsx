@@ -2692,24 +2692,25 @@ export default function DirectorPage() {
                       key={inc.id}
                       className="p-4 border border-gray-300 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <Badge className={inc.tipo === 'asistencia' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : getTipoColor(inc.tipo)}>
                               {getTipoLabel(inc.tipo)}
                             </Badge>
-                            <span className="text-sm font-semibold text-gray-900">{inc.studentName}</span>
+                            <span className="text-sm font-semibold text-gray-900 truncate">{inc.studentName}</span>
                           </div>
-                          <p className="text-sm text-gray-900 mb-2">{inc.descripcion}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-900">
+                          <p className="text-sm text-gray-900 mb-2 break-all">{inc.descripcion}</p>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-900">
                             <span className="flex items-center gap-1"><Calendar className="inline h-3 w-3 mr-1" />{formatFecha(inc.fecha)}</span>
                             <span className="flex items-center gap-1"><User className="inline h-3 w-3 mr-1" />{inc.profesor}</span>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end ml-4 gap-2">
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-200">
                           <Button
                             size="sm"
                             onClick={() => handleMarcarResuelta(inc.id)}
+                            className="flex-1 sm:flex-none"
                           >
                             <CheckCircle2 className="h-4 w-4 mr-1" />
                             Marcar Resuelta
@@ -2718,6 +2719,7 @@ export default function DirectorPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleVerDetalleIncidencia(inc)}
+                            className="flex-1 sm:flex-none"
                           >
                             Ver Detalle
                           </Button>
@@ -2941,16 +2943,16 @@ export default function DirectorPage() {
               {listaEstudiantes.length} {listaEstudiantes.length === 1 ? 'estudiante registrado' : 'estudiantes registrados'}
             </CardDescription>
             {/* Filtros y búsqueda */}
-            <div className="flex flex-wrap gap-3 mt-4 items-end">
-              <div className="flex flex-row flex-wrap gap-3 w-full items-end">
-                <div className="flex flex-col">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Grado</label>
+            <div className="mt-4">
+              <div className="grid grid-cols-2 md:flex md:flex-row gap-3 items-end">
+                <div className="flex flex-col flex-1 min-w-0">
+                  <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Grado</label>
                   <Select 
                     key={`select-filtro-grado-${refreshKey}`}
                     value={filtroGrado || 'todas'} 
                     onValueChange={(value) => setFiltroGrado(value === 'todas' ? '' : value)}
                   >
-                    <SelectTrigger className="w-[140px] h-9 text-sm">
+                    <SelectTrigger className="w-full h-9 text-xs sm:text-sm">
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2971,14 +2973,14 @@ export default function DirectorPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex flex-col">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Sección</label>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Sección</label>
                   <Select 
                     key={`select-filtro-seccion-${refreshKey}`}
                     value={filtroSeccion || 'todas'} 
                     onValueChange={(value) => setFiltroSeccion(value === 'todas' ? '' : value)}
                   >
-                    <SelectTrigger className="w-[140px] h-9 text-sm">
+                    <SelectTrigger className="w-full h-9 text-xs sm:text-sm">
                       <SelectValue placeholder="Todas" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2989,14 +2991,14 @@ export default function DirectorPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex flex-col flex-1 min-w-[180px]">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Buscar</label>
+                <div className="flex flex-col col-span-2 md:flex-1 md:min-w-[180px]">
+                  <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">Buscar</label>
                   <Input
                     type="text"
                     placeholder="Buscar estudiante..."
                     value={busquedaEstudiante}
                     onChange={e => setBusquedaEstudiante(e.target.value)}
-                    className="h-9 text-sm border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-primary focus:border-primary transition outline-none shadow-sm"
+                    className="h-9 text-xs sm:text-sm border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-primary focus:border-primary transition outline-none shadow-sm"
                   />
                 </div>
               </div>
@@ -3008,13 +3010,13 @@ export default function DirectorPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-sm font-semibold">Nombres</TableHead>
-                      <TableHead className="text-sm font-semibold">Apellidos</TableHead>
-                      <TableHead className="text-sm font-semibold">Grado</TableHead>
-                      <TableHead className="text-sm font-semibold">Sección</TableHead>
-                      <TableHead className="text-sm font-semibold">Total Incidencias</TableHead>
-                      <TableHead className="text-sm font-semibold">Última Incidencia</TableHead>
-                      <TableHead className="text-sm font-semibold text-right">Acción</TableHead>
+                      <TableHead className="text-xs sm:text-sm font-semibold px-2 sm:px-4">Nombres</TableHead>
+                      <TableHead className="text-xs sm:text-sm font-semibold px-2 sm:px-4">Apellidos</TableHead>
+                      <TableHead className="text-xs sm:text-sm font-semibold px-2 sm:px-4">Grado</TableHead>
+                      <TableHead className="text-xs sm:text-sm font-semibold px-1 sm:px-4">Secc.</TableHead>
+                      <TableHead className="text-xs sm:text-sm font-semibold px-1 sm:px-4 text-center">Incid.</TableHead>
+                      <TableHead className="text-xs sm:text-sm font-semibold hidden md:table-cell px-2 sm:px-4">Última Incidencia</TableHead>
+                      <TableHead className="text-xs sm:text-sm font-semibold text-right px-2 sm:px-4">Acción</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -3057,24 +3059,24 @@ export default function DirectorPage() {
                         
                         return (
                         <TableRow key={estudianteId || getNombreCompleto(estudiante)} className="hover:bg-gray-50">
-                          <TableCell className="font-medium text-gray-900">{nombres}</TableCell>
-                          <TableCell className="font-medium text-gray-900">{apellidos}</TableCell>
-                          <TableCell className="text-gray-900">{estudiante.grado || '-'}</TableCell>
-                          <TableCell className="text-gray-900">{estudiante.seccion || '-'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="font-semibold">
+                          <TableCell className="text-xs sm:text-sm font-medium text-gray-900 px-2 sm:px-4 truncate max-w-[80px] sm:max-w-none">{nombres}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium text-gray-900 px-2 sm:px-4 truncate max-w-[80px] sm:max-w-none">{apellidos}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-gray-900 px-2 sm:px-4">{estudiante.grado || '-'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-gray-900 px-1 sm:px-4">{estudiante.seccion || '-'}</TableCell>
+                          <TableCell className="text-center px-1 sm:px-4">
+                            <Badge variant="outline" className="text-[10px] sm:text-xs font-semibold px-1.5 py-0">
                               {estudiante.totalIncidencias}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-gray-900">{estudiante.ultimaIncidencia ? formatFecha(estudiante.ultimaIncidencia) : 'N/A'}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-xs text-gray-900 hidden md:table-cell px-2 sm:px-4">{estudiante.ultimaIncidencia ? formatFecha(estudiante.ultimaIncidencia) : 'N/A'}</TableCell>
+                          <TableCell className="text-right px-2 sm:px-4">
                             <Button
                               size="sm"
                               onClick={() => handleVerPerfil(getNombreCompleto(estudiante), estudianteId)}
-                              className="gap-2"
+                              className="h-7 sm:h-9 px-2 sm:px-4"
                             >
-                              <Eye className="h-4 w-4" />
-                              Ver Perfil
+                              <Eye className="h-3.5 w-3.5 sm:mr-2" />
+                              <span className="hidden sm:inline">Ver Perfil</span>
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -3774,47 +3776,47 @@ export default function DirectorPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+                  <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold text-blue-600">{estudiantesInfo.length}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Total Estudiantes</p>
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600">{estudiantesInfo.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Total Estudiantes</p>
                     </div>
                   </div>
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold text-green-600">{tutores.length}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Total Profesores</p>
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-600">{tutores.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Total Profesores</p>
                     </div>
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold text-purple-600">{incidencias.length}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Total Incidencias</p>
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-600">{incidencias.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Total Incidencias</p>
                     </div>
                   </div>
-                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <div className="bg-orange-50 p-3 sm:p-4 rounded-lg border border-orange-200">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold text-orange-600">{incidenciasDerivadas.length}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Pendientes</p>
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-orange-600">{incidenciasDerivadas.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Pendientes</p>
                     </div>
                   </div>
-                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                  <div className="bg-teal-50 p-3 sm:p-4 rounded-lg border border-teal-200">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold text-teal-600">{incidencias.filter(i => i.resuelta).length}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Resueltas</p>
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-teal-600">{incidencias.filter(i => i.resuelta).length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Resueltas</p>
                     </div>
                   </div>
-                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                  <div className="bg-indigo-50 p-3 sm:p-4 rounded-lg border border-indigo-200">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold text-indigo-600">{grados.length}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Grados</p>
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-indigo-600">{grados.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Grados</p>
                     </div>
                   </div>
-                  <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
+                  <div className="bg-pink-50 p-3 sm:p-4 rounded-lg border border-pink-200">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold text-pink-600">{secciones.length}</p>
-                      <p className="text-xs sm:text-sm text-gray-700 font-semibold mt-1">Secciones</p>
+                      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-pink-600">{secciones.length}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-700 font-semibold mt-1">Secciones</p>
                     </div>
                   </div>
                 </div>
@@ -5616,21 +5618,21 @@ export default function DirectorPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-sm font-semibold">Foto</TableHead>
-                        <TableHead className="text-sm font-semibold">Nombres</TableHead>
-                        <TableHead className="text-sm font-semibold">Apellidos</TableHead>
-                        <TableHead className="text-sm font-semibold">Grado</TableHead>
-                        <TableHead className="text-sm font-semibold">Sección</TableHead>
-                        <TableHead className="text-sm font-semibold">Edad</TableHead>
-                        <TableHead className="text-sm font-semibold hidden lg:table-cell">Fecha Nac.</TableHead>
-                        <TableHead className="text-sm font-semibold">Contacto</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold px-2">Foto</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold">Nombres</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold hidden sm:table-cell">Apellidos</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold">Grado</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold px-1">Sec.</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold hidden md:table-cell">Edad</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold hidden lg:table-cell">Fecha Nac.</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold hidden md:table-cell">Contacto</TableHead>
                         <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Nombre</TableHead>
                         <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Parentesco</TableHead>
                         <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Teléfono</TableHead>
                         <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Tel. Alt.</TableHead>
                         <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Email</TableHead>
                         <TableHead className="text-sm font-semibold hidden xl:table-cell">Apoderado - Dirección</TableHead>
-                        <TableHead className="text-sm font-semibold text-right">Acciones</TableHead>
+                        <TableHead className="text-xs sm:text-sm font-semibold text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -5686,7 +5688,7 @@ export default function DirectorPage() {
                                   estudiante.nombres || getNombreCompleto(estudiante).split(' ').slice(0, -1).join(' ') || '-'
                                 )}
                               </TableCell>
-                              <TableCell className="font-medium text-gray-900">
+                              <TableCell className="text-gray-900 hidden sm:table-cell">
                                 {estaEditando ? (
                                   <Input
                                     value={formData.apellidos || ''}
@@ -5701,7 +5703,7 @@ export default function DirectorPage() {
                                   estudiante.apellidos || getNombreCompleto(estudiante).split(' ').slice(-1).join(' ') || '-'
                                 )}
                               </TableCell>
-                              <TableCell className="text-gray-900">
+                              <TableCell className="text-gray-900 px-1 sm:px-4">
                                 {estaEditando ? (
                                   <Input
                                     value={formData.grado || ''}
@@ -5712,7 +5714,7 @@ export default function DirectorPage() {
                                   estudiante.grado
                                 )}
                               </TableCell>
-                              <TableCell className="text-gray-900">
+                              <TableCell className="text-gray-900 px-1 sm:px-4">
                                 {estaEditando ? (
                                   <Input
                                     value={formData.seccion || ''}
@@ -5723,7 +5725,7 @@ export default function DirectorPage() {
                                   estudiante.seccion
                                 )}
                               </TableCell>
-                              <TableCell className="text-gray-900">
+                              <TableCell className="text-gray-900 hidden md:table-cell">
                                 {estaEditando ? (
                                   <Input
                                     type="number"
@@ -5747,7 +5749,7 @@ export default function DirectorPage() {
                                   <span className="text-xs">{estudiante.fechaNacimiento ? formatFecha(estudiante.fechaNacimiento) : '-'}</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-gray-900">
+                              <TableCell className="text-gray-900 hidden md:table-cell">
                                 {estaEditando ? (
                                   <div className="space-y-1">
                                     <Input
