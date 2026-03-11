@@ -67,15 +67,73 @@ export default function ProfesorPage() {
   const [viewMode, setViewMode] =
     useState<'inicio' | 'asistencia' | 'incidencia'>('inicio');
 
+  const [loading, setLoading] = useState(false);
+
+  /* ---------- incidencia ---------- */
+  const [incProfesor, setIncProfesor] = useState('');
+  const [incEstudiantes, setIncEstudiantes] = useState<{nombre: string, id: string | null}[]>([]);
+  // incEstudiante se mantiene como buscador temporal si es necesario, pero lo manejamos como array principal
+  const [incEstudianteBusqueda, setIncEstudianteBusqueda] = useState('');
+  const [incTipo, setIncTipo] = useState('');
+  const [incGravedad, setIncGravedad] = useState('');
+  const [incDerivar, setIncDerivar] = useState('');
+  const [incDescripcion, setIncDescripcion] = useState('');
+  // Archivos multimedia de incidencia
+  const [incArchivos, setIncArchivos] = useState<File[]>([]);
+  // Estado para mensaje de confirmación de incidencia
+  const [incidenciaConfirm, setIncidenciaConfirm] = useState(false);
+
+  // Estados para notificaciones de asistencia
+  const [notificacionesAsistencia, setNotificacionesAsistencia] = useState<Array<{
+    estudiante: string;
+    tipo: 'tardanza' | 'ausencia';
+    cantidad: number;
+    grado: string;
+    seccion: string;
+  }>>([]);
+  const [cargandoNotificaciones, setCargandoNotificaciones] = useState(false);
+
+  // Límites configurados (puedes ajustar estos valores)
+  const LIMITE_TARDANZAS = 3;
+  const LIMITE_AUSENCIAS = 5;
+
+  // ---------- asistencia (states SIEMPRE ARRIBA) ----------
+  const [profesor, setProfesor] = useState('');
+  const [grado, setGrado] = useState('');
+  const [seccion, setSeccion] = useState('');
+  const [curso, setCurso] = useState('');
+  
+  // Siempre inicializa la fecha con la fecha de hoy del sistema
+  function getTodayStr() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const [fecha, setFecha] = useState(getTodayStr());
+  const [lugar, setLugar] = useState('');
+
+  // Estado de asistencia por estudiante
+  const [asistencia, setAsistencia] = useState<Record<string, 'presente' | 'tardanza' | 'ausente'>>({});
+  const [registroId, setRegistroId] = useState<string | null>(null);
+
+  /* ---------- datos ---------- */
+  const [profesores, setProfesores] = useState<string[]>([]);
+  const [estudiantes, setEstudiantes] = useState<any[]>([]);
+  const [clases, setClases] = useState<any[]>([]);
+  const [grados, setGrados] = useState<string[]>([]);
+  const [secciones, setSecciones] = useState<string[]>([]);
+
   // Cargar prellenado de incidencia al entrar (hook después de declarar viewMode)
   useEffect(() => {
     const loadPrellenado = async () => {
-      if (viewMode === 'incidencia' && !incEstudiante) {
+      if (viewMode === 'incidencia' && incEstudiantes.length === 0) {
         // Buscar prellenado para cualquier estudiante (el más reciente)
         // Nota: Necesitamos buscar por estudiante, pero no sabemos cuál es
         // Por ahora, solo limpiamos si no hay estudiante seleccionado
         setIncProfesor('');
-        setIncEstudiante('');
+        setIncEstudiantes([]);
         setIncTipo('');
         setIncGravedad('');
         setIncDerivar('');
@@ -102,35 +160,7 @@ export default function ProfesorPage() {
     }
   }, [viewMode]);
 
-  const [loading, setLoading] = useState(false);
 
-
-  // ---------- asistencia (states SIEMPRE ARRIBA) ----------
-  const [profesor, setProfesor] = useState('');
-  const [grado, setGrado] = useState('');
-  const [seccion, setSeccion] = useState('');
-  const [curso, setCurso] = useState('');
-  // Siempre inicializa la fecha con la fecha de hoy del sistema
-  function getTodayStr() {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  const [fecha, setFecha] = useState(getTodayStr());
-  const [lugar, setLugar] = useState('');
-
-  // Estado de asistencia por estudiante
-  const [asistencia, setAsistencia] = useState<Record<string, 'presente' | 'tardanza' | 'ausente'>>({});
-  const [registroId, setRegistroId] = useState<string | null>(null);
-
-  /* ---------- datos ---------- */
-  const [profesores, setProfesores] = useState<string[]>([]);
-  const [estudiantes, setEstudiantes] = useState<any[]>([]);
-  const [clases, setClases] = useState<any[]>([]);
-  const [grados, setGrados] = useState<string[]>([]);
-  const [secciones, setSecciones] = useState<string[]>([]);
 
   // Determinar si la fecha seleccionada es hoy (robusto, ignora zona horaria y ceros a la izquierda)
   const isToday = (() => {
@@ -288,7 +318,7 @@ export default function ProfesorPage() {
         
         // Primero establecer los valores (SIN prellenar profesor), luego cambiar el viewMode
         setIncProfesor(prellenado?.profesor || ''); // Profesor puede venir del prellenado
-        setIncEstudiante(estudianteNombre);
+        setIncEstudiantes([{nombre: estudianteNombre, id: null}]);
         setIncTipo(tipoPrellenado);
         setIncGravedad(gravedadPrellenada);
         setIncDerivar(''); // Debe seleccionarse obligatoriamente
@@ -348,33 +378,7 @@ export default function ProfesorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profesor, grado, seccion, curso, fecha, claseId, periodo]);
 
-  /* ---------- incidencia ---------- */
-  const [incProfesor, setIncProfesor] = useState('');
-  const [incEstudiantes, setIncEstudiantes] = useState<{nombre: string, id: string | null}[]>([]);
-  // incEstudiante se mantiene como buscador temporal si es necesario, pero lo manejamos como array principal
-  const [incEstudianteBusqueda, setIncEstudianteBusqueda] = useState('');
-  const [incTipo, setIncTipo] = useState('');
-  const [incGravedad, setIncGravedad] = useState('');
-  const [incDerivar, setIncDerivar] = useState('');
-  const [incDescripcion, setIncDescripcion] = useState('');
-  // Archivos multimedia de incidencia
-  const [incArchivos, setIncArchivos] = useState<File[]>([]);
-  // Estado para mensaje de confirmación de incidencia
-  const [incidenciaConfirm, setIncidenciaConfirm] = useState(false);
 
-  // Estados para notificaciones de asistencia
-  const [notificacionesAsistencia, setNotificacionesAsistencia] = useState<Array<{
-    estudiante: string;
-    tipo: 'tardanza' | 'ausencia';
-    cantidad: number;
-    grado: string;
-    seccion: string;
-  }>>([]);
-  const [cargandoNotificaciones, setCargandoNotificaciones] = useState(false);
-
-  // Límites configurados (puedes ajustar estos valores)
-  const LIMITE_TARDANZAS = 3;
-  const LIMITE_AUSENCIAS = 5;
 
 
   // Obtener el día de la semana de la fecha seleccionada
@@ -556,7 +560,7 @@ export default function ProfesorPage() {
       
       const incidenciaGuardada = await addIncidencia({
         studentName: inc.estudiante,
-        estudianteId: incEstudianteId || undefined,
+        estudianteId: inc.estudianteId || undefined,
         tipo: inc.tipo,
         gravedad: inc.gravedad,
         descripcion: inc.descripcion,
@@ -686,7 +690,7 @@ export default function ProfesorPage() {
                         className="border-orange-300 text-orange-700 hover:bg-orange-100 text-xs shrink-0"
                         onClick={() => {
                           setIncProfesor(profesores[0] || '');
-                          setIncEstudiante(notif.estudiante);
+                          setIncEstudiantes([{ nombre: notif.estudiante, id: null }]);
                           setIncTipo(notif.tipo === 'tardanza' ? 'tardanza' : 'asistencia');
                           setIncGravedad(notif.cantidad >= (notif.tipo === 'tardanza' ? LIMITE_TARDANZAS + 2 : LIMITE_AUSENCIAS + 2) ? 'grave' : 'moderada');
                           setIncDerivar('');
@@ -740,7 +744,7 @@ export default function ProfesorPage() {
               className="cursor-pointer group relative overflow-hidden border-2 border-gray-200 hover:border-indigo-500 transition-all duration-300 hover:shadow-xl sm:hover:-translate-y-2 bg-white"
               onClick={() => {
                 setIncProfesor('');
-                setIncEstudiante('');
+                setIncEstudiantes([]);
                 setIncTipo('');
                 setIncGravedad('');
                 setIncDerivar('');
@@ -1143,7 +1147,7 @@ export default function ProfesorPage() {
                     placeholder="Describe brevemente la incidencia..."
                     value={incDescripcion}
                     onChange={e => setIncDescripcion(e.target.value)}
-                    disabled={!incProfesor || !incEstudiante}
+                    disabled={!incProfesor || incEstudiantes.length === 0}
                   />
                   {incDescripcion.length > 0 && (
                     <p className={`text-xs mt-1 ${incDescripcion.trim().length < 10 ? 'text-red-600' : 'text-gray-500'}`}>
@@ -1154,15 +1158,15 @@ export default function ProfesorPage() {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-800 mb-1">Fotos/Videos (Opcional)</label>
                   <div
-                    className={`border-2 border-dashed border-indigo-300 rounded-lg p-6 text-center flex flex-col items-center ${!incProfesor || !incEstudiante ? 'opacity-60 pointer-events-none' : ''}`}
+                    className={`border-2 border-dashed border-indigo-300 rounded-lg p-6 text-center flex flex-col items-center ${!incProfesor || incEstudiantes.length === 0 ? 'opacity-60 pointer-events-none' : ''}`}
                     onClick={e => {
-                      if (!incProfesor || !incEstudiante || incArchivos.length >= 10) return;
+                      if (!incProfesor || incEstudiantes.length === 0 || incArchivos.length >= 10) return;
                       const input = document.getElementById('inc-upload-input') as HTMLInputElement | null;
                       if (input) input.click();
                     }}
                     onDragOver={e => {
                       e.preventDefault();
-                      if (!incProfesor || !incEstudiante || incArchivos.length >= 10) return;
+                      if (!incProfesor || incEstudiantes.length === 0 || incArchivos.length >= 10) return;
                       e.currentTarget.classList.add('ring-2', 'ring-indigo-400');
                     }}
                     onDragLeave={e => {
@@ -1172,7 +1176,7 @@ export default function ProfesorPage() {
                     onDrop={e => {
                       e.preventDefault();
                       e.currentTarget.classList.remove('ring-2', 'ring-indigo-400');
-                      if (!incProfesor || !incEstudiante || incArchivos.length >= 10) return;
+                      if (!incProfesor || incEstudiantes.length === 0 || incArchivos.length >= 10) return;
                       const files = Array.from(e.dataTransfer.files).filter(f =>
                         [
                           'image/jpeg',
@@ -1200,7 +1204,7 @@ export default function ProfesorPage() {
                         });
                       }
                     }}
-                    style={{ cursor: (!incProfesor || !incEstudiante || incArchivos.length >= 10) ? 'not-allowed' : 'pointer' }}
+                    style={{ cursor: (!incProfesor || incEstudiantes.length === 0 || incArchivos.length >= 10) ? 'not-allowed' : 'pointer' }}
                   >
                     <Upload className="mx-auto mb-2 text-indigo-500 w-10 h-10" />
                     <p className="text-indigo-600 font-medium mb-1">
@@ -1213,7 +1217,7 @@ export default function ProfesorPage() {
                       type="file"
                       accept="image/jpeg,image/png,video/mp4,video/quicktime"
                       multiple
-                      disabled={!incProfesor || !incEstudiante || incArchivos.length >= 10}
+                      disabled={!incProfesor || incEstudiantes.length === 0 || incArchivos.length >= 10}
                       style={{ display: 'none' }}
                       id="inc-upload-input"
                       onChange={e => {
@@ -1285,8 +1289,8 @@ export default function ProfesorPage() {
                   onClick={() => {
                     // Resetear formulario de incidencia
                     setIncProfesor('');
-                    setIncEstudiante('');
-                    setIncEstudianteId(null);
+                    setIncEstudiantes([]);
+                    setIncEstudianteBusqueda('');
                     setIncTipo('');
                     setIncGravedad('');
                     setIncDerivar('');
@@ -1303,7 +1307,7 @@ export default function ProfesorPage() {
                   disabled={loading}
                   onClick={async (e) => {
                     e.preventDefault();
-                    if (!incProfesor || !incEstudiante || !incTipo || !incGravedad || !incDescripcion) {
+                    if (!incProfesor || incEstudiantes.length === 0 || !incTipo || !incGravedad || !incDescripcion) {
                       alert('Completa todos los campos obligatorios');
                       return;
                     }
