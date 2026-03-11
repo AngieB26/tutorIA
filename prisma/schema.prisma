@@ -91,6 +91,7 @@ model Incidencia {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   historialEstado String?
+  archivos        Json?
   estudiante      Estudiante? @relation("EstudianteIncidencias", fields: [estudianteId], references: [id])
   tutor           Tutor?      @relation(fields: [profesorId], references: [id])
 

@@ -542,7 +542,7 @@ export default function ProfesorPage() {
       
       const incidenciaGuardada = await addIncidencia({
         studentName: inc.estudiante,
-        studentId: incEstudianteId || undefined, // Incluir ID si está disponible
+        estudianteId: incEstudianteId || undefined,
         tipo: inc.tipo,
         gravedad: inc.gravedad,
         descripcion: inc.descripcion,
@@ -551,6 +551,7 @@ export default function ProfesorPage() {
         derivacion: inc.derivar && inc.derivar !== '' && inc.derivar !== 'ninguna' ? inc.derivar : undefined,
         resuelta: resuelta,
         estado: estadoIncidencia,
+        archivos: inc.archivos && inc.archivos.length > 0 ? inc.archivos : undefined,
       });
       // Verificar que se guardó correctamente
       if (incidenciaGuardada && incidenciaGuardada.id) {
@@ -1240,17 +1241,25 @@ export default function ProfesorPage() {
                       return;
                     }
                     setLoading(true);
+                    // Convertir archivos a base64 para persistirlos en la BD
+                    const archivosBase64 = await Promise.all(
+                      incArchivos.map(f => new Promise<{ name: string; type: string; size: number; data: string }>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve({ name: f.name, type: f.type, size: f.size, data: reader.result as string });
+                        reader.readAsDataURL(f);
+                      }))
+                    );
                     // Guardar incidencia en la base de datos
                     const incidencia = {
                       profesor: incProfesor,
                       estudiante: incEstudiante,
-                      estudianteId: incEstudianteId, // Incluir ID del estudiante si está disponible
+                      estudianteId: incEstudianteId,
                       tipo: incTipo,
                       gravedad: incGravedad,
                       derivar: incDerivar,
                       descripcion: incDescripcion,
                       fecha: new Date().toISOString(),
-                      archivos: incArchivos.map(f => ({ name: f.name, type: f.type, size: f.size })),
+                      archivos: archivosBase64,
                     };
                     // Guardar incidencia - verificar que se guardó correctamente
                     const guardadoExitoso = await saveIncidenciaLocal(incidencia);

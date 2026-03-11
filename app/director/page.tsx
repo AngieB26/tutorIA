@@ -396,8 +396,45 @@ export default function DirectorPage() {
           </div>
           <div className="mb-4">
             <h3 className="font-semibold text-gray-800 mb-2">Archivos adjuntos</h3>
-            {/* Fotos y videos adjuntos (placeholder) */}
-            <div className="text-sm text-gray-900 italic">No hay evidencias adjuntas.</div>
+            {(() => {
+              const archivos = (incidencia as any).archivos;
+              const lista = Array.isArray(archivos) ? archivos : [];
+              if (lista.length === 0) {
+                return <div className="text-sm text-gray-500 italic">No hay evidencias adjuntas.</div>;
+              }
+              return (
+                <div className="flex flex-wrap gap-3">
+                  {lista.map((archivo: any, idx: number) => (
+                    <div key={idx} className="border rounded-lg overflow-hidden shadow-sm bg-white" style={{ width: 120 }}>
+                      {archivo.type?.startsWith('image') ? (
+                        <a href={archivo.data} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={archivo.data}
+                            alt={archivo.name}
+                            className="w-full object-cover"
+                            style={{ height: 90 }}
+                          />
+                        </a>
+                      ) : archivo.type?.startsWith('video') ? (
+                        <video
+                          src={archivo.data}
+                          controls
+                          className="w-full"
+                          style={{ height: 90 }}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-20 bg-gray-100 text-xs text-gray-500 px-2 text-center">
+                          {archivo.name}
+                        </div>
+                      )}
+                      <div className="px-1 py-0.5 text-xs text-gray-500 truncate" title={archivo.name}>
+                        {archivo.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
           {/* Análisis Inteligente */}
           <div>

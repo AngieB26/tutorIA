@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Shield, Lock } from 'lucide-react';
+import { Shield, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function DirectorLoginPage() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function DirectorLoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [recordarCredenciales, setRecordarCredenciales] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Cargar credenciales guardadas al montar el componente
   useEffect(() => {
@@ -102,16 +103,30 @@ export default function DirectorLoginPage() {
               <label htmlFor="password" className="text-sm font-semibold text-gray-900">
                 Contraseña
               </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Ingresa tu contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="w-full"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Ingresa tu contraseña"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="w-full pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
             <div className="flex items-center">
               <input
