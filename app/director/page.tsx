@@ -7326,7 +7326,7 @@ export default function DirectorPage() {
                                 grado: formularioCurso.grado,
                                 seccion: formularioCurso.seccion,
                                 profesor: formularioCurso.profesor,
-                                dias: formularioCurso.dias
+                                dias: Array.from(new Set(formularioCurso.dias.map(d => d.toLowerCase() as DiaSemana)))
                               });
                               console.log('✅ Clase creada exitosamente');
                               // Recargar las clases directamente
@@ -7547,19 +7547,19 @@ export default function DirectorPage() {
                                 <div className="flex flex-col gap-1">
                                   {/* Multi-select para días sería ideal, pero usando botones es más rápido */}
                                   <div className="flex flex-wrap gap-1">
-                                    {['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'].map(dia => {
-                                      const isSelected = formData.dias?.includes(dia as any);
+                                    {['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].map(dia => {
+                                      const isSelected = formData.dias?.some(d => d.toLowerCase() === dia.toLowerCase());
                                       return (
                                         <Badge 
                                           key={dia} 
                                           variant="outline" 
                                           className={`text-[10px] cursor-pointer ${isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'}`}
                                           onClick={() => {
-                                            const currentDias = formData.dias || [];
+                                            const currentDias = (formData.dias || []).map(d => d.toLowerCase());
                                             const newDias = isSelected 
-                                              ? currentDias.filter(d => d !== dia)
-                                              : [...currentDias, dia as any];
-                                            setClaseEditForm({...formData, dias: newDias});
+                                              ? currentDias.filter(d => d !== dia.toLowerCase())
+                                              : [...currentDias, dia.toLowerCase()];
+                                            setClaseEditForm({...formData, dias: newDias as DiaSemana[]});
                                           }}
                                         >
                                           {dia.substring(0, 2)}
@@ -7571,7 +7571,7 @@ export default function DirectorPage() {
                               ) : (
                                 clase.dias && Array.isArray(clase.dias) && clase.dias.length > 0 ? (
                                   <div className="flex flex-wrap gap-1">
-                                    {clase.dias.map((dia, idx) => (
+                                    {Array.from(new Set(clase.dias.map(d => d.toLowerCase()))).map((dia, idx) => (
                                       <Badge key={idx} variant="secondary" className="text-xs capitalize bg-blue-100 text-blue-800">
                                         {dia}
                                       </Badge>
@@ -7598,7 +7598,10 @@ export default function DirectorPage() {
                                           const todasLasClases = await fetchClases();
                                           const idx = todasLasClases.findIndex(c => c.id === clase.id);
                                           if (idx >= 0) {
-                                            todasLasClases[idx] = formData as Clase;
+                                            todasLasClases[idx] = {
+                                              ...formData as Clase,
+                                              dias: Array.from(new Set((formData.dias || []).map(d => d.toLowerCase() as DiaSemana)))
+                                            };
                                             await saveClases(todasLasClases);
                                             setClases(todasLasClases);
                                             setClaseEditandoAdmin(null);

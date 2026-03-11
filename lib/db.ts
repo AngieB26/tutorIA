@@ -1110,7 +1110,7 @@ export async function getClases(): Promise<Clase[]> {
       try {
         if (clase.dias) {
           const parsed = JSON.parse(clase.dias);
-          dias = Array.isArray(parsed) ? parsed : [];
+          dias = Array.isArray(parsed) ? Array.from(new Set(parsed.map((d: string) => d.toLowerCase() as DiaSemana))) : [];
         }
       } catch (error) {
         console.error('Error parseando dias para clase', clase.id, ':', error);
