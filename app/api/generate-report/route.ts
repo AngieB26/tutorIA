@@ -39,21 +39,19 @@ export async function POST(req: NextRequest) {
           const context = `Contexto del aula:\n${incidenciasTexto}`;
 
           promptsSeparados = {
-            resumen: `Como psicólogo educativo, realiza un análisis profesional del clima del aula (MÁXIMO 80 palabras). Identifica tendencias basadas en estos datos:\n\n${stats}\n\n${context}`,
-            alertas: `Identifica 3 señales de alerta o patrones de riesgo específicos encontrados en los datos. Sé muy concreto. Puntos cortos.\n\n${context}`,
-            recomendaciones: `Proporciona 4 recomendaciones pedagógicas/emocionales para el tutor. Enfócate en la gestión del grupo. Una por línea.\n\n${context}`
+            resumen: `Como psicólogo educativo, realiza un análisis profesional de MÁXIMO 80 palabras sobre el estado GENERAL del salón. No te enfoques solo en un alumno, identifica tendencias grupales:\n\n${stats}\n\n${context}`,
+            alertas: `Identifica 3 alertas críticas sobre el clima del aula. Usa frases directas y cortas (Bala de máximo 20 palabras cada una):\n\n${context}`,
+            recomendaciones: `Proporciona 3 estrategias de gestión de grupo BREVES. Una por línea.\n\n${context}`
           };
           prompt = 'REPORTE_GENERAL_SEPARADO';
         } else {
           const context = `Estudiante: ${estudiante} | Total: ${totalIncidencias}\n\nIncidencias:\n${incidenciasTexto}`;
           promptsSeparados = {
-            resumen: `Análisis psicológico-educativo breve de ${estudiante} (MÁXIMO 70 palabras). Identifica el núcleo del problema o situación.\n\n${context}`,
-            analisisPatrones: `Identifica los patrones de conducta recurrentes. Usa puntos cortos.\n\n${context}`,
-            fortalezas: `Destaca fortalezas o áreas de oportunidad positiva observadas. Máximo 30 palabras.\n\n${context}`,
-            factoresRiesgo: `Riesgos principales a corto plazo. Una sola frase contundente.\n\n${context}`,
-            recomendaciones: `4 acciones estratégicas personalizadas para tratar con ${estudiante}. Una por línea.\n\n${context}`,
-            planSeguimiento: `Pasos de seguimiento administrativo y psicológico. Puntos cortos.\n\n${context}`
+            resumen: `Análisis psicopedagógico de ${estudiante} (MÁXIMO 50 palabras). Sé directo y clínico.\n\n${context}`,
+            analisisPatrones: `Identifica patrones y riesgos críticos en 2 o 3 puntos breves.\n\n${context}`,
+            recomendaciones: `3 acciones concretas y pasos de seguimiento (MÁXIMO 10 palabras por punto). Una por línea.\n\n${context}`
           };
+          // Los demás campos se enviarán vacíos o simplificados en el backend para no romper la interfaz
           prompt = 'REPORTE_ESTUDIANTE_SEPARADO';
         }
       }
@@ -122,8 +120,8 @@ export async function POST(req: NextRequest) {
         .replace(/\*\*([^*]+)\*\*/g, '$1')
         .replace(/\*([^*]+)\*/g, '$1')
         .replace(/^#+\s*/gm, '')
-        // Eliminar introducciones típicas de IA
-        .replace(/^(Aquí tienes|A continuación|Basado en|Según|He analizado|Claves para|Pasos de seguimiento|Resumen de|Como analista).+?:\s*/i, '')
+        // Eliminar introducciones típicas de IA de forma menos agresiva
+        .replace(/^(Aquí tienes|A continuación|Basado en|Según|He analizado|Claves para|Pasos de seguimiento|Resumen de|Como psicólogo|Analizando|Como experto).+?:\s*/i, '')
         .trim();
     };
 

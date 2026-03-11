@@ -3723,170 +3723,141 @@ export default function DirectorPage() {
           {/* Reporte IA del estudiante - Versión simplificada */}
           {reporte && (() => {
             return (
-              <Card className="mt-6 border-primary/20 bg-gradient-to-br from-primary/5 to-white">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    Análisis Generado por IA
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    {reporte.timestamp ? (
-                      <>Generado el {new Date(reporte.timestamp).toLocaleString('es-ES')}</>
-                    ) : null}
-                    {reporte.truncated && (
-                      <span className="ml-2 text-amber-600 font-medium">
-                        ⚠️ Reporte truncado
-                      </span>
-                    )}
-                  </CardDescription>
+              <Card className="mt-8 border-indigo-100 shadow-xl overflow-hidden bg-white/90 backdrop-blur-sm border-2">
+                <CardHeader className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white pb-6">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-bold">
+                        <Sparkles className="h-6 w-6 text-blue-200 animate-pulse" />
+                        Perfil Estratégico IA
+                      </CardTitle>
+                      <CardDescription className="text-blue-100 flex items-center gap-2">
+                        {reporte.timestamp ? (
+                          <><Calendar className="h-3.5 w-3.5" /> Generado el {new Date(reporte.timestamp).toLocaleString('es-ES')}</>
+                        ) : null}
+                      </CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  {/* Indicador de Rendimiento Visual */}
-                  {incidenciasEstudiante.length > 0 && (() => {
-                    const stats = {
-                      total: incidenciasEstudiante.length,
-                      positivos: incidenciasEstudiante.filter(i => i.tipo === 'positivo').length,
-                      negativos: incidenciasEstudiante.filter(i => i.tipo !== 'positivo').length,
-                      graves: incidenciasEstudiante.filter(i => i.gravedad === 'grave').length,
-                      asistencia: incidenciasEstudiante.filter(i => i.tipo === 'asistencia' || i.tipo === 'ausencia' || i.tipo === 'tardanza').length,
-                      conducta: incidenciasEstudiante.filter(i => i.tipo === 'conducta').length,
-                      academica: incidenciasEstudiante.filter(i => i.tipo === 'academica').length,
-                    };
-                    
-                    // Calcular score de rendimiento (0-100)
-                    // Más positivos = mejor score, más graves = peor score
-                    const totalPositivos = stats.positivos;
-                    const totalNegativos = stats.negativos;
-                    const pesoGraves = stats.graves * 2;
-                    const score = Math.max(0, Math.min(100, ((totalPositivos * 20) - (totalNegativos * 10) - (pesoGraves * 15) + 50)));
-                    const nivelRendimiento = score >= 70 ? 'Excelente' : score >= 50 ? 'Bueno' : score >= 30 ? 'Regular' : 'Requiere Atención';
-                    const colorScore = score >= 70 ? 'text-green-600' : score >= 50 ? 'text-blue-600' : score >= 30 ? 'text-yellow-600' : 'text-red-600';
-                    const bgColorScore = score >= 70 ? 'bg-green-100' : score >= 50 ? 'bg-blue-100' : score >= 30 ? 'bg-yellow-100' : 'bg-red-100';
-                    
-                    return (
-                      <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-4">
-                          <BarChart3 className="h-4 w-4 text-primary" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Indicador de Rendimiento</h4>
-                        </div>
-                        <div className={`${bgColorScore} rounded-lg p-4 border border-gray-300 shadow-sm`}>
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <p className="text-2xl font-bold text-gray-900">{Math.round(score)}</p>
-                              <p className="text-xs text-gray-700 font-medium">Score de Rendimiento</p>
+                <CardContent className="pt-8 px-6 pb-8">
+                  <div className="space-y-8">
+                    {/* Indicador de Rendimiento Visual - Más compacto */}
+                    {incidenciasEstudiante.length > 0 && (() => {
+                      const stats = {
+                        total: incidenciasEstudiante.length,
+                        positivos: incidenciasEstudiante.filter(i => i.tipo === 'positivo').length,
+                        negativos: incidenciasEstudiante.filter(i => i.tipo !== 'positivo').length,
+                        graves: incidenciasEstudiante.filter(i => i.gravedad === 'grave').length,
+                      };
+                      
+                      const score = Math.max(0, Math.min(100, ((stats.positivos * 20) - (stats.negativos * 10) - (stats.graves * 30) + 50)));
+                      const nivelRendimiento = score >= 70 ? 'Alto' : score >= 50 ? 'Estable' : score >= 30 ? 'En Riesgo' : 'Critico';
+                      const colorScore = score >= 70 ? 'text-emerald-600' : score >= 50 ? 'text-blue-600' : score >= 30 ? 'text-amber-600' : 'text-rose-600';
+                      const bgColorScore = score >= 70 ? 'bg-emerald-50' : score >= 50 ? 'bg-blue-50' : score >= 30 ? 'bg-amber-50' : 'bg-rose-50';
+                      const borderColorScore = score >= 70 ? 'border-emerald-100' : score >= 50 ? 'border-blue-100' : score >= 30 ? 'border-amber-100' : 'border-rose-100';
+                      
+                      return (
+                        <div className={`rounded-2xl p-6 border ${borderColorScore} ${bgColorScore} shadow-sm transition-all hover:shadow-md`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-xl bg-white shadow-sm`}>
+                                <BarChart3 className={`h-5 w-5 ${colorScore}`} />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-gray-900 text-lg tracking-tight">Índice de Rendimiento</h4>
+                                <p className="text-xs text-gray-600">Basado en {stats.total} registros</p>
+                              </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-lg font-bold ${colorScore}`}>{nivelRendimiento}</p>
-                              <p className="text-xs text-gray-700">{stats.total} incidencias registradas</p>
+                              <p className={`text-2xl font-black ${colorScore}`}>{Math.round(score)}%</p>
+                              <p className={`text-xs font-bold uppercase tracking-wider ${colorScore}`}>{nivelRendimiento}</p>
                             </div>
                           </div>
-                          {/* Barra de progreso visual */}
-                          <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden border border-gray-300">
+                          <div className="w-full bg-white/50 rounded-full h-3 overflow-hidden border border-white/80">
                             <div
-                              className={`h-4 rounded-full transition-all duration-700 ${score >= 70 ? 'bg-green-600' : score >= 50 ? 'bg-blue-600' : score >= 30 ? 'bg-yellow-600' : 'bg-red-600'}`}
+                              className={`h-full rounded-full transition-all duration-1000 ease-out ${score >= 70 ? 'bg-emerald-500' : score >= 50 ? 'bg-blue-500' : score >= 30 ? 'bg-amber-500' : 'bg-rose-500'}`}
                               style={{ width: `${score}%` }}
                             />
                           </div>
-                          
-
                         </div>
-                      </div>
-                    );
-                  })()}
-                  
-                  {/* Todas las secciones del análisis - Grid completo */}
-                  <div className="space-y-3 sm:space-y-4">
-                    {/* Primera fila: Resumen y Análisis de Patrones */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                      );
+                    })()}
+                    
+                    {/* Grilla de Análisis */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Resumen */}
-                      <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
-                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Resumen</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-blue-700 font-bold">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-sm uppercase tracking-widest">Análisis Situacional</span>
                         </div>
-                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
-                          {reporte.resumen || 'Análisis no disponible'}
-                        </p>
-                      </div>
-                      
-                      {/* Análisis de Patrones */}
-                      <div className="bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-200 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                          <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
-                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Análisis de Patrones</h4>
+                        <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100/50 min-h-[100px]">
+                          <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-line font-medium">
+                            {reporte.resumen || 'Sin análisis disponible.'}
+                          </p>
                         </div>
-                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
-                          {reporte.analisisPatrones || 'No se identificaron patrones específicos'}
-                        </p>
                       </div>
-                    </div>
-                    
-                    {/* Segunda fila: Fortalezas y Factores de Riesgo */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                      {/* Fortalezas y Áreas de Mejora */}
-                      <div className="bg-green-50 rounded-lg p-3 sm:p-4 border border-green-200 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
-                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Fortalezas</h4>
+
+                      {/* Patrones y Riesgos */}
+                      {reporte.analisisPatrones && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-indigo-700 font-bold">
+                            <TrendingUp className="h-4 w-4" />
+                            <span className="text-sm uppercase tracking-widest">Patrones Detectados</span>
+                          </div>
+                          <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100/50 min-h-[100px]">
+                            <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-line font-medium">
+                              {reporte.analisisPatrones}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
-                          {reporte.fortalezas || 'No se identificaron fortalezas específicas'}
-                        </p>
-                      </div>
-                      
-                      {/* Factores de Riesgo */}
-                      <div className="bg-red-50 rounded-lg p-3 sm:p-4 border border-red-200 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                          <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
-                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Factores de Riesgo</h4>
+                      )}
+
+                      {/* Recomendaciones y Acción */}
+                      {reporte.recomendaciones && (
+                        <div className="md:col-span-2 space-y-3">
+                          <div className="flex items-center gap-2 text-emerald-700 font-bold">
+                            <Target className="h-4 w-4" />
+                            <span className="text-sm uppercase tracking-widest">Plan de Acción Inmediato</span>
+                          </div>
+                          <div className="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100/50">
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {reporte.recomendaciones.split(/\n+/).filter((l: string) => l.trim().length > 0).map((line: string, idx: number) => (
+                                <li key={idx} className="flex items-start gap-3 text-sm text-gray-800 bg-white/60 p-3 rounded-xl border border-white/80 shadow-sm">
+                                  <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-bold text-xs">
+                                    {idx + 1}
+                                  </div>
+                                  <span className="leading-tight">{line.replace(/^(\d+[.)]\s*|[-•*]\s*)/, '').trim()}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
-                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
-                          {reporte.factoresRiesgo || 'No se identificaron factores de riesgo relevantes'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Tercera fila: Recomendaciones y Plan de Seguimiento */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                      {/* Recomendaciones */}
-                      <div className="bg-yellow-50 rounded-lg p-3 sm:p-4 border border-yellow-200 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-600" />
-                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Recomendaciones</h4>
+                      )}
+
+                      {/* Secciones Opcionales (Solo si hay data) */}
+                      {(reporte.fortalezas || reporte.factoresRiesgo || reporte.planSeguimiento) && (
+                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100 pt-6">
+                           {reporte.fortalezas && (
+                             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                               <h5 className="text-xs font-bold text-gray-500 uppercase tracking-tighter mb-2">Puntos de Fuerza</h5>
+                               <p className="text-xs text-gray-700 leading-tight">{reporte.fortalezas}</p>
+                             </div>
+                           )}
+                           {reporte.factoresRiesgo && (
+                             <div className="p-4 bg-rose-50 rounded-xl border border-rose-100">
+                               <h5 className="text-xs font-bold text-rose-600 uppercase tracking-tighter mb-2">Riesgo Crítico</h5>
+                               <p className="text-xs text-gray-700 leading-tight">{reporte.factoresRiesgo}</p>
+                             </div>
+                           )}
+                           {reporte.planSeguimiento && (
+                             <div className="p-4 bg-cyan-50 rounded-xl border border-cyan-100">
+                               <h5 className="text-xs font-bold text-cyan-700 uppercase tracking-tighter mb-2">Notas Seguimiento</h5>
+                               <p className="text-xs text-gray-700 leading-tight">{reporte.planSeguimiento}</p>
+                             </div>
+                           )}
                         </div>
-                        {reporte.recomendaciones ? (
-                          <ul className="list-disc list-inside space-y-1 text-gray-900 text-xs sm:text-sm">
-                            {reporte.recomendaciones.split(/\n+/).filter((line: string) => line.trim().length > 0).map((line: string, idx: number) => {
-                              const cleanedLine = line.replace(/^(\d+[.)]\s*|[-•*]\s*)/, '').trim();
-                              return cleanedLine ? (
-                                <li key={idx} className="leading-relaxed">{cleanedLine}</li>
-                              ) : null;
-                            })}
-                          </ul>
-                        ) : (
-                          <p className="text-gray-900 text-xs sm:text-sm italic">No hay recomendaciones disponibles</p>
-                        )}
-                      </div>
-                      
-                      {/* Plan de Seguimiento */}
-                      <div className="bg-cyan-50 rounded-lg p-3 sm:p-4 border border-cyan-200 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-cyan-600" />
-                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Seguimiento</h4>
-                        </div>
-                        {reporte.planSeguimiento ? (
-                          <ul className="list-disc list-inside space-y-1 text-gray-900 text-xs sm:text-sm">
-                            {reporte.planSeguimiento.split(/\n+/).filter((line: string) => line.trim().length > 0).map((line: string, idx: number) => {
-                              const cleanedLine = line.replace(/^(\d+[.)]\s*|[-•*]\s*)/, '').trim();
-                              return cleanedLine ? (
-                                <li key={idx} className="leading-relaxed">{cleanedLine}</li>
-                              ) : null;
-                            })}
-                          </ul>
-                        ) : (
-                          <p className="text-gray-900 text-xs sm:text-sm italic">No hay seguimiento disponible</p>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -4461,11 +4432,18 @@ export default function DirectorPage() {
                           <div className="space-y-1">
                             <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-bold">
                               <Sparkles className="h-6 w-6 text-indigo-200 animate-pulse" />
-                              Análisis Estratégico IA
+                              {reporteGeneral && (reporteGeneral as any).resumen?.toLowerCase().includes(grado?.toLowerCase() || '') || !selectedStudent 
+                                ? 'Reporte General Estratégico IA' 
+                                : 'Análisis Estratégico IA'}
                             </CardTitle>
-                            <CardDescription className="text-indigo-100 flex items-center gap-2">
+                            <CardDescription className="text-indigo-100 flex items-center gap-3">
                               {timestamp ? (
-                                <><Calendar className="h-3 w-3" /> Generado el {new Date(timestamp).toLocaleString('es-ES')}</>
+                                <div className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-md border border-white/10">
+                                  <Calendar className="h-3.5 w-3.5" /> 
+                                  <span>Generado el {new Date(timestamp).toLocaleString('es-ES', { 
+                                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+                                  })}</span>
+                                </div>
                               ) : null}
                             </CardDescription>
                           </div>

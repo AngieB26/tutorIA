@@ -7,9 +7,9 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-  fetchTutores,
   fetchEstudiantes,
   fetchClases,
+  fetchTutores,
   addRegistroAsistenciaClase,
   findRegistroAsistencia,
   getGrados,
@@ -19,6 +19,8 @@ import {
   deletePrellenadoIncidencia,
   getAsistenciaClasesByFilters,
 } from '@/lib/api';
+
+import { Badge } from '@/components/ui/badge';
 
 import {
   Card,
@@ -40,7 +42,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 
-import { Calendar, FileText, Upload, AlertTriangle, Bell } from 'lucide-react';
+import { Calendar, FileText, Upload, AlertTriangle, Bell, X } from 'lucide-react';
 import { validateRequired, validateDateNotFuture, validateDescription, validateAsistenciaEntries, validateEmail, validatePhone } from '@/lib/validation';
 import { EstudianteInfo } from '@/lib/types';
 
@@ -348,8 +350,9 @@ export default function ProfesorPage() {
 
   /* ---------- incidencia ---------- */
   const [incProfesor, setIncProfesor] = useState('');
-  const [incEstudiante, setIncEstudiante] = useState('');
-  const [incEstudianteId, setIncEstudianteId] = useState<string | null>(null); // ID del estudiante seleccionado
+  const [incEstudiantes, setIncEstudiantes] = useState<{nombre: string, id: string | null}[]>([]);
+  // incEstudiante se mantiene como buscador temporal si es necesario, pero lo manejamos como array principal
+  const [incEstudianteBusqueda, setIncEstudianteBusqueda] = useState('');
   const [incTipo, setIncTipo] = useState('');
   const [incGravedad, setIncGravedad] = useState('');
   const [incDerivar, setIncDerivar] = useState('');
@@ -1045,24 +1048,52 @@ export default function ProfesorPage() {
                     placeholder="Buscar o seleccionar profesor"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1">Estudiante</label>
-                  <Combobox
-                    options={estudiantes.map(e => getNombreCompleto(e)).filter(n => n && n.trim() !== '')}
-                    value={incEstudiante}
-                    onChange={(nombre) => {
-                      setIncEstudiante(nombre);
-                      // Buscar el ID del estudiante cuando se selecciona
-                      const estudianteSeleccionado = estudiantes.find(e => getNombreCompleto(e) === nombre);
-                      setIncEstudianteId(estudianteSeleccionado?.id || null);
-                    }}
-                    placeholder="Buscar o seleccionar estudiante"
-                  />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-800 mb-1 text-premium">Estudiante(s)</label>
+                  <div className="space-y-3">
+                    <Combobox
+                      options={estudiantes.map(e => getNombreCompleto(e)).filter(n => n && n.trim() !== '' && !incEstudiantes.some(selected => selected.nombre === n))}
+                      value={incEstudianteBusqueda}
+                      onChange={(nombre) => {
+                        if (!nombre) return;
+                        const estudianteSeleccionado = estudiantes.find(e => getNombreCompleto(e) === nombre);
+                        if (estudianteSeleccionado) {
+                          setIncEstudiantes(prev => [...prev, { 
+                            nombre: getNombreCompleto(estudianteSeleccionado), 
+                            id: estudianteSeleccionado.id || null 
+                          }]);
+                          setIncEstudianteBusqueda('');
+                        }
+                      }}
+                      placeholder="Buscar y agregar estudiantes..."
+                    />
+                    
+                    {incEstudiantes.length > 0 && (
+                      <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        {incEstudiantes.map((est, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary" 
+                            className="pl-3 pr-1 py-1.5 gap-2 bg-white border-gray-200 text-gray-700 hover:bg-gray-100 transition-all flex items-center shadow-sm"
+                          >
+                            <span className="font-medium">{est.nombre}</span>
+                            <button 
+                              type="button"
+                              onClick={() => setIncEstudiantes(prev => prev.filter((_, i) => i !== index))}
+                              className="p-0.5 hover:bg-red-100 hover:text-red-600 rounded-full transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Gravedad</label>
-                  <Select value={incGravedad} onValueChange={setIncGravedad} disabled={!incProfesor || !incEstudiante}>
-                    <SelectTrigger disabled={!incProfesor || !incEstudiante}>
+                  <Select value={incGravedad} onValueChange={setIncGravedad} disabled={!incProfesor || incEstudiantes.length === 0}>
+                    <SelectTrigger disabled={!incProfesor || incEstudiantes.length === 0}>
                       <SelectValue placeholder="Selecciona la gravedad" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1074,8 +1105,8 @@ export default function ProfesorPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Tipo</label>
-                  <Select value={incTipo} onValueChange={setIncTipo} disabled={!incProfesor || !incEstudiante}>
-                    <SelectTrigger disabled={!incProfesor || !incEstudiante}>
+                  <Select value={incTipo} onValueChange={setIncTipo} disabled={!incProfesor || incEstudiantes.length === 0}>
+                    <SelectTrigger disabled={!incProfesor || incEstudiantes.length === 0}>
                       <SelectValue placeholder="Selecciona el tipo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1090,8 +1121,8 @@ export default function ProfesorPage() {
                   <label className="block text-sm font-medium text-gray-800 mb-1">
                     Derivar a <span className="text-red-500">*</span>
                   </label>
-                  <Select value={incDerivar} onValueChange={setIncDerivar} disabled={!incProfesor || !incEstudiante}>
-                    <SelectTrigger disabled={!incProfesor || !incEstudiante}>
+                  <Select value={incDerivar} onValueChange={setIncDerivar} disabled={!incProfesor || incEstudiantes.length === 0}>
+                    <SelectTrigger disabled={!incProfesor || incEstudiantes.length === 0}>
                       <SelectValue placeholder="Selecciona a quién derivar (obligatorio)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1330,26 +1361,34 @@ export default function ProfesorPage() {
                         }
                       }))
                     );
-                    // Guardar incidencia en la base de datos
-                    const incidencia = {
-                      profesor: incProfesor,
-                      estudiante: incEstudiante,
-                      estudianteId: incEstudianteId,
-                      tipo: incTipo,
-                      gravedad: incGravedad,
-                      derivar: incDerivar,
-                      descripcion: incDescripcion,
-                      fecha: new Date().toISOString(),
-                      archivos: archivosBase64,
-                    };
-                    // Guardar incidencia - verificar que se guardó correctamente
-                    const guardadoExitoso = await saveIncidenciaLocal(incidencia);
-                    if (guardadoExitoso) {
+                    // Guardar incidencia para CADA estudiante seleccionado
+                    setLoading(true);
+                    let todosExitosos = true;
+                    
+                    for (const est of incEstudiantes) {
+                      const incidencia = {
+                        profesor: incProfesor,
+                        estudiante: est.nombre,
+                        estudianteId: est.id,
+                        tipo: incTipo,
+                        gravedad: incGravedad,
+                        derivar: incDerivar,
+                        descripcion: incDescripcion,
+                        fecha: new Date().toISOString(),
+                        archivos: archivosBase64,
+                      };
+                      
+                      const guardadoExitoso = await saveIncidenciaLocal(incidencia);
+                      if (!guardadoExitoso) todosExitosos = false;
+                    }
+
+                    if (todosExitosos) {
                       setTimeout(() => {
                         setLoading(false);
                         // Reiniciar formulario de incidencia (solo los campos, los datos ya están guardados)
                         setIncProfesor('');
-                        setIncEstudiante('');
+                        setIncEstudiantes([]);
+                        setIncEstudianteBusqueda('');
                         setIncTipo('');
                         setIncGravedad('');
                         setIncDerivar('');
