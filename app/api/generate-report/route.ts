@@ -38,20 +38,20 @@ export async function POST(req: NextRequest) {
           const stats = `Total: ${totalIncidencias} (${pos} pos, ${neg} neg). Graves: ${graves}.`;
 
           promptsSeparados = {
-            resumen: `Resumen ejecutivo de 2 líneas sobre el estado institucional. Enfócate en problemas (NEGATIVOS).\n\n${stats}`,
-            alertas: `Identifica 2 alertas críticas basadas en incidencias NEGATIVAS.\n\n${stats}`,
-            recomendaciones: `3 recomendaciones institucionales para reducir problemas. Una por línea.\n\n${stats}`
+            resumen: `Resumen ejecutivo de MÁXIMO 40 palabras sobre el estado institucional. Enfócate solo en lo más crítico (NEGATIVOS).\n\n${stats}`,
+            alertas: `Identifica ÚNICAMENTE 2 alertas críticas en formato lista de puntos cortos. No repitas lo dicho en el resumen.\n\n${stats}`,
+            recomendaciones: `Proporciona 3 recomendaciones estratégicas BREVES. Una por línea. Máximo 15 palabras cada una.\n\n${stats}`
           };
           prompt = 'REPORTE_GENERAL_SEPARADO';
         } else {
           const context = `Estudiante: ${estudiante} | Total: ${totalIncidencias}\n\nIncidencias:\n${incidenciasTexto}`;
           promptsSeparados = {
-            resumen: `Resumen de 2 líneas sobre la situación de ${estudiante}.\n\n${context}`,
-            analisisPatrones: `Identifica 2 tendencias en la conducta de ${estudiante}.\n\n${context}`,
-            fortalezas: `Destaca fortalezas o áreas de mejora para ${estudiante}.\n\n${context}`,
-            factoresRiesgo: `Riesgos críticos para ${estudiante} o estado estable. Máximo 2 líneas.\n\n${context}`,
-            recomendaciones: `3 claves para ${estudiante}. Una por línea.\n\n${context}`,
-            planSeguimiento: `2 pasos de seguimiento con ${estudiante}.\n\n${context}`
+            resumen: `Describe la situación actual de ${estudiante} en MÁXIMO 2 líneas. Sé directo.\n\n${context}`,
+            analisisPatrones: `Identifica los 2 comportamientos más recurrentes. Prohibido repetir el resumen. Usa puntos cortos.\n\n${context}`,
+            fortalezas: `Menciona 1 fortaleza O área de mejora prioritaria. Máximo 20 palabras.\n\n${context}`,
+            factoresRiesgo: `¿Cuál es el riesgo principal aquí? Responde en UNA SOLA FRASE de máximo 15 palabras.\n\n${context}`,
+            recomendaciones: `3 acciones concretas para este caso. Máximo 10 palabras por acción. Una por línea.\n\n${context}`,
+            planSeguimiento: `Define 2 pasos de seguimiento inmediatos. Formato lista de puntos, máximo 12 palabras por punto.\n\n${context}`
           };
           prompt = 'REPORTE_ESTUDIANTE_SEPARADO';
         }
