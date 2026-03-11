@@ -3109,237 +3109,242 @@ export default function DirectorPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="w-full flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 divide-y sm:divide-y-0 divide-gray-100">
                   {/* Estudiante */}
-                  <div className="flex-1 flex flex-col items-center py-5 px-3">
-                    <span className="block text-sm font-bold text-primary mb-3">Estudiante</span>
-                    {fotoPreview ? (
-                      <img src={fotoPreview} alt="Foto de perfil" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm mb-2" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200 shadow-sm mb-2">
-                        <User className="w-10 h-10 text-gray-400" />
-                      </div>
-                    )}
-                    {/* Nombres y Apellidos del estudiante */}
-                    {editando ? (
-                      <div className="mt-2 w-full flex flex-col gap-2">
-                      <Input
-                          className="text-base font-semibold text-gray-900 text-center"
-                          name="nombres"
-                          value={infoEdit.nombres || ''}
-                        onChange={handleInputChange}
-                          placeholder="Nombres"
-                        autoComplete="off"
-                      />
-                        <Input
-                          className="text-base font-semibold text-gray-900 text-center"
-                          name="apellidos"
-                          value={infoEdit.apellidos || ''}
-                          onChange={handleInputChange}
-                          placeholder="Apellidos"
-                          autoComplete="off"
-                        />
-                      </div>
-                    ) : (
-                      <span className="mt-2 text-base font-semibold text-gray-900">{infoEdit.nombre || (infoEdit.nombres && infoEdit.apellidos ? `${infoEdit.nombres} ${infoEdit.apellidos}` : '-')}</span>
-                    )}
-                    {!editando && fotoPreview && (
-                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => setEditando(true)}>Cambiar foto</Button>
-                    )}
-                    {editando && (
-                      <div className="mt-2 flex flex-col gap-1.5">
-                        <Button size="sm" variant="outline" className="text-xs" onClick={handleEliminarFoto}>Eliminar foto</Button>
-                        <label className="cursor-pointer text-primary hover:text-primary/80 underline text-xs text-center transition-colors">
-                          Subir foto
-                          <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
-                        </label>
-                      </div>
-                    )}
-                    <div className="mt-4 w-full flex flex-col items-center space-y-2.5">
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <div className="flex flex-col items-center py-4 px-2">
+                    <span className="block text-sm font-bold text-primary mb-4 self-start sm:self-center">Estudiante</span>
+                    <div className="flex flex-col items-center mb-4">
+                      {fotoPreview ? (
+                        <img src={fotoPreview} alt="Foto de perfil" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm mb-2" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200 shadow-sm mb-2">
+                          <User className="w-10 h-10 text-gray-400" />
+                        </div>
+                      )}
+                      
+                      {editando ? (
+                        <div className="w-full flex flex-col gap-2 mt-2">
+                          <Input
+                            className="text-sm font-semibold text-gray-900 text-center"
+                            name="nombres"
+                            value={infoEdit.nombres || ''}
+                            onChange={handleInputChange}
+                            placeholder="Nombres"
+                            autoComplete="off"
+                          />
+                          <Input
+                            className="text-sm font-semibold text-gray-900 text-center"
+                            name="apellidos"
+                            value={infoEdit.apellidos || ''}
+                            onChange={handleInputChange}
+                            placeholder="Apellidos"
+                            autoComplete="off"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-base font-semibold text-gray-900 text-center">{infoEdit.nombre || (infoEdit.nombres && infoEdit.apellidos ? `${infoEdit.nombres} ${infoEdit.apellidos}` : '-')}</span>
+                      )}
+
+                      {!editando && fotoPreview && (
+                        <Button size="sm" variant="outline" className="mt-2 text-[10px] h-7" onClick={() => setEditando(true)}>Cambiar foto</Button>
+                      )}
+                      {editando && (
+                        <div className="mt-2 flex flex-col gap-1.5 w-full">
+                          <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={handleEliminarFoto}>Eliminar foto</Button>
+                          <label className="cursor-pointer text-primary hover:text-primary/80 underline text-[10px] text-center transition-colors">
+                            Subir foto
+                            <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full space-y-3">
+                      <div className="flex flex-col sm:items-center">
+                        <div className="flex items-center gap-1.5 mb-1 sm:justify-center">
                           <GraduationCap className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Grado y Sección</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Grado y Sección</span>
                         </div>
-                      {editando ? (
-                          <div className="flex gap-2 justify-center">
-                          <Input name="grado" value={infoEdit.grado || ''} onChange={handleInputChange} className="w-16 text-center" placeholder="Grado" />
-                          <Input name="seccion" value={infoEdit.seccion || ''} onChange={handleInputChange} className="w-16 text-center" placeholder="Sección" />
-                        </div>
-                      ) : (
-                          <span className="text-sm text-gray-900 font-medium block text-center">{infoEdit.grado} - {infoEdit.seccion}</span>
-                      )}
+                        {editando ? (
+                          <div className="flex gap-2 sm:justify-center">
+                            <Input name="grado" value={infoEdit.grado || ''} onChange={handleInputChange} className="w-full sm:w-16 text-center h-8 text-sm" placeholder="Grado" />
+                            <Input name="seccion" value={infoEdit.seccion || ''} onChange={handleInputChange} className="w-full sm:w-16 text-center h-8 text-sm" placeholder="Sección" />
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-900 font-medium sm:text-center">{infoEdit.grado} - {infoEdit.seccion}</span>
+                        )}
                       </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+
+                      <div className="flex flex-col sm:items-center">
+                        <div className="flex items-center gap-1.5 mb-1 sm:justify-center">
                           <User className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Edad</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Edad</span>
                         </div>
-                      {editando ? (
-                          <Input name="edad" value={infoEdit.edad || ''} onChange={handleInputChange} className="w-16 text-center mx-auto" type="number" min="1" placeholder="Edad" />
-                      ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.edad ? `${infoEdit.edad} años` : <span className="text-gray-400">-</span>}</span>
-                      )}
+                        {editando ? (
+                          <Input name="edad" value={infoEdit.edad || ''} onChange={handleInputChange} className="w-full sm:w-20 text-center h-8 text-sm sm:mx-auto" type="number" min="1" placeholder="Edad" />
+                        ) : (
+                          <span className="text-sm text-gray-900 sm:text-center">{infoEdit.edad ? `${infoEdit.edad} años` : '-'}</span>
+                        )}
                       </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+
+                      <div className="flex flex-col sm:items-center">
+                        <div className="flex items-center gap-1.5 mb-1 sm:justify-center">
                           <Calendar className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Fecha de Nacimiento</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Nacimiento</span>
                         </div>
-                      {editando ? (
-                        <Input 
-                          name="fechaNacimiento" 
-                          type="date"
-                          value={infoEdit.fechaNacimiento ? new Date(infoEdit.fechaNacimiento).toISOString().split('T')[0] : ''} 
-                          onChange={handleInputChange} 
-                            className="w-32 text-center text-xs mx-auto" 
-                          placeholder="Fecha Nac." 
-                        />
-                      ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.fechaNacimiento ? formatFecha(infoEdit.fechaNacimiento) : <span className="text-gray-400">-</span>}</span>
-                      )}
+                        {editando ? (
+                          <Input 
+                            name="fechaNacimiento" 
+                            type="date"
+                            value={infoEdit.fechaNacimiento ? new Date(infoEdit.fechaNacimiento).toISOString().split('T')[0] : ''} 
+                            onChange={handleInputChange} 
+                            className="w-full h-8 text-xs sm:mx-auto" 
+                          />
+                        ) : (
+                          <span className="text-sm text-gray-900 sm:text-center">{infoEdit.fechaNacimiento ? formatFecha(infoEdit.fechaNacimiento) : '-'}</span>
+                        )}
                       </div>
                     </div>
                   </div>
+
                   {/* Contacto del Estudiante */}
-                  <div className="flex-1 flex flex-col items-center py-5 px-3">
-                    <span className="block text-sm font-bold text-primary mb-3">Contacto del Estudiante</span>
-                    <div className="mt-2 w-full flex flex-col items-center space-y-3">
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <div className="flex flex-col py-4 px-2">
+                    <span className="block text-sm font-bold text-primary mb-4">Contacto</span>
+                    <div className="space-y-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <Phone className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Teléfono</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Teléfono</span>
                         </div>
                         {editando ? (
-                          <Input name="contactoTelefono" value={infoEdit.contacto?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, telefono: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono" />
+                          <Input name="contactoTelefono" value={infoEdit.contacto?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, telefono: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Teléfono" />
                         ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.contacto?.telefono || <span className="text-gray-400">-</span>}</span>
+                          <span className="text-sm text-gray-900">{infoEdit.contacto?.telefono || '-'}</span>
                         )}
                       </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <Mail className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Email</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Email</span>
                         </div>
                         {editando ? (
-                          <Input name="contactoEmail" value={infoEdit.contacto?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, email: e.target.value } }))} className="w-full text-center text-sm" placeholder="Email" />
+                          <Input name="contactoEmail" value={infoEdit.contacto?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, contacto: { ...prev.contacto, email: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Email" />
                         ) : (
-                          <span className="text-sm text-gray-900 break-all block text-center">{infoEdit.contacto?.email || <span className="text-gray-400">-</span>}</span>
+                          <span className="text-sm text-gray-900 break-all">{infoEdit.contacto?.email || '-'}</span>
                         )}
                       </div>
                     </div>
                   </div>
+
                   {/* Familiar / Apoderado */}
-                  <div className="flex-1 flex flex-col items-center py-5 px-3">
-                    <span className="block text-sm font-bold text-primary mb-3">Familiar / Apoderado</span>
-                    <div className="mt-2 w-full flex flex-col items-center space-y-3">
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <div className="flex flex-col py-4 px-2">
+                    <span className="block text-sm font-bold text-primary mb-4">Apoderado</span>
+                    <div className="space-y-3">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <UserCircle className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Nombre</span>
-                        </div>
-                      {editando ? (
-                          <Input name="apoderadoNombre" value={infoEdit.apoderado?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, nombre: e.target.value } }))} className="w-full text-center text-sm" placeholder="Nombre del apoderado" />
-                      ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.nombre || <span className="text-gray-400">-</span>}</span>
-                      )}
-                      </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                          <Users className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Parentesco</span>
-                        </div>
-                      {editando ? (
-                          <Input name="apoderadoParentesco" value={infoEdit.apoderado?.parentesco || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, parentesco: e.target.value } }))} className="w-full text-center text-sm" placeholder="Ej: Madre, Padre, etc." />
-                      ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.parentesco || <span className="text-gray-400">-</span>}</span>
-                      )}
-                      </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                          <Phone className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Teléfono</span>
-                        </div>
-                      {editando ? (
-                          <Input name="apoderadoTelefono" value={infoEdit.apoderado?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, telefono: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono" />
-                        ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.telefono || <span className="text-gray-400">-</span>}</span>
-                        )}
-                      </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                          <Phone className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Teléfono Alternativo</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Nombre</span>
                         </div>
                         {editando ? (
-                          <Input name="apoderadoTelefonoAlt" value={infoEdit.apoderado?.telefonoAlternativo || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, telefonoAlternativo: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono alternativo" />
+                          <Input name="apoderadoNombre" value={infoEdit.apoderado?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, nombre: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Nombre" />
                         ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.telefonoAlternativo || <span className="text-gray-400">-</span>}</span>
+                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.nombre || '-'}</span>
                         )}
                       </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Users className="h-3.5 w-3.5 text-primary/70" />
+                            <span className="text-[11px] font-semibold text-gray-500 uppercase">Vínculo</span>
+                          </div>
+                          {editando ? (
+                            <Input name="apoderadoParentesco" value={infoEdit.apoderado?.parentesco || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, parentesco: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Ej: Madre" />
+                          ) : (
+                            <span className="text-sm text-gray-900">{infoEdit.apoderado?.parentesco || '-'}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Phone className="h-3.5 w-3.5 text-primary/70" />
+                            <span className="text-[11px] font-semibold text-gray-500 uppercase">Tel.</span>
+                          </div>
+                          {editando ? (
+                            <Input name="apoderadoTelefono" value={infoEdit.apoderado?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, telefono: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Tel." />
+                          ) : (
+                            <span className="text-sm text-gray-900">{infoEdit.apoderado?.telefono || '-'}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <Mail className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Email</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Email</span>
                         </div>
                         {editando ? (
-                          <Input name="apoderadoEmail" value={infoEdit.apoderado?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, email: e.target.value } }))} className="w-full text-center text-sm" placeholder="Email" />
+                          <Input name="apoderadoEmail" value={infoEdit.apoderado?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, email: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Email" />
                         ) : (
-                          <span className="text-sm text-gray-900 break-all block text-center">{infoEdit.apoderado?.email || <span className="text-gray-400">-</span>}</span>
+                          <span className="text-sm text-gray-900 break-all">{infoEdit.apoderado?.email || '-'}</span>
                         )}
                       </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <MapPin className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Dirección</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Dirección</span>
                         </div>
                         {editando ? (
-                          <Input name="apoderadoDireccion" value={infoEdit.apoderado?.direccion || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, direccion: e.target.value } }))} className="w-full text-center text-sm" placeholder="Dirección" />
+                          <Input name="apoderadoDireccion" value={infoEdit.apoderado?.direccion || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, apoderado: { ...prev.apoderado, direccion: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Dirección" />
                         ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.apoderado?.direccion || <span className="text-gray-400">-</span>}</span>
+                          <span className="text-sm text-gray-900">{infoEdit.apoderado?.direccion || '-'}</span>
                         )}
                       </div>
                     </div>
                   </div>
+
                   {/* Tutor */}
-                  <div className="flex-1 flex flex-col items-center py-5 px-3">
-                    <span className="block text-sm font-bold text-primary mb-3">Tutor</span>
-                    <div className="mt-2 w-full flex flex-col items-center space-y-3">
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <div className="flex flex-col py-4 px-2">
+                    <span className="block text-sm font-bold text-primary mb-4">Tutor Asignado</span>
+                    <div className="space-y-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <UserCircle className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Nombre</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Nombre</span>
                         </div>
-                      {editando ? (
-                          <Input name="nombre" value={infoEdit.tutor?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, nombre: e.target.value } }))} className="w-full text-center text-sm" placeholder="Nombre" autoComplete="off" />
-                      ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.tutor?.nombre || <span className="text-gray-400">-</span>}</span>
-                      )}
+                        {editando ? (
+                          <Input name="nombre" value={infoEdit.tutor?.nombre || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, nombre: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Nombre" />
+                        ) : (
+                          <span className="text-sm text-gray-900">{infoEdit.tutor?.nombre || '-'}</span>
+                        )}
                       </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <Phone className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Teléfono</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Teléfono</span>
                         </div>
-                      {editando ? (
-                          <Input name="telefono" value={infoEdit.tutor?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, telefono: e.target.value } }))} className="w-full text-center text-sm" placeholder="Teléfono" autoComplete="off" />
-                      ) : (
-                          <span className="text-sm text-gray-900 block text-center">{infoEdit.tutor?.telefono || <span className="text-gray-400">-</span>}</span>
-                      )}
+                        {editando ? (
+                          <Input name="telefono" value={infoEdit.tutor?.telefono || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, telefono: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Teléfono" />
+                        ) : (
+                          <span className="text-sm text-gray-900">{infoEdit.tutor?.telefono || '-'}</span>
+                        )}
                       </div>
-                      <div className="w-full">
-                        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 mb-1">
                           <Mail className="h-3.5 w-3.5 text-primary/70" />
-                          <span className="text-xs font-semibold text-gray-700">Email</span>
+                          <span className="text-[11px] font-semibold text-gray-500 uppercase">Email</span>
                         </div>
-                      {editando ? (
-                          <Input name="email" value={infoEdit.tutor?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, email: e.target.value } }))} className="w-full text-center text-sm" placeholder="Email" autoComplete="off" />
-                      ) : (
-                          <span className="text-sm text-gray-900 break-all block text-center">{infoEdit.tutor?.email || <span className="text-gray-400">-</span>}</span>
-                      )}
+                        {editando ? (
+                          <Input name="email" value={infoEdit.tutor?.email || ''} onChange={e => setInfoEdit((prev: any) => ({ ...prev, tutor: { ...prev.tutor, email: e.target.value } }))} className="w-full h-8 text-sm" placeholder="Email" />
+                        ) : (
+                          <span className="text-sm text-gray-900 break-all">{infoEdit.tutor?.email || '-'}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
                 </div>
                 <div className="flex gap-2 mt-6 pt-4 border-t border-gray-100">
                   {editando ? (
