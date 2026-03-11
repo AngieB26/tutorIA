@@ -623,30 +623,30 @@ export default function ProfesorPage() {
   ===================================================== */
   if (viewMode === 'inicio') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-12 px-4 sm:py-16">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-6 px-4 sm:py-16">
         <div className="max-w-6xl mx-auto">
           {/* Header Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl sm:text-5xl font-bold mb-3 text-gray-900">
+          <div className="text-center mb-6 sm:mb-12">
+            <h1 className="text-2xl sm:text-5xl font-bold mb-2 text-gray-900">
               Dashboard del Profesor
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-lg text-gray-600 max-w-2xl mx-auto">
               Selecciona el tipo de registro que deseas realizar
             </p>
           </div>
 
           {/* Notificaciones de Asistencia */}
           {notificacionesAsistencia.length > 0 && (
-            <Card className="mb-8 border-orange-200 bg-orange-50">
-              <CardHeader>
+            <Card className="mb-4 sm:mb-8 border-orange-200 bg-orange-50">
+              <CardHeader className="pb-2 sm:pb-4">
                 <div className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-orange-600" />
-                  <CardTitle className="text-lg text-orange-900">
+                  <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                  <CardTitle className="text-sm sm:text-lg text-orange-900">
                     Estudiantes que Requieren Atención
                   </CardTitle>
                 </div>
-                <p className="text-sm text-orange-700 mt-1">
-                  Los siguientes estudiantes han acumulado múltiples tardanzas o ausencias y pueden requerir una incidencia.
+                <p className="text-xs sm:text-sm text-orange-700 mt-1">
+                  Los siguientes estudiantes han acumulado múltiples tardanzas o ausencias.
                 </p>
               </CardHeader>
               <CardContent>
@@ -654,21 +654,21 @@ export default function ProfesorPage() {
                   {notificacionesAsistencia.map((notif, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200 hover:border-orange-300 transition-colors"
+                      className="flex items-center justify-between p-2 sm:p-3 bg-white rounded-lg border border-orange-200 hover:border-orange-300 transition-colors gap-2"
                     >
-                      <div className="flex items-center gap-3">
-                        <AlertTriangle className="h-5 w-5 text-orange-600" />
-                        <div>
-                          <p className="font-semibold text-gray-900">{notif.estudiante}</p>
-                          <p className="text-sm text-gray-600">
-                            {notif.grado} - {notif.seccion} • {notif.cantidad} {notif.tipo === 'tardanza' ? 'tardanza(s)' : 'ausencia(s)'} en los últimos 30 días
+                      <div className="flex items-center gap-2 min-w-0">
+                        <AlertTriangle className="h-4 w-4 text-orange-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-900 text-sm truncate">{notif.estudiante}</p>
+                          <p className="text-xs text-gray-600 truncate">
+                            {notif.grado} - {notif.seccion} • {notif.cantidad} {notif.tipo === 'tardanza' ? 'tardanza(s)' : 'ausencia(s)'}
                           </p>
                         </div>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                        className="border-orange-300 text-orange-700 hover:bg-orange-100 text-xs shrink-0"
                         onClick={() => {
                           setIncProfesor(profesores[0] || '');
                           setIncEstudiante(notif.estudiante);
@@ -682,7 +682,7 @@ export default function ProfesorPage() {
                           setViewMode('incidencia');
                         }}
                       >
-                        Registrar Incidencia
+                        Registrar
                       </Button>
                     </div>
                   ))}
@@ -692,27 +692,27 @@ export default function ProfesorPage() {
           )}
 
           {/* Cards Grid */}
-          <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 max-w-4xl mx-auto">
             {/* Card: Tomar Asistencia */}
             <Card
-              className="cursor-pointer group relative overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 bg-white"
+              className="cursor-pointer group relative overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-all duration-300 hover:shadow-xl sm:hover:-translate-y-2 bg-white"
               onClick={() => setViewMode('asistencia')}
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <CardHeader className="text-center pb-4 relative z-10">
-                <div className="mx-auto mb-4 p-4 bg-blue-50 rounded-full w-20 h-20 flex items-center justify-center group-hover:bg-blue-100 transition-colors duration-300">
-                  <Calendar className="h-10 w-10 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
+              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-100 rounded-full -mr-12 -mt-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <CardHeader className="text-center pb-2 sm:pb-4 pt-4 sm:pt-6 relative z-10">
+                <div className="mx-auto mb-3 p-3 sm:p-4 bg-blue-50 rounded-full w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center group-hover:bg-blue-100 transition-colors duration-300">
+                  <Calendar className="h-7 w-7 sm:h-10 sm:w-10 text-blue-600 group-hover:scale-110 transition-transform duration-300" />
                 </div>
-                <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
+                <CardTitle className="text-lg sm:text-2xl font-bold text-gray-900 mb-1">
                   Tomar Asistencia
                 </CardTitle>
-                <p className="text-gray-600 text-sm leading-relaxed">
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
                   Registra la asistencia diaria de tus estudiantes de forma rápida y eficiente.
                 </p>
               </CardHeader>
-              <CardContent className="pt-2 pb-6 relative z-10">
+              <CardContent className="pt-2 pb-4 sm:pb-6 relative z-10">
                 <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-6 text-base shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 sm:py-6 text-sm sm:text-base shadow-lg hover:shadow-xl transition-all duration-300"
                   size="lg"
                 >
                   Ingresar
@@ -722,9 +722,8 @@ export default function ProfesorPage() {
 
             {/* Card: Registrar Incidencia */}
             <Card
-              className="cursor-pointer group relative overflow-hidden border-2 border-gray-200 hover:border-indigo-500 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 bg-white"
+              className="cursor-pointer group relative overflow-hidden border-2 border-gray-200 hover:border-indigo-500 transition-all duration-300 hover:shadow-xl sm:hover:-translate-y-2 bg-white"
               onClick={() => {
-                // Limpiar formulario antes de cambiar a vista de incidencia
                 setIncProfesor('');
                 setIncEstudiante('');
                 setIncTipo('');
@@ -735,21 +734,21 @@ export default function ProfesorPage() {
                 setViewMode('incidencia');
               }}
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-100 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <CardHeader className="text-center pb-4 relative z-10">
-                <div className="mx-auto mb-4 p-4 bg-indigo-50 rounded-full w-20 h-20 flex items-center justify-center group-hover:bg-indigo-100 transition-colors duration-300">
-                  <FileText className="h-10 w-10 text-indigo-600 group-hover:scale-110 transition-transform duration-300" />
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100 rounded-full -mr-12 -mt-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <CardHeader className="text-center pb-2 sm:pb-4 pt-4 sm:pt-6 relative z-10">
+                <div className="mx-auto mb-3 p-3 sm:p-4 bg-indigo-50 rounded-full w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center group-hover:bg-indigo-100 transition-colors duration-300">
+                  <FileText className="h-7 w-7 sm:h-10 sm:w-10 text-indigo-600 group-hover:scale-110 transition-transform duration-300" />
                 </div>
-                <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
+                <CardTitle className="text-lg sm:text-2xl font-bold text-gray-900 mb-1">
                   Registrar Incidencia
                 </CardTitle>
-                <p className="text-gray-600 text-sm leading-relaxed">
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
                   Reporta incidencias académicas o de conducta de manera detallada y organizada.
                 </p>
               </CardHeader>
-              <CardContent className="pt-2 pb-6 relative z-10">
+              <CardContent className="pt-2 pb-4 sm:pb-6 relative z-10">
                 <Button 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-6 text-base shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 sm:py-6 text-sm sm:text-base shadow-lg hover:shadow-xl transition-all duration-300"
                   size="lg"
                 >
                   Ingresar
