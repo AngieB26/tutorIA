@@ -3657,67 +3657,67 @@ export default function DirectorPage() {
                   })()}
                   
                   {/* Todas las secciones del análisis - Grid completo */}
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {/* Primera fila: Resumen y Análisis de Patrones */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {/* Resumen */}
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Resumen</h4>
+                          <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
+                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Resumen</h4>
                         </div>
-                        <p className="text-gray-900 text-sm leading-relaxed">
+                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
                           {reporte.resumen || 'Análisis no disponible'}
                         </p>
                       </div>
                       
                       {/* Análisis de Patrones */}
-                      <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                      <div className="bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-200 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <TrendingUp className="h-4 w-4 text-purple-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Análisis de Patrones</h4>
+                          <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
+                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Análisis de Patrones</h4>
                         </div>
-                        <p className="text-gray-900 text-sm leading-relaxed">
+                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
                           {reporte.analisisPatrones || 'No se identificaron patrones específicos'}
                         </p>
                       </div>
                     </div>
                     
                     {/* Segunda fila: Fortalezas y Factores de Riesgo */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {/* Fortalezas y Áreas de Mejora */}
-                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <div className="bg-green-50 rounded-lg p-3 sm:p-4 border border-green-200 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <Shield className="h-4 w-4 text-green-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Fortalezas y Áreas de Mejora</h4>
+                          <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
+                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Fortalezas</h4>
                         </div>
-                        <p className="text-gray-900 text-sm leading-relaxed">
+                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
                           {reporte.fortalezas || 'No se identificaron fortalezas específicas'}
                         </p>
                       </div>
                       
                       {/* Factores de Riesgo */}
-                      <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                      <div className="bg-red-50 rounded-lg p-3 sm:p-4 border border-red-200 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <AlertCircle className="h-4 w-4 text-red-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Factores de Riesgo</h4>
+                          <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
+                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Factores de Riesgo</h4>
                         </div>
-                        <p className="text-gray-900 text-sm leading-relaxed">
+                        <p className="text-gray-900 text-xs sm:text-sm leading-relaxed">
                           {reporte.factoresRiesgo || 'No se identificaron factores de riesgo relevantes'}
                         </p>
                       </div>
                     </div>
                     
                     {/* Tercera fila: Recomendaciones y Plan de Seguimiento */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {/* Recomendaciones */}
-                      <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                      <div className="bg-yellow-50 rounded-lg p-3 sm:p-4 border border-yellow-200 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <Target className="h-4 w-4 text-yellow-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Recomendaciones</h4>
+                          <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-600" />
+                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Recomendaciones</h4>
                         </div>
                         {reporte.recomendaciones ? (
-                          <ul className="list-disc list-inside space-y-1.5 text-gray-900 text-sm">
+                          <ul className="list-disc list-inside space-y-1 text-gray-900 text-xs sm:text-sm">
                             {reporte.recomendaciones.split(/\n+/).filter((line: string) => line.trim().length > 0).map((line: string, idx: number) => {
                               const cleanedLine = line.replace(/^(\d+[.)]\s*|[-•*]\s*)/, '').trim();
                               return cleanedLine ? (
@@ -3726,18 +3726,18 @@ export default function DirectorPage() {
                             })}
                           </ul>
                         ) : (
-                          <p className="text-gray-900 text-sm italic">No hay recomendaciones disponibles</p>
+                          <p className="text-gray-900 text-xs sm:text-sm italic">No hay recomendaciones disponibles</p>
                         )}
                       </div>
                       
                       {/* Plan de Seguimiento */}
-                      <div className="bg-cyan-50 rounded-lg p-4 border border-cyan-200">
+                      <div className="bg-cyan-50 rounded-lg p-3 sm:p-4 border border-cyan-200 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle className="h-4 w-4 text-cyan-600" />
-                          <h4 className="font-semibold text-gray-900 text-sm">Plan de Seguimiento</h4>
+                          <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-cyan-600" />
+                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm uppercase tracking-wider">Seguimiento</h4>
                         </div>
                         {reporte.planSeguimiento ? (
-                          <ul className="list-disc list-inside space-y-1.5 text-gray-900 text-sm">
+                          <ul className="list-disc list-inside space-y-1 text-gray-900 text-xs sm:text-sm">
                             {reporte.planSeguimiento.split(/\n+/).filter((line: string) => line.trim().length > 0).map((line: string, idx: number) => {
                               const cleanedLine = line.replace(/^(\d+[.)]\s*|[-•*]\s*)/, '').trim();
                               return cleanedLine ? (
@@ -3746,7 +3746,7 @@ export default function DirectorPage() {
                             })}
                           </ul>
                         ) : (
-                          <p className="text-gray-900 text-sm italic">No hay plan de seguimiento disponible</p>
+                          <p className="text-gray-900 text-xs sm:text-sm italic">No hay seguimiento disponible</p>
                         )}
                       </div>
                     </div>
