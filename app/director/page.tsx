@@ -996,6 +996,10 @@ export default function DirectorPage() {
   const [profesorEditandoAdmin, setProfesorEditandoAdmin] = useState<string | null>(null);
   const [profesorEditForm, setProfesorEditForm] = useState<Partial<Tutor>>({});
   
+  // Estados para edición de clases (cursos)
+  const [claseEditandoAdmin, setClaseEditandoAdmin] = useState<string | null>(null);
+  const [claseEditForm, setClaseEditForm] = useState<Partial<Clase>>({});
+  
   // Estados para mapeo de columnas Excel
   const [mostrarMapeoEstudiantes, setMostrarMapeoEstudiantes] = useState(false);
   const [mostrarMapeoProfesores, setMostrarMapeoProfesores] = useState(false);
@@ -7437,12 +7441,81 @@ export default function DirectorPage() {
                           );
                         }
                         
-                        return clasesFiltradas.map((clase) => (
+                        return clasesFiltradas.map((clase) => {
+                          const estaEditando = claseEditandoAdmin === clase.id;
+                          const formData = estaEditando ? claseEditForm : clase;
+                          
+                          return (
                           <TableRow key={clase.id}>
-                            <TableCell className="font-medium text-gray-900">{clase.nombre}</TableCell>
-                            <TableCell className="text-gray-900">{clase.grado}</TableCell>
-                            <TableCell className="text-gray-900">{clase.seccion}</TableCell>
+                            <TableCell className="font-medium text-gray-900">
+                              {estaEditando ? (
+                                <Input
+                                  value={formData.nombre || ''}
+                                  onChange={(e) => setClaseEditForm({...formData, nombre: e.target.value})}
+                                  className="w-full h-8 text-sm"
+                                  placeholder="Nombre del curso"
+                                />
+                              ) : (
+                                clase.nombre
+                              )}
+                            </TableCell>
+                            <TableCell className="text-gray-900">
+                              {estaEditando ? (
+                                <Select
+                                  value={formData.grado || ''}
+                                  onValueChange={(value) => setClaseEditForm({...formData, grado: value})}
+                                >
+                                  <SelectTrigger className="w-full h-8 text-sm">
+                                    <SelectValue placeholder="Grado" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {gradosOrdenados.map(grado => (
+                                      <SelectItem key={grado} value={grado}>{grado}</SelectItem>
+                                    ))}
+                                    {grados.filter(g => !gradosOrdenados.includes(g)).map(grado => (
+                                      <SelectItem key={grado} value={grado}>{grado}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                clase.grado
+                              )}
+                            </TableCell>
+                            <TableCell className="text-gray-900">
+                              {estaEditando ? (
+                                <Select
+                                  value={formData.seccion || ''}
+                                  onValueChange={(value) => setClaseEditForm({...formData, seccion: value})}
+                                >
+                                  <SelectTrigger className="w-full h-8 text-sm">
+                                    <SelectValue placeholder="Sección" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {secciones.map(seccion => (
+                                      <SelectItem key={seccion} value={seccion}>{seccion}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                clase.seccion
+                              )}
+                            </TableCell>
                             <TableCell>
+                              {estaEditando ? (
+                                <Select
+                                  value={formData.profesor || ''}
+                                  onValueChange={(value) => setClaseEditForm({...formData, profesor: value})}
+                                >
+                                  <SelectTrigger className="w-full h-8 text-sm">
+                                    <SelectValue placeholder="Profesor" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {tutores.map((profesor) => (
+                                      <SelectItem key={profesor.id} value={profesor.nombre}>{profesor.nombre}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
                               <Select
                                 value={clase.profesor}
                                 onValueChange={async (nuevoProfesor) => {
@@ -7467,43 +7540,127 @@ export default function DirectorPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              )}
                             </TableCell>
                             <TableCell className="text-gray-900">
-                              {clase.dias && Array.isArray(clase.dias) && clase.dias.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {clase.dias.map((dia, idx) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs capitalize bg-blue-100 text-blue-800">
-                                      {dia}
-                                    </Badge>
-                                  ))}
+                              {estaEditando ? (
+                                <div className="flex flex-col gap-1">
+                                  {/* Multi-select para días sería ideal, pero usando botones es más rápido */}
+                                  <div className="flex flex-wrap gap-1">
+                                    {['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'].map(dia => {
+                                      const isSelected = formData.dias?.includes(dia as any);
+                                      return (
+                                        <Badge 
+                                          key={dia} 
+                                          variant="outline" 
+                                          className={`text-[10px] cursor-pointer ${isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'}`}
+                                          onClick={() => {
+                                            const currentDias = formData.dias || [];
+                                            const newDias = isSelected 
+                                              ? currentDias.filter(d => d !== dia)
+                                              : [...currentDias, dia as any];
+                                            setClaseEditForm({...formData, dias: newDias});
+                                          }}
+                                        >
+                                          {dia.substring(0, 2)}
+                                        </Badge>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               ) : (
-                                <span className="text-gray-400 text-xs">Sin días</span>
+                                clase.dias && Array.isArray(clase.dias) && clase.dias.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {clase.dias.map((dia, idx) => (
+                                      <Badge key={idx} variant="secondary" className="text-xs capitalize bg-blue-100 text-blue-800">
+                                        {dia}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">Sin días</span>
+                                )
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={async () => {
-                                  if (confirm(`¿Estás seguro de eliminar la asignación de ${clase.nombre} (${clase.grado} ${clase.seccion})?`)) {
-                                    const todasLasClases = await fetchClases();
-                                    const clasesActualizadas = todasLasClases.filter(c => c.id !== clase.id);
-                                    await saveClases(clasesActualizadas);
-                                    // Actualizar el estado directamente
-                                    setClases(clasesActualizadas);
-                                    setRefreshKey(prev => prev + 1);
-                                    toast.success('Asignación eliminada exitosamente');
-                                  }
-                                }}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-1"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                                Eliminar
-                              </Button>
+                              <div className="flex justify-end gap-2">
+                                {estaEditando ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      onClick={async () => {
+                                        try {
+                                          if (!formData.nombre || !formData.grado || !formData.seccion || !formData.profesor) {
+                                            toast.error('Todos los campos excepto días son requeridos');
+                                            return;
+                                          }
+                                          const todasLasClases = await fetchClases();
+                                          const idx = todasLasClases.findIndex(c => c.id === clase.id);
+                                          if (idx >= 0) {
+                                            todasLasClases[idx] = formData as Clase;
+                                            await saveClases(todasLasClases);
+                                            setClases(todasLasClases);
+                                            setClaseEditandoAdmin(null);
+                                            setClaseEditForm({});
+                                            setRefreshKey(prev => prev + 1);
+                                            toast.success('Clase actualizada exitosamente');
+                                          }
+                                        } catch (error: any) {
+                                          toast.error('Error al actualizar la clase');
+                                        }
+                                      }}
+                                    >
+                                      Guardar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setClaseEditandoAdmin(null);
+                                        setClaseEditForm({});
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setClaseEditandoAdmin(clase.id);
+                                        setClaseEditForm(clase);
+                                      }}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={async () => {
+                                        if (confirm(`¿Estás seguro de eliminar la asignación de ${clase.nombre} (${clase.grado} ${clase.seccion})?`)) {
+                                          const todasLasClases = await fetchClases();
+                                          const clasesActualizadas = todasLasClases.filter(c => c.id !== clase.id);
+                                          await saveClases(clasesActualizadas);
+                                          // Actualizar el estado directamente
+                                          setClases(clasesActualizadas);
+                                          setRefreshKey(prev => prev + 1);
+                                          toast.success('Asignación eliminada exitosamente');
+                                        }
+                                      }}
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-1"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
-                        ));
+                        );
+                      });
                       })()}
                     </TableBody>
                   </Table>
