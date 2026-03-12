@@ -1025,6 +1025,8 @@ export default function ProfesorPage() {
   /* =====================================================
      FORMULARIO INCIDENCIA
   ===================================================== */
+
+
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-6xl mx-auto">
@@ -1316,6 +1318,7 @@ export default function ProfesorPage() {
                       return;
                     }
                     setLoading(true);
+                    
                     // Convertir y comprimir archivos antes de persistirlos en la BD
                     const archivosBase64 = await Promise.all(
                       incArchivos.map(f => new Promise<{ name: string; type: string; size: number; data: string }>((resolve) => {
@@ -1389,7 +1392,7 @@ export default function ProfesorPage() {
                     if (todosExitosos) {
                       setTimeout(() => {
                         setLoading(false);
-                        // Reiniciar formulario de incidencia (solo los campos, los datos ya están guardados)
+                        // Reiniciar formulario de incidencia
                         setIncProfesor('');
                         setIncEstudiantes([]);
                         setIncEstudianteBusqueda('');

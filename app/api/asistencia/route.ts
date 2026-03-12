@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const registro = await addRegistroAsistenciaClase(body);
+
     return NextResponse.json(registro, { status: 201 });
   } catch (error) {
     console.error('Error guardando asistencia:', error);

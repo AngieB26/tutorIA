@@ -13,6 +13,7 @@ import {
   saveIncidencias,
 } from '@/lib/db';
 import { Incidencia } from '@/lib/types';
+import { sendToMake } from '@/lib/integrations';
 
 // GET /api/incidencias
 export async function GET(req: NextRequest) {
@@ -94,6 +95,13 @@ export async function POST(req: NextRequest) {
     });
     const nuevaIncidencia = await addIncidencia(body);
     console.log('✅ POST /api/incidencias: Incidencia guardada exitosamente:', nuevaIncidencia.id);
+    
+    // Enviar a Make (si está configurado)
+    // No usamos await para no bloquear la respuesta al usuario
+    sendToMake('incidencia_creada', nuevaIncidencia).catch(err => 
+      console.error('Error al enviar a Make:', err)
+    );
+
     return NextResponse.json(nuevaIncidencia, { status: 201 });
   } catch (error) {
     console.error('❌ Error guardando incidencia(s):', error);
