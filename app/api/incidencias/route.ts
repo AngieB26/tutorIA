@@ -97,10 +97,11 @@ export async function POST(req: NextRequest) {
     console.log('✅ POST /api/incidencias: Incidencia guardada exitosamente:', nuevaIncidencia.id);
     
     // Enviar a Make (si está configurado)
-    // No usamos await para no bloquear la respuesta al usuario
-    sendToMake('incidencia_creada', nuevaIncidencia).catch(err => 
-      console.error('Error al enviar a Make:', err)
-    );
+    try {
+      await sendToMake('incidencia_creada', nuevaIncidencia);
+    } catch (err) {
+      console.error('Error al enviar a Make (background):', err);
+    }
 
     return NextResponse.json(nuevaIncidencia, { status: 201 });
   } catch (error) {

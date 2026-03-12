@@ -10,10 +10,14 @@
 export async function sendToMake(event: string, payload: any) {
   const webhookUrl = process.env.MAKE_WEBHOOK_URL;
 
+  console.log(`[Make Integration] Intentando enviar evento: ${event}`);
+
   if (!webhookUrl || webhookUrl.includes('tu-webhook-aqui')) {
-    console.warn('⚠️ Make Webhook URL no configurado en .env.local');
+    console.warn('⚠️ [Make Integration] URL no configurada o usa placeholder');
     return null;
   }
+
+  console.log(`[Make Integration] URL destino: ${webhookUrl}`);
 
   try {
     const response = await fetch(webhookUrl, {
@@ -29,14 +33,16 @@ export async function sendToMake(event: string, payload: any) {
     });
 
     if (!response.ok) {
-      console.error(`❌ Error al enviar a Make: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ [Make Integration] Error ${response.status}: ${errorText}`);
       return null;
     }
 
-    console.log(`✅ Evento '${event}' enviado exitosamente a Make`);
-    return await response.text();
+    const result = await response.text();
+    console.log(`✅ [Make Integration] Éxito: ${result}`);
+    return result;
   } catch (error) {
-    console.error('❌ Error de red al conectar con Make:', error);
+    console.error('❌ [Make Integration] Error de conexión:', error);
     return null;
   }
 }
