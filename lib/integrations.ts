@@ -20,16 +20,20 @@ export async function sendToMake(event: string, payload: any) {
   console.log(`[Make Integration] URL destino: ${webhookUrl}`);
 
   try {
+    const body = JSON.stringify({
+      event,
+      timestamp: new Date().toISOString(),
+      data: payload
+    });
+
+    console.log(`[Make Integration] Tamaño del payload: ${(body.length / 1024).toFixed(2)} KB`);
+
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        event,
-        timestamp: new Date().toISOString(),
-        data: payload
-      }),
+      body: body,
     });
 
     if (!response.ok) {
